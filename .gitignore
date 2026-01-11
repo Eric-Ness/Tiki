@@ -1,1 +1,10 @@
 /Notes
+
+# Tiki runtime state (user-specific)
+.tiki/state/
+.tiki/context/
+.tiki/queue/
+.tiki/plans/
+
+# Claude Code local settings
+.claude/settings.local.json
