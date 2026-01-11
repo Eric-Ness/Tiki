@@ -82,6 +82,7 @@ Review items discovered during execution (potential issues, questions, blockers)
 
 | Command | Description |
 |---------|-------------|
+| `/tiki:add-issue [title]` | Create a new issue with intelligent prompting |
 | `/tiki:get-issue <number>` | Fetch and display a GitHub issue |
 | `/tiki:plan-issue <number>` | Create a phased execution plan |
 | `/tiki:execute <number>` | Execute a planned issue phase by phase |
