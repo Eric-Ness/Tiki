@@ -1,0 +1,688 @@
+# Tiki Framework
+
+The idea behind this package is to create a set of skills, agents and hooks that help a programmer get stuff done. I know there are a lot of items out there that do something similar however, I tend to work by putting my to-do list in as github issues.
+
+Github issues are retrieved, and if the issue is too large it will break up the issue into phases. Each phase should be small enough to be completed in one context window.
+
+If the issue has 10 phases, what I would like it to do is spawn a sub-worker to work on phase 1 until it is done. Afterwards, it will update the plan stating that phase is done. It will then spawn another worker to work on phase 2. This loop will continue until it is done. If during this time it comes across items that need to be addressed it will add it to a queue for batch review at the end.
+
+---
+
+## Storage
+
+All Tiki state is stored in `.tiki/` folder in the project root:
+
+```
+.tiki/
+├── config.json          # Project-level settings (test preferences, hook settings, etc.)
+├── plans/               # Phase plans for issues
+│   └── issue-34.json
+├── state/               # Current execution state
+│   └── current.json     # Active phase, progress, pause point
+├── queue/               # Items discovered during execution needing review
+│   └── pending.json     # New issues, questions, blockers
+├── context/             # Saved context snapshots for resume
+│   └── issue-34-phase-2.json
+├── adr/                 # Architecture Decision Records
+│   └── 001-chose-prisma-over-typeorm.md
+└── learned/             # Patterns learned about this project
+    └── patterns.json    # For Update-Claude to use
+```
+
+---
+
+## Configuration
+
+`.tiki/config.json` stores project-level preferences:
+
+```json
+{
+  "testing": {
+    "createTests": "ask" | "before" | "after" | "never",
+    "testFramework": "jest" | "vitest" | "auto-detect"
+  },
+  "hooks": {
+    "codeSimplifier": {
+      "enabled": true,
+      "mode": "silent"  // only surfaces significant findings
+    },
+    "testValidator": {
+      "enabled": true,
+      "runOn": ["phase-complete", "commit"]
+    }
+  },
+  "adr": {
+    "autoGenerate": true,  // auto-create ADRs for significant decisions
+    "directory": ".tiki/adr"
+  }
+}
+```
+
+---
+
+## Skills
+
+### Plan
+`/tiki:plan`
+
+Generic planning skill - walks a user through creating a new plan for any task (not tied to GitHub issues). Interactive conversation to define scope, break down work, identify risks.
+
+### Get-Issue
+`/tiki:get-issue 34`
+`/tiki:get-issue 34 45 67`
+
+Retrieves one or more GitHub issues and displays them with context.
+
+### Plan-Issue
+`/tiki:plan-issue [issue-number]`
+
+Takes a GitHub issue (or multiple issues) and creates a phased execution plan. If the task is too long or complex, it breaks it into multiple phases where each phase can be completed in one context window. Stores the plan in `.tiki/plans/`.
+
+### Execute
+`/tiki:execute [issue-number]`
+
+Executes a planned issue by spawning sub-agents for each phase.
+
+**How it works:**
+1. Reads plan from `.tiki/plans/issue-N.json`
+2. For each phase (sequentially):
+   - Spawns a sub-agent via Claude's Task tool (fresh context)
+   - Includes: phase instructions + summaries from completed phases
+   - Sub-agent works autonomously until phase complete
+   - Captures summary, updates `.tiki/state/current.json`
+   - If issues discovered, adds to `.tiki/queue/pending.json`
+3. Auto-pauses if context gets low (~10% remaining)
+4. When all phases done, triggers `/tiki:review-queue`
+
+**Sub-agent prompt structure:**
+```
+You are executing Phase N of Issue #X.
+
+## Project Context
+[From CLAUDE.md]
+
+## Previous Phase Summaries
+- Phase 1: [summary]
+- Phase 2: [summary]
+
+## Current Phase: [Title]
+[Phase content from plan]
+
+## Instructions
+1. Execute this phase completely
+2. Make actual code changes, run tests, verify
+3. If you discover issues needing attention, note them clearly
+4. Summarize what you accomplished when done
+```
+
+### Execute-Parallel
+`/tiki:execute-parallel [issue-number]`
+
+Same as `/tiki:execute` but runs independent phases concurrently.
+
+- Spawns multiple sub-agents simultaneously for phases without dependencies
+- Phases with `[depends: N]` wait for dependencies to complete
+- Useful for issues where phases can run in parallel (e.g., "add tests for module A" and "add tests for module B")
+
+### Pause
+`/tiki:pause`
+
+Saves current execution state including:
+- Current phase and progress within it
+- Files modified
+- Decisions made
+- Context summary for resumption
+
+Stores in `.tiki/state/` and `.tiki/context/`.
+
+### Resume
+`/tiki:resume [issue-number?]`
+
+Resumes a paused phase. Loads saved context, reminds Claude where things left off, continues execution.
+
+### Whats-Next
+`/tiki:whats-next`
+
+Displays current status and next steps:
+- What phase you're on
+- What's been completed
+- What's coming up
+- Any items in the queue needing attention
+- Suggested next action
+
+### Review-Queue
+`/tiki:review-queue`
+
+Review items that accumulated during execution:
+- Potential new issues discovered
+- Questions that came up
+- Blockers encountered
+- Decisions that need user input
+
+User can approve creating issues, dismiss items, or add notes.
+
+### Assess-Code
+`/tiki:assess-code [path?]`
+
+Comprehensive codebase health assessment that generates a scored report and optionally creates GitHub issues.
+
+**What it does:**
+1. Analyzes codebase across multiple dimensions
+2. Generates a detailed report with scores (0-100 per dimension)
+3. Tracks score history over time
+4. Optionally creates GitHub issues for findings (with labels)
+
+**Dimensions scored:**
+| Dimension | Weight | What it evaluates |
+|-----------|--------|-------------------|
+| Architecture & Structure | 15% | Layering, separation of concerns, naming |
+| Code Quality & Maintainability | 15% | Duplication, dead code, complexity |
+| Testability | 15% | Test coverage, test patterns, mockability |
+| Security | 20% | OWASP concerns, auth, crypto, input validation |
+| Error Handling | 10% | Exception patterns, logging, graceful degradation |
+| Documentation | 10% | README, inline docs, API docs |
+| Dependencies & Modernization | 10% | Package health, framework versions |
+| Interfaces & Abstractions | 5% | DI readiness, interface coverage |
+
+**Report output:** `docs/CODE_QUALITY_ASSESSMENT.md`
+
+**Example workflow:**
+```
+User: /tiki:assess-code
+Claude: [Runs assessment, generates report]
+
+User: "Look through the report and add any issues to GitHub, be very detailed and use labels!"
+Claude: [Creates issues like:]
+  - #701: "Security: Add ValidateAntiForgeryToken to all POST actions" [security, high-priority]
+  - #702: "Tech Debt: Remove copy-paste files (*- Copy.cs)" [tech-debt, low-priority]
+  - #703: "Testing: Add controller unit tests" [testing, medium-priority]
+```
+
+**Score history tracking:**
+```markdown
+| Date | Score | Change | Notes |
+|------|-------|--------|-------|
+| 2026-01-07 | 69 | +1 | HttpContext null-safe error logging |
+| 2026-01-07 | 68 | +16 | Major test expansion, interface extraction |
+| 2025-12-30 | 52 | -- | Initial assessment |
+```
+
+### Discuss-Phases
+`/tiki:discuss-phases [issue-number?]`
+
+Review and adjust phases for a planned issue:
+- See phase breakdown
+- Adjust phase boundaries
+- Reorder phases
+- Split or merge phases
+
+### Commit
+`/tiki:commit`
+
+Commit with Tiki awareness:
+- References the GitHub issue
+- Notes which phase this relates to
+- Updates phase state on successful commit
+- Runs test validation if configured
+
+### ADR (Architecture Decision Record)
+`/tiki:adr [title?]`
+
+Create or manage Architecture Decision Records.
+
+**Manual mode:** `/tiki:adr "Use Prisma over TypeORM"` - walks through creating an ADR
+
+**Auto-generation:** When Claude makes significant decisions during implementation (library choices, architectural patterns, tradeoff decisions), automatically generates an ADR in `.tiki/adr/`.
+
+ADR format:
+```markdown
+# ADR-001: Use Prisma over TypeORM
+
+## Status
+Accepted
+
+## Context
+[What prompted this decision]
+
+## Decision
+[What was decided]
+
+## Consequences
+[What this means going forward]
+
+## Alternatives Considered
+[What else was evaluated]
+```
+
+### State
+`/tiki:state`
+
+View current Tiki state:
+- Active issue/phase
+- Progress percentage
+- Queue length
+- Recent activity
+- Paused work
+
+### Update-Claude
+`/tiki:update-claude`
+
+Updates CLAUDE.md (or creates one) based on patterns learned during implementation:
+- Project conventions discovered ("uses barrel exports", "tests in __tests__ folders")
+- Common patterns in the codebase
+- Gotchas encountered
+- Team preferences observed
+
+Stores learning in `.tiki/learned/patterns.json` and can sync to CLAUDE.md.
+
+### Retro
+`/tiki:retro [issue-number]`
+
+(IDEA: After completing an issue, generate a retrospective - what went well, what was harder than expected, what was learned.)
+
+### Estimate
+`/tiki:estimate [issue-number?]`
+
+(IDEA: After planning, provide rough complexity assessment per phase - not time, but relative effort/risk.)
+
+---
+
+## Agents
+
+### Code-Simplifier
+
+Runs as a PostToolUse hook after Edit operations. Operates silently and only surfaces when it finds significant simplification opportunities:
+- Overly complex conditionals
+- Repeated patterns that could be abstracted
+- Verbose code that could be more idiomatic
+- Dead code introduced
+
+When significant issues found, adds to queue for batch review rather than interrupting.
+
+### Code-Architect
+
+(TODO: Define - higher-level architectural review? Suggests patterns? Validates against project architecture?)
+
+### Test-Validator
+
+Runs at configured points (phase-complete, commit). Validates:
+- Tests still pass after changes
+- Coverage hasn't dropped significantly
+- No new test warnings
+
+### Test-Creator
+
+Creates tests based on config setting:
+- **ask**: Prompts user before creating tests for new code
+- **before**: TDD style - writes tests first
+- **after**: Writes tests after implementation
+- **never**: Skips test creation
+
+---
+
+## Hooks
+
+### PostToolUse
+
+Triggered after tool operations. Currently planned:
+
+| Tool | Hook Actions |
+|------|--------------|
+| Edit | Code-Simplifier (silent) |
+| Write | Code-Simplifier (silent) |
+| Bash (tests) | Test-Validator |
+
+### PreCommit
+
+(IDEA: Validation before committing - run tests, check for console.logs, etc.)
+
+### PhaseComplete
+
+Triggered when a phase is marked complete:
+- Run Test-Validator
+- Update state
+- Log to queue any items discovered
+- Prepare context for next phase
+
+### Stop
+
+(TODO: Define - cleanup on session end? Save state?)
+
+---
+
+## Phase Planning Guidelines
+
+**Core principle:** Each phase must be small enough to execute in one context window.
+
+When planning phases, Claude should:
+- Identify file boundaries (Phase 3 works on section A of `api.ts`, Phase 4 works on section B)
+- Declare dependencies between phases explicitly
+- Keep phases atomic and independently verifiable
+- Include verification steps (how to know phase succeeded)
+
+---
+
+## Plan File Format
+
+`.tiki/plans/issue-34.json`:
+
+```json
+{
+  "issue": {
+    "number": 34,
+    "title": "Add user authentication",
+    "url": "https://github.com/owner/repo/issues/34"
+  },
+  "created": "2026-01-10T10:00:00Z",
+  "status": "in_progress",
+  "phases": [
+    {
+      "number": 1,
+      "title": "Setup auth middleware",
+      "status": "completed",
+      "priority": "high",
+      "dependencies": [],
+      "files": ["src/middleware/auth.ts", "src/types/auth.ts"],
+      "content": "Create the authentication middleware...",
+      "verification": [
+        "Middleware file exists",
+        "Types exported correctly",
+        "No TypeScript errors"
+      ],
+      "summary": "Created auth middleware with JWT validation",
+      "completedAt": "2026-01-10T10:30:00Z"
+    },
+    {
+      "number": 2,
+      "title": "Add login endpoint",
+      "status": "in_progress",
+      "priority": "high",
+      "dependencies": [1],
+      "files": ["src/routes/auth.ts", "src/services/auth.ts"],
+      "content": "Implement /api/login endpoint...",
+      "verification": [
+        "POST /api/login returns JWT",
+        "Invalid credentials return 401",
+        "Tests pass"
+      ],
+      "summary": null,
+      "completedAt": null
+    },
+    {
+      "number": 3,
+      "title": "Add protected routes",
+      "status": "pending",
+      "priority": "medium",
+      "dependencies": [1, 2],
+      "parallel": false,
+      "files": ["src/routes/user.ts"],
+      "content": "Apply auth middleware to user routes...",
+      "verification": [
+        "Unauthenticated requests return 401",
+        "Authenticated requests succeed"
+      ],
+      "summary": null,
+      "completedAt": null
+    }
+  ],
+  "queue": [],
+  "metadata": {
+    "estimatedPhases": 3,
+    "actualPhases": 3,
+    "parallelizable": false
+  }
+}
+```
+
+**Status values:** `pending`, `in_progress`, `completed`, `failed`, `skipped`
+
+---
+
+## Project Documentation (Lightweight Approach)
+
+Inspired by GSD but lighter. Tiki uses minimal documentation:
+
+### Required
+| Document | Purpose |
+|----------|---------|
+| `CLAUDE.md` | Project context loaded every session - conventions, patterns, gotchas |
+
+### Optional (generated on demand)
+| Document | Purpose | Generated By |
+|----------|---------|--------------|
+| `STACK.md` | Languages, frameworks, key dependencies | `/tiki:map-codebase` |
+| `CONCERNS.md` | Tech debt, known issues, fragile areas | `/tiki:map-codebase` or manual |
+
+### Contrast with GSD
+GSD uses 13+ documents (PROJECT, ROADMAP, STATE, PLAN, SUMMARY, ISSUES, STACK, ARCHITECTURE, STRUCTURE, CONVENTIONS, TESTING, INTEGRATIONS, CONCERNS). That's comprehensive but heavy.
+
+**Tiki philosophy:** GitHub issues are the source of truth. Minimize local documentation overhead.
+
+| GSD | Tiki |
+|-----|------|
+| PROJECT.md defines work | GitHub issues define work |
+| ROADMAP.md tracks phases | `.tiki/plans/` tracks phases |
+| STATE.md persists memory | `.tiki/state/` persists memory |
+| Many .md files to maintain | CLAUDE.md + optional STACK/CONCERNS |
+| Generic project workflow | GitHub-issue-centric, git-integrated |
+
+---
+
+## Additional Skills
+
+### Map-Codebase
+`/tiki:map-codebase`
+
+Analyzes an existing codebase and generates:
+- `STACK.md` - Languages, frameworks, dependencies
+- `CONCERNS.md` - Tech debt, known issues, fragile areas (optional)
+- Updates `CLAUDE.md` with discovered conventions
+
+Lighter than GSD's full 7-document analysis. Run once when starting with a new codebase.
+
+### Skip-Phase
+`/tiki:skip-phase [phase-number]`
+
+Skip a phase (mark as skipped, move to next). Logs reason in state.
+
+### Redo-Phase
+`/tiki:redo-phase [phase-number]`
+
+Re-execute a completed phase. Useful when something went wrong or requirements changed.
+
+### Heal
+`/tiki:heal [phase-number?]`
+
+Self-healing when a phase fails. Analyzes what went wrong and suggests fixes.
+
+**What it does:**
+1. Reads the failed phase output from `.tiki/state/`
+2. Analyzes error messages, stack traces, test failures
+3. Proposes fixes (code changes, dependency updates, etc.)
+4. Optionally re-runs the phase after applying fixes
+
+**Triggers:**
+- Manual: `/tiki:heal 3` after Phase 3 fails
+- Automatic: If configured, runs automatically on phase failure
+
+### Audit-Plan
+`/tiki:audit-plan [issue-number]`
+
+Validates a plan before execution.
+
+**Checks:**
+- Phase sizes reasonable (can fit in one context window)
+- Dependencies are logical (no circular deps, correct ordering)
+- File conflicts identified (phases modifying same files)
+- Verification steps included
+- No missing context (referenced files exist, etc.)
+
+**Output:**
+```
+Plan Audit for Issue #34
+========================
+✓ 5 phases defined
+✓ Dependencies valid
+⚠ Phase 3 and 4 both modify api.ts - consider splitting differently
+✓ All referenced files exist
+✓ Verification steps included
+
+Recommendation: Adjust phase boundaries before executing.
+```
+
+### Create-Issues
+`/tiki:create-issues`
+
+Batch-creates GitHub issues from the queue or from a report.
+
+**Modes:**
+1. **From queue:** Creates issues from `.tiki/queue/pending.json`
+2. **From assessment:** Creates issues from `CODE_QUALITY_ASSESSMENT.md` findings
+
+**Options:**
+- `--labels` - Auto-apply labels based on category
+- `--priority` - Set priority labels (high, medium, low)
+- `--dry-run` - Preview issues without creating
+
+---
+
+## Typical Workflow
+
+### Starting Fresh (New Session)
+
+```
+User: /clear
+User: "Look at open GitHub issues and tell me what we should work on next"
+
+Claude: [Fetches issues via gh CLI]
+        "I recommend Issue #34 (Add user authentication) because:
+         1. It's marked high priority
+         2. No blockers
+         3. Dependencies completed"
+
+User: "Ok, plan it. Break into phases if needed."
+
+Claude: /tiki:plan-issue 34
+        [Creates .tiki/plans/issue-34.json with 3 phases]
+        "Created plan with 3 phases:
+         Phase 1: Setup auth middleware
+         Phase 2: Add login endpoint
+         Phase 3: Add protected routes"
+
+User: /tiki:audit-plan 34
+
+Claude: [Validates plan]
+        "✓ Plan looks good. Ready to execute."
+
+User: /tiki:execute 34
+
+Claude: [Spawns sub-agent for Phase 1...]
+        [Phase 1 completes, captures summary]
+        [Spawns sub-agent for Phase 2...]
+        [Phase 2 completes, captures summary]
+        [Spawns sub-agent for Phase 3...]
+        [Phase 3 completes, captures summary]
+        "All phases complete. 2 items in queue for review."
+
+User: /tiki:review-queue
+
+Claude: "Queue items:
+         1. Consider adding rate limiting to login endpoint
+         2. Add password strength validation
+
+         Create issues? [Yes/No/Select]"
+
+User: "Yes, create issues with labels"
+
+Claude: [Creates #35: Rate limiting, #36: Password validation]
+        "Created issues #35 and #36"
+
+User: "Close issue 34"
+
+Claude: [Closes #34 with summary of what was done]
+```
+
+### Resuming Work
+
+```
+User: /tiki:whats-next
+
+Claude: "Current state:
+         - Issue #34: Phase 2 of 3 in progress
+         - Queue: 1 item pending review
+         - Last activity: 2 hours ago"
+
+User: /tiki:resume
+
+Claude: [Loads context from .tiki/context/]
+        [Continues from Phase 2]
+```
+
+### When Things Go Wrong
+
+```
+[Phase 3 fails]
+
+Claude: "Phase 3 failed: TypeError in auth.ts"
+
+User: /tiki:heal 3
+
+Claude: [Analyzes error]
+        "Found issue: Missing import for 'jwt'.
+         Suggested fix: Add `import jwt from 'jsonwebtoken'`
+
+         Apply fix and retry? [Yes/No]"
+
+User: "Yes"
+
+Claude: [Applies fix, re-runs Phase 3]
+        "Phase 3 completed successfully."
+```
+
+### Periodic Health Check
+
+```
+User: /tiki:assess-code
+
+Claude: [Runs full assessment]
+        "Overall Score: 72/100 (+3 since last assessment)
+
+         Improvements:
+         - Testability: +10 (new tests added)
+         - Security: +5 (CSRF protection added)
+
+         Top issues:
+         - 15 catch(Exception) blocks need specific types
+         - 3 files over 500 lines"
+
+User: "Create issues for the top problems, use priority labels"
+
+Claude: [Creates detailed GitHub issues with labels]
+```
+
+---
+
+## Open Questions
+
+1. ~~**Phase size heuristics**~~ RESOLVED: "Small enough to execute in one context window" - let Claude judge this naturally.
+
+2. ~~**Sub-worker communication**~~ RESOLVED: File-based via `.tiki/state/` is sufficient.
+
+3. ~~**Conflict handling**~~ RESOLVED: Phases should declare which sections of files they modify. Phase 3: "work on section A of api.ts", Phase 4: "work on section B of api.ts".
+
+4. ~~**Manual overrides**~~ RESOLVED: Added `/tiki:skip-phase` and `/tiki:redo-phase`.
+
+5. ~~**Multi-repo**~~ RESOLVED: Not needed at this time. Single-repo focus.
+
+6. ~~**Map-codebase depth**~~ RESOLVED: Refreshable. Can re-run `/tiki:map-codebase` to update STACK.md and CONCERNS.md as codebase evolves.
+
+---
+
+## Future Ideas
+
+- `/tiki:visualize` - Show a visual representation of phases and progress
+- `/tiki:handoff` - Generate a handoff document for another developer (or future Claude session)
+- `/tiki:learn` - Explicitly tell Tiki to remember something about the project
+- `/tiki:forget` - Remove something from learned patterns
+- Integration with PR workflow - auto-generate PR descriptions from completed phases
+- `/tiki:verify` - User acceptance testing after phase completion (like GSD's verify-work)
