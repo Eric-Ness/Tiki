@@ -1,4 +1,4 @@
-# Tiki
+# Tiki - Task Iteration & Knowledge Interface
 
 A GitHub-issue-centric workflow framework for Claude Code. Tiki helps you break large issues into phases, execute them with fresh context windows, and track progress automatically.
 
