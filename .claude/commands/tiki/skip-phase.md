@@ -1,4 +1,6 @@
 ---
+type: prompt
+name: tiki:skip-phase
 description: Skip a phase during execution. Use when a phase is blocked, not needed, or you want to move forward without completing it.
 allowed-tools: Read, Write, Edit
 argument-hint: [phase-number] [--reason "..."] [--current]
@@ -11,10 +13,10 @@ Skip a phase during issue execution, marking it as skipped and advancing to the 
 ## Usage
 
 ```
-/skip-phase
-/skip-phase 2
-/skip-phase 2 --reason "Already implemented manually"
-/skip-phase --current
+/tiki:skip-phase
+/tiki:skip-phase 2
+/tiki:skip-phase 2 --reason "Already implemented manually"
+/tiki:skip-phase --current
 ```
 
 ## Arguments
@@ -41,7 +43,7 @@ Read `.tiki/state/current.json` to get the active issue:
 
 If no active issue:
 ```
-No active issue. Use `/execute <issue>` to start execution.
+No active issue. Use `/tiki:execute <issue>` to start execution.
 ```
 
 ### Step 2: Determine Phase to Skip
@@ -62,7 +64,7 @@ Current phases for Issue #34:
   3. Add user dashboard [pending]
   4. Write tests [pending]
 
-Usage: /skip-phase <number> or /skip-phase --current
+Usage: /tiki:skip-phase <number> or /tiki:skip-phase --current
 ```
 
 ### Step 3: Validate Skip Request
@@ -164,7 +166,7 @@ Phase 2 skipped.
 
 Next: Phase 3 - Add user dashboard
 
-Continue execution with `/execute 34` or `/execute 34 --from 3`
+Continue execution with `/tiki:execute 34` or `/tiki:execute 34 --from 3`
 ```
 
 ## Edge Cases
@@ -182,7 +184,7 @@ All phases complete for Issue #34:
   3. Add user dashboard [completed]
   4. Write tests [skipped]
 
-Issue execution complete. Review with `/state`.
+Issue execution complete. Review with `/tiki:state`.
 ```
 
 ### Skipping Multiple Phases
@@ -190,8 +192,8 @@ Issue execution complete. Review with `/state`.
 To skip multiple phases, run the command multiple times:
 
 ```
-/skip-phase 2
-/skip-phase 3
+/tiki:skip-phase 2
+/tiki:skip-phase 3
 ```
 
 Or skip a range (if supported):
@@ -208,7 +210,7 @@ If no reason provided, prompt but don't require:
 No skip reason provided.
 
 Tip: Add a reason for future reference:
-  /skip-phase 2 --reason "Already done manually"
+  /tiki:skip-phase 2 --reason "Already done manually"
 
 Proceeding without reason...
 
@@ -220,7 +222,7 @@ Phase 2 skipped.
 ### Example 1: Skip Current Phase
 
 ```
-> /skip-phase --current
+> /tiki:skip-phase --current
 
 Skipping Phase 2: Add authentication
 
@@ -229,13 +231,13 @@ Phase 2 skipped.
 **Reason**: No reason provided
 **Next**: Phase 3 - Add user dashboard
 
-Continue with `/execute 34`.
+Continue with `/tiki:execute 34`.
 ```
 
 ### Example 2: Skip with Reason
 
 ```
-> /skip-phase 3 --reason "Feature deprioritized for MVP"
+> /tiki:skip-phase 3 --reason "Feature deprioritized for MVP"
 
 Skipping Phase 3: Add user dashboard
 
@@ -244,13 +246,13 @@ Phase 3 skipped.
 **Reason**: Feature deprioritized for MVP
 **Next**: Phase 4 - Write tests
 
-Continue with `/execute 34`.
+Continue with `/tiki:execute 34`.
 ```
 
 ### Example 3: Skip Failed Phase
 
 ```
-> /skip-phase 2
+> /tiki:skip-phase 2
 
 Phase 2 is marked as failed.
 
@@ -258,7 +260,7 @@ Error: TypeScript compilation error in src/auth.ts
 
 Options:
 1. Skip anyway (mark as skipped, ignore error)
-2. Use /heal to attempt automatic fix
+2. Use /tiki:heal to attempt automatic fix
 3. Cancel
 
 > 1
@@ -274,12 +276,12 @@ Note: The error in Phase 2 was not resolved. Dependent phases may fail.
 ### Example 4: Cannot Skip Completed Phase
 
 ```
-> /skip-phase 1
+> /tiki:skip-phase 1
 
 Error: Cannot skip Phase 1 - it is already completed.
 
 Completed phases cannot be skipped. If you need to redo this phase, use:
-  /redo-phase 1
+  /tiki:redo-phase 1
 ```
 
 ## File Updates Summary
@@ -291,15 +293,15 @@ Completed phases cannot be skipped. If you need to redo this phase, use:
 
 ## Integration with Other Skills
 
-- **`/execute`**: After skipping, use `/execute` to continue from next phase
-- **`/heal`**: Use heal instead of skip for failed phases you want to fix
-- **`/redo-phase`**: Use redo to repeat a completed or skipped phase
-- **`/state`**: View current status including skipped phases
-- **`/pause`**: Pause instead of skip if you want to return later
+- **`/tiki:execute`**: After skipping, use `/tiki:execute` to continue from next phase
+- **`/tiki:heal`**: Use heal instead of skip for failed phases you want to fix
+- **`/tiki:redo-phase`**: Use redo to repeat a completed or skipped phase
+- **`/tiki:state`**: View current status including skipped phases
+- **`/tiki:pause`**: Pause instead of skip if you want to return later
 
 ## Notes
 
-- Skipping is permanent for the current execution - use `/redo-phase` to undo
+- Skipping is permanent for the current execution - use `/tiki:redo-phase` to undo
 - Skipped phases are tracked for reporting and review
-- Consider using `/heal` for failed phases before skipping
+- Consider using `/tiki:heal` for failed phases before skipping
 - Dependencies are warned about but not enforced - skipping may cause downstream failures

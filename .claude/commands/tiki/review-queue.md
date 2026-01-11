@@ -1,4 +1,6 @@
 ---
+type: prompt
+name: tiki:review-queue
 description: Review and process items discovered during execution. Use when there are queue items to review, create issues from, or dismiss.
 allowed-tools: Read, Write, Bash, Glob
 argument-hint: [--create-all] [--dismiss-all]
@@ -11,9 +13,9 @@ Review items that accumulated during phase execution. These are potential issues
 ## Usage
 
 ```
-/review-queue
-/review-queue --create-all    # Create issues for all items
-/review-queue --dismiss-all   # Clear all items
+/tiki:review-queue
+/tiki:review-queue --create-all    # Create issues for all items
+/tiki:review-queue --dismiss-all   # Clear all items
 ```
 
 ## Instructions
@@ -59,7 +61,7 @@ If queue is empty:
 
 No items pending review.
 
-Use `/state` to see current status.
+Use `/tiki:state` to see current status.
 ```
 
 ### Step 2: Display Items
@@ -120,8 +122,8 @@ Show all queue items grouped by type:
 ---
 
 **Batch Actions:**
-- Create all issues: `/review-queue --create-all`
-- Dismiss all: `/review-queue --dismiss-all`
+- Create all issues: `/tiki:review-queue --create-all`
+- Dismiss all: `/tiki:review-queue --dismiss-all`
 
 Or process individually below.
 ```
@@ -297,7 +299,7 @@ Queue cleared.
 
 ## Integration with Execute
 
-The `/execute` skill adds items to the queue when sub-agents report discoveries:
+The `/tiki:execute` skill adds items to the queue when sub-agents report discoveries:
 
 ```
 Sub-agent output:
@@ -318,4 +320,4 @@ Sub-agent output:
 - Users have full control over what becomes an issue
 - Dismissed items are logged in `processed` for reference
 - Queue should be reviewed after each execution completes
-- The `/execute` skill suggests reviewing queue when items exist
+- The `/tiki:execute` skill suggests reviewing queue when items exist

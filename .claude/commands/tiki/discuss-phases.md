@@ -1,4 +1,6 @@
 ---
+type: prompt
+name: tiki:discuss-phases
 description: Review and adjust phase boundaries interactively. Use when you want to modify, reorder, split, or merge phases in an existing plan.
 allowed-tools: Read, Write, Edit, Glob
 argument-hint: [issue-number] [--show-deps]
@@ -11,9 +13,9 @@ Interactive review and adjustment of phase boundaries for a planned issue.
 ## Usage
 
 ```
-/discuss-phases
-/discuss-phases 34
-/discuss-phases 34 --show-deps
+/tiki:discuss-phases
+/tiki:discuss-phases 34
+/tiki:discuss-phases 34 --show-deps
 ```
 
 ## Instructions
@@ -29,7 +31,7 @@ If no plan found:
 ```
 No plan found for issue #{number}.
 
-Use `/plan-issue {number}` to create a plan first.
+Use `/tiki:plan-issue {number}` to create a plan first.
 ```
 
 ### Step 2: Display Current Phases
@@ -270,8 +272,8 @@ Write the updated plan to `.tiki/plans/issue-{number}.json`:
 ### Phase 4: Add protected routes [pending]
 
 ---
-Ready to execute? Use `/execute 34`
-Run audit first? Use `/audit-plan 34`
+Ready to execute? Use `/tiki:execute 34`
+Run audit first? Use `/tiki:audit-plan 34`
 More adjustments? Continue describing changes.
 ```
 
@@ -319,6 +321,6 @@ When making changes, enforce these rules:
 
 - Changes are saved immediately after confirmation
 - A history of modifications is kept in the plan file
-- Use `/audit-plan` after major changes to verify plan integrity
-- Completed or in-progress phases cannot be modified (use `/redo-phase` first)
+- Use `/tiki:audit-plan` after major changes to verify plan integrity
+- Completed or in-progress phases cannot be modified (use `/tiki:redo-phase` first)
 - The goal is to help users fine-tune plans before execution

@@ -1,4 +1,6 @@
 ---
+type: prompt
+name: tiki:assess-code
 description: Comprehensive codebase health assessment with scoring across multiple dimensions. Use when evaluating code quality, identifying issues, or tracking improvement over time.
 allowed-tools: Read, Write, Bash, Glob, Grep, Task
 argument-hint: [path] [--quick] [--dimension <name>] [--create-issues]
@@ -11,11 +13,11 @@ Comprehensive codebase health assessment that generates a scored report.
 ## Usage
 
 ```
-/assess-code
-/assess-code src/
-/assess-code --quick
-/assess-code --dimension security
-/assess-code --create-issues
+/tiki:assess-code
+/tiki:assess-code src/
+/tiki:assess-code --quick
+/tiki:assess-code --dimension security
+/tiki:assess-code --create-issues
 ```
 
 ## Instructions
@@ -481,8 +483,8 @@ Interfaces:      ██████░░░░ 65
 docs/CODE_QUALITY_ASSESSMENT.md
 
 ---
-Create GitHub issues from findings? `/create-issues --from-assessment`
-Re-run specific dimension? `/assess-code --dimension security`
+Create GitHub issues from findings? `/tiki:create-issues --from-assessment`
+Re-run specific dimension? `/tiki:assess-code --dimension security`
 ```
 
 ## Quick Mode
@@ -500,7 +502,7 @@ Dependencies: ████████░░ 85
 
 Estimated Overall: 74/100
 
-Run full assessment for detailed report: `/assess-code`
+Run full assessment for detailed report: `/tiki:assess-code`
 ```
 
 ## Single Dimension Mode
@@ -508,7 +510,7 @@ Run full assessment for detailed report: `/assess-code`
 With `--dimension <name>`:
 
 ```
-/assess-code --dimension security
+/tiki:assess-code --dimension security
 ```
 
 Runs only that dimension with extra detail:
@@ -559,6 +561,6 @@ Create all? [Yes/Select/No]
 - Full assessment may take 2-5 minutes depending on codebase size
 - Use `--quick` for faster, less detailed results
 - Score history is tracked in the report file
-- Integration with `/create-issues` to action findings
+- Integration with `/tiki:create-issues` to action findings
 - Reports are stored in `docs/` by default
 - Can be run on specific directories for focused assessment

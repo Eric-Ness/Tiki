@@ -1,4 +1,6 @@
 ---
+type: prompt
+name: tiki:map-codebase
 description: Analyze codebase and generate STACK.md and CONCERNS.md. Use when starting with a new codebase or refreshing documentation.
 allowed-tools: Read, Write, Bash, Glob, Grep, Task
 argument-hint: [--stack-only] [--concerns-only] [--update-claude]
@@ -11,10 +13,10 @@ Analyze an existing codebase to generate documentation about the tech stack and 
 ## Usage
 
 ```
-/map-codebase
-/map-codebase --stack-only
-/map-codebase --concerns-only
-/map-codebase --update-claude
+/tiki:map-codebase
+/tiki:map-codebase --stack-only
+/tiki:map-codebase --concerns-only
+/tiki:map-codebase --update-claude
 ```
 
 ## Instructions
@@ -261,7 +263,7 @@ If `--update-claude` flag is present, append discovered patterns to CLAUDE.md:
 ```markdown
 ## Discovered Patterns
 
-> Added by /map-codebase on 2026-01-10
+> Added by /tiki:map-codebase on 2026-01-10
 
 ### Code Organization
 - Services are in `src/services/`
@@ -312,12 +314,12 @@ View full reports:
 - `cat STACK.md`
 - `cat CONCERNS.md`
 
-Create issues from concerns? Use `/create-issues --from-concerns`
+Create issues from concerns? Use `/tiki:create-issues --from-concerns`
 ```
 
 ## Refresh Mode
 
-Running `/map-codebase` when files already exist:
+Running `/tiki:map-codebase` when files already exist:
 
 ```
 Existing STACK.md and CONCERNS.md found.
@@ -333,9 +335,9 @@ Which option? [1/2/3/4]
 
 ## Integration with Other Skills
 
-- `/assess-code` - Uses STACK.md for context, generates detailed scores
-- `/update-claude` - Uses discovered patterns to update CLAUDE.md
-- `/create-issues` - Can create issues from CONCERNS.md findings
+- `/tiki:assess-code` - Uses STACK.md for context, generates detailed scores
+- `/tiki:update-claude` - Uses discovered patterns to update CLAUDE.md
+- `/tiki:create-issues` - Can create issues from CONCERNS.md findings
 
 ## Notes
 

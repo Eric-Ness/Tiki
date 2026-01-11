@@ -1,4 +1,6 @@
 ---
+type: prompt
+name: tiki:resume
 description: Resume paused work with full context restoration. Use when continuing work that was previously paused.
 allowed-tools: Read, Write, Glob, Bash, Task, Edit, Grep
 argument-hint: [issue-number]
@@ -11,8 +13,8 @@ Resume a paused execution by loading saved context and continuing from where wor
 ## Usage
 
 ```
-/resume
-/resume 34
+/tiki:resume
+/tiki:resume 34
 ```
 
 ## Instructions
@@ -30,8 +32,8 @@ If no paused work found:
 ```
 No paused work found.
 
-Use `/state` to see current status.
-Use `/execute <number>` to start execution.
+Use `/tiki:state` to see current status.
+Use `/tiki:execute <number>` to start execution.
 ```
 
 ### Step 2: Load Context
@@ -253,8 +255,8 @@ Multiple paused issues found:
 | #35 | 1/2 | 1 day ago |
 
 Which would you like to resume?
-- `/resume 34`
-- `/resume 35`
+- `/tiki:resume 34`
+- `/tiki:resume 35`
 ```
 
 ### Stale Context
@@ -268,8 +270,8 @@ This work was paused 10 days ago. The codebase may have changed significantly.
 
 Options:
 1. Resume anyway (context may be outdated)
-2. Start fresh: `/execute 34 --from 2`
-3. Review plan first: `/state`
+2. Start fresh: `/tiki:execute 34 --from 2`
+3. Review plan first: `/tiki:state`
 ```
 
 ### Context File Missing
@@ -282,7 +284,7 @@ If state shows paused but context file is missing:
 Issue #34 is marked as paused but context file is missing.
 
 Options:
-1. Start phase fresh: `/execute 34 --from 2`
+1. Start phase fresh: `/tiki:execute 34 --from 2`
 2. Review what files were being modified and continue manually
 ```
 
@@ -290,5 +292,5 @@ Options:
 
 - Resume is designed to minimize context loss between sessions
 - The context file is the source of truth for resuming
-- If in doubt, start the phase fresh with `/execute --from N`
+- If in doubt, start the phase fresh with `/tiki:execute --from N`
 - Clean up context files after successful phase completion

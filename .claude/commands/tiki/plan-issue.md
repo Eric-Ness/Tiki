@@ -1,4 +1,6 @@
 ---
+type: prompt
+name: tiki:plan-issue
 description: Break a GitHub issue into executable phases. Use when planning work on an issue, creating a phased implementation plan, or before executing an issue.
 allowed-tools: Bash, Read, Write, Glob, Grep
 argument-hint: <issue-number> [additional-numbers...]
@@ -11,8 +13,8 @@ Take a GitHub issue and create a phased execution plan. Each phase should be sma
 ## Usage
 
 ```
-/plan-issue 34
-/plan-issue 34 45    # Plan multiple issues together
+/tiki:plan-issue 34
+/tiki:plan-issue 34 45    # Plan multiple issues together
 ```
 
 ## Instructions
@@ -126,8 +128,8 @@ After creating the plan, display a summary:
 ---
 Plan saved to `.tiki/plans/issue-34.json`
 
-Ready to execute? Use `/execute 34`
-Want to adjust phases? Use `/discuss-phases 34`
+Ready to execute? Use `/tiki:execute 34`
+Want to adjust phases? Use `/tiki:discuss-phases 34`
 ```
 
 ## Phase Content Guidelines
@@ -192,7 +194,7 @@ Break into logical chunks:
 ## Error Handling
 
 - **Issue not found:** "Issue #<number> not found. Check the issue number."
-- **Issue already planned:** "Plan already exists at `.tiki/plans/issue-<number>.json`. Use `/discuss-phases` to modify or delete the file to re-plan."
+- **Issue already planned:** "Plan already exists at `.tiki/plans/issue-<number>.json`. Use `/tiki:discuss-phases` to modify or delete the file to re-plan."
 - **No gh CLI:** "GitHub CLI (gh) not installed or not authenticated."
 
 ## Notes
@@ -200,4 +202,4 @@ Break into logical chunks:
 - Plans are stored in `.tiki/plans/` directory
 - Status values: `planned`, `in_progress`, `completed`, `failed`
 - Phase status values: `pending`, `in_progress`, `completed`, `failed`, `skipped`
-- Always suggest `/execute` as the next step after planning
+- Always suggest `/tiki:execute` as the next step after planning

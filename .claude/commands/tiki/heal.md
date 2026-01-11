@@ -1,4 +1,6 @@
 ---
+type: prompt
+name: tiki:heal
 description: Auto-diagnose and fix failed phases. Use when a phase fails and you want automatic analysis and repair.
 allowed-tools: Read, Write, Bash, Task, Edit, Grep, Glob
 argument-hint: [issue-number] [--phase <n>] [--dry-run]
@@ -11,10 +13,10 @@ Analyze a failed phase, diagnose the problem, and attempt to fix it automaticall
 ## Usage
 
 ```
-/heal
-/heal 34
-/heal 34 --phase 2
-/heal --dry-run       # Analyze without fixing
+/tiki:heal
+/tiki:heal 34
+/tiki:heal 34 --phase 2
+/tiki:heal --dry-run       # Analyze without fixing
 ```
 
 ## Instructions
@@ -30,7 +32,7 @@ If no failed phase found:
 ```
 No failed phases found.
 
-Use `/state` to see current status.
+Use `/tiki:state` to see current status.
 ```
 
 ### Step 2: Gather Error Context
@@ -152,7 +154,7 @@ Fix applied successfully.
 TypeScript compilation: PASS
 
 Ready to retry phase?
-- Retry: `/execute 34 --from 2`
+- Retry: `/tiki:execute 34 --from 2`
 - Review changes first: `git diff`
 ```
 
@@ -165,7 +167,7 @@ New error: [error details]
 Options:
 - Try alternative fix
 - Manual intervention needed
-- Skip this phase: `/skip-phase 2`
+- Skip this phase: `/tiki:skip-phase 2`
 ```
 
 ### Step 6: Update State
@@ -268,7 +270,7 @@ This error requires human decision:
 2. Create a new migration to reconcile
 3. Manually edit the schema
 
-Please investigate and run `/execute 34 --from 2` when ready.
+Please investigate and run `/tiki:execute 34 --from 2` when ready.
 ```
 
 ## Dry Run Mode
@@ -295,7 +297,7 @@ When `/execute` encounters a phase failure:
 1. Phase status set to `failed`
 2. Error details saved to plan
 3. Execution pauses
-4. User prompted: "Phase failed. Use `/heal` to diagnose."
+4. User prompted: "Phase failed. Use `/tiki:heal` to diagnose."
 
 ## Notes
 

@@ -1,4 +1,6 @@
 ---
+type: prompt
+name: tiki:pause
 description: Save current execution state mid-phase for later resumption. Use when you need to stop work and continue later.
 allowed-tools: Read, Write, Glob
 argument-hint: ["reason for pausing"]
@@ -11,8 +13,8 @@ Save the current execution state so work can be resumed later. Captures context,
 ## Usage
 
 ```
-/pause
-/pause "reason for pausing"
+/tiki:pause
+/tiki:pause "reason for pausing"
 ```
 
 ## Instructions
@@ -24,7 +26,7 @@ Read `.tiki/state/current.json` to verify there's active work to pause.
 If no active work:
 ```
 Nothing to pause. No active execution in progress.
-Use `/state` to see current status.
+Use `/tiki:state` to see current status.
 ```
 
 ### Step 2: Gather Current Context
@@ -132,12 +134,12 @@ Display confirmation:
 
 ### To Resume
 ```
-/resume 34
+/tiki:resume 34
 ```
 
 Or continue from current phase:
 ```
-/execute 34 --from 2
+/tiki:execute 34 --from 2
 ```
 ```
 
@@ -180,7 +182,7 @@ Execution paused: Context limit approaching
 
 Progress has been saved. Resume with:
 ```
-/resume 34
+/tiki:resume 34
 ```
 ```
 

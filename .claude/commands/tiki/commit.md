@@ -1,4 +1,6 @@
 ---
+type: prompt
+name: tiki:commit
 description: Create Tiki-aware git commits that reference the active issue and phase. Use when committing work during issue execution.
 allowed-tools: Read, Bash, Glob
 argument-hint: ["commit message"] [--no-state]
@@ -11,9 +13,9 @@ Create git commits with Tiki awareness: references the active GitHub issue, note
 ## Usage
 
 ```
-/commit
-/commit "Add login validation"
-/commit --no-state          # Don't update phase state after commit
+/tiki:commit
+/tiki:commit "Add login validation"
+/tiki:commit --no-state          # Don't update phase state after commit
 ```
 
 ## Instructions
@@ -186,7 +188,7 @@ Phase 2 of 3: Add login endpoint
 - 3 files changed
 - Commit recorded in phase state
 
-Next: Continue implementation or run `/execute` to move to next phase
+Next: Continue implementation or run `/tiki:execute` to move to next phase
 ```
 
 ## Commit Message Guidelines
@@ -219,7 +221,7 @@ Use the area of the codebase being changed:
 ### Example 1: Mid-Phase Commit
 
 ```
-> /commit "Add JWT validation middleware"
+> /tiki:commit "Add JWT validation middleware"
 
 ## Checking Tiki State
 Active: Issue #34 (Add user authentication)
@@ -249,7 +251,7 @@ Commit recorded in phase 2 state.
 ### Example 2: No Active Issue
 
 ```
-> /commit
+> /tiki:commit
 
 ## Checking Tiki State
 No active Tiki issue.
@@ -270,7 +272,7 @@ Committed: ghi9012
 ### Example 3: No Changes
 
 ```
-> /commit
+> /tiki:commit
 
 No changes to commit.
 Working tree clean.
@@ -279,7 +281,7 @@ Working tree clean.
 ### Example 4: Interactive Staging
 
 ```
-> /commit
+> /tiki:commit
 
 ## Checking Tiki State
 Active: Issue #35 (Fix login redirect)
@@ -309,7 +311,7 @@ Proceed? [Y/n]
 
 ## Integration with Execute
 
-When `/execute` completes a phase:
+When `/tiki:execute` completes a phase:
 1. It may prompt for a commit if there are uncommitted changes
 2. The commit automatically includes phase context
 3. State is updated to mark phase as committed

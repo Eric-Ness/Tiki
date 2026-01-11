@@ -1,4 +1,6 @@
 ---
+type: prompt
+name: tiki:audit-plan
 description: Validate a plan before execution. Use when you want to check phase sizes, dependencies, file conflicts, and verification steps before running /execute.
 allowed-tools: Read, Glob, Grep
 argument-hint: [issue-number] [--verbose]
@@ -11,9 +13,9 @@ Validates a plan before execution to identify potential issues.
 ## Usage
 
 ```
-/audit-plan
-/audit-plan 34
-/audit-plan --verbose
+/tiki:audit-plan
+/tiki:audit-plan 34
+/tiki:audit-plan --verbose
 ```
 
 ## Instructions
@@ -29,7 +31,7 @@ If no active plan:
 ```
 No active plan found.
 
-Use `/plan-issue <number>` to create a plan first.
+Use `/tiki:plan-issue <number>` to create a plan first.
 ```
 
 ### Step 2: Run Validation Checks
@@ -186,7 +188,7 @@ Based on results:
 ```
 Plan is ready for execution.
 
-Run `/execute {issue}` to begin.
+Run `/tiki:execute {issue}` to begin.
 ```
 
 **Warnings only:**
@@ -196,7 +198,7 @@ Recommendation: Review warnings before executing.
 The plan can proceed, but consider:
 - [specific suggestions based on warnings]
 
-Run `/execute {issue}` when ready, or `/plan-issue {issue}` to revise.
+Run `/tiki:execute {issue}` when ready, or `/tiki:plan-issue {issue}` to revise.
 ```
 
 **Errors found:**
@@ -205,7 +207,7 @@ Plan has blocking issues that must be resolved:
 
 - [specific errors]
 
-Run `/plan-issue {issue}` to revise the plan.
+Run `/tiki:plan-issue {issue}` to revise the plan.
 ```
 
 ## Validation Details
@@ -249,7 +251,7 @@ Plan Audit for Issue #42
 
 Plan is ready for execution.
 
-Run `/execute 42` to begin.
+Run `/tiki:execute 42` to begin.
 ```
 
 ### Example 2: Plan with Warnings
@@ -270,7 +272,7 @@ The plan can proceed, but consider:
 - Split Phase 2 into two smaller phases
 - Move config.ts changes to Phase 1 or consolidate in Phase 3
 
-Run `/execute 18` when ready, or `/plan-issue 18` to revise.
+Run `/tiki:execute 18` when ready, or `/tiki:plan-issue 18` to revise.
 ```
 
 ### Example 3: Plan with Errors
@@ -288,7 +290,7 @@ Plan has blocking issues that must be resolved:
 1. Fix circular dependency between phases 2 and 4
 2. Verify src/legacy/old-api.ts path or update phase 3
 
-Run `/plan-issue 7` to revise the plan.
+Run `/tiki:plan-issue 7` to revise the plan.
 ```
 
 ### Example 4: Verbose Output
@@ -345,7 +347,7 @@ Recommendation: Adjust phase boundaries before executing.
 
 ## Notes
 
-- Run audit before every `/execute` to catch issues early
+- Run audit before every `/tiki:execute` to catch issues early
 - Warnings don't block execution but should be reviewed
 - Errors must be resolved before execution can proceed
 - Use `--verbose` for detailed analysis of complex plans

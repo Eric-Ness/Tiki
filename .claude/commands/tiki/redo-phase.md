@@ -1,4 +1,6 @@
 ---
+type: prompt
+name: tiki:redo-phase
 description: Re-execute a completed or failed phase. Use when you need to redo work on a specific phase.
 allowed-tools: Read, Write, Edit, Bash, Glob
 argument-hint: <phase-number> [--cascade] [--issue <n>]
@@ -11,9 +13,9 @@ Reset a phase to pending status so it can be re-executed. Useful when a phase ne
 ## Usage
 
 ```
-/redo-phase 2
-/redo-phase 2 --cascade        # Also reset dependent phases
-/redo-phase 2 --issue 34       # Specify issue number
+/tiki:redo-phase 2
+/tiki:redo-phase 2 --cascade        # Also reset dependent phases
+/tiki:redo-phase 2 --issue 34       # Specify issue number
 ```
 
 ## Instructions
@@ -59,7 +61,7 @@ Cannot redo phase 2.
 Current status: in_progress
 Reason: Phase is currently being executed.
 
-Wait for the phase to complete or use `/pause` to stop execution.
+Wait for the phase to complete or use `/tiki:pause` to stop execution.
 ```
 
 ### Step 4: Identify Dependent Phases
@@ -191,9 +193,9 @@ Phase "Create user model" has been reset to pending.
 - Phase 4: Add user tests (not reset - use --cascade to include)
 
 ### Next Steps
-- Review phase requirements: `/state`
-- Execute from this phase: `/execute 2 --from 2`
-- Or continue full execution: `/execute 2`
+- Review phase requirements: `/tiki:state`
+- Execute from this phase: `/tiki:execute 2 --from 2`
+- Or continue full execution: `/tiki:execute 2`
 ```
 
 ## Edge Cases
@@ -205,7 +207,7 @@ Error: Phase 5 does not exist.
 
 Issue #2 has 3 phases (1-3).
 
-Use `/state` to see all phases.
+Use `/tiki:state` to see all phases.
 ```
 
 ### Phase is Currently Running
@@ -218,8 +220,8 @@ The phase is currently being executed.
 
 Options:
 - Wait for completion
-- Use `/pause` to stop current execution
-- Then retry `/redo-phase 2`
+- Use `/tiki:pause` to stop current execution
+- Then retry `/tiki:redo-phase 2`
 ```
 
 ### No Active Issue
@@ -230,10 +232,10 @@ If no issue number provided and no active issue:
 Error: No active issue.
 
 Specify an issue number:
-  /redo-phase 2 --issue 34
+  /tiki:redo-phase 2 --issue 34
 
 Or start working on an issue:
-  /execute 34
+  /tiki:execute 34
 ```
 
 ### All Phases Would Be Reset
@@ -249,7 +251,7 @@ Proceed? This will:
 - Reset phases: 1, 2, 3, 4
 - Clear all summaries and completion data
 
-Consider using `/execute 34 --from 1` instead for a fresh start.
+Consider using `/tiki:execute 34 --from 1` instead for a fresh start.
 ```
 
 ## Examples
@@ -257,20 +259,20 @@ Consider using `/execute 34 --from 1` instead for a fresh start.
 ### Example 1: Simple Redo
 
 ```
-> /redo-phase 2
+> /tiki:redo-phase 2
 
 Phase 2 "Add user authentication" reset to pending.
 
 Previous status: completed
 Previous summary: Added JWT auth middleware
 
-Next: `/execute 15 --from 2`
+Next: `/tiki:execute 15 --from 2`
 ```
 
 ### Example 2: Redo Failed Phase After Fix
 
 ```
-> /redo-phase 3
+> /tiki:redo-phase 3
 
 Phase 3 "Add payment integration" reset to pending.
 
@@ -279,13 +281,13 @@ Previous error: Stripe API key not configured
 
 Make sure you've fixed the issue before re-executing.
 
-Next: `/execute 15 --from 3`
+Next: `/tiki:execute 15 --from 3`
 ```
 
 ### Example 3: Cascade Redo
 
 ```
-> /redo-phase 2 --cascade
+> /tiki:redo-phase 2 --cascade
 
 Resetting Phase 2 and 2 dependent phases...
 
@@ -296,19 +298,19 @@ Reset:
 
 Completed phases remaining: [1]
 
-Next: `/execute 15 --from 2`
+Next: `/tiki:execute 15 --from 2`
 ```
 
 ### Example 4: Redo with Reason
 
 ```
-> /redo-phase 2 --reason "Requirements changed - need email field"
+> /tiki:redo-phase 2 --reason "Requirements changed - need email field"
 
 Phase 2 "Create user model" reset to pending.
 
 Reason recorded: Requirements changed - need email field
 
-Next: `/execute 15 --from 2`
+Next: `/tiki:execute 15 --from 2`
 ```
 
 ## File Updates Summary
@@ -347,4 +349,4 @@ Update state to reflect the redo:
 - After redo, the phase will be re-executed with fresh context
 - Previous summaries are cleared to avoid confusion with new execution
 - The `redoAt` timestamp helps track when/why phases were redone
-- Consider using `/heal` first if the phase failed due to a fixable error
+- Consider using `/tiki:heal` first if the phase failed due to a fixable error

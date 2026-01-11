@@ -1,4 +1,6 @@
 ---
+type: prompt
+name: tiki:adr
 description: Create and manage Architecture Decision Records. Use when documenting significant technical decisions, library choices, or architectural patterns.
 allowed-tools: Read, Write, Edit, Glob, Grep
 argument-hint: ["title"] | list | show <number> | update <number>
@@ -11,10 +13,10 @@ Create and manage Architecture Decision Records for documenting significant tech
 ## Usage
 
 ```
-/adr "Use Prisma over TypeORM"
-/adr list
-/adr show 001
-/adr update 001 --status superseded
+/tiki:adr "Use Prisma over TypeORM"
+/tiki:adr list
+/tiki:adr show 001
+/tiki:adr update 001 --status superseded
 ```
 
 ## Instructions
@@ -25,11 +27,11 @@ Parse the command to determine what action to take:
 
 | Command | Action |
 |---------|--------|
-| `/adr "title"` | Create new ADR |
-| `/adr list` | List all ADRs |
-| `/adr show NNN` | Display specific ADR |
-| `/adr update NNN` | Modify an existing ADR |
-| `/adr` (no args) | Interactive mode - ask what to do |
+| `/tiki:adr "title"` | Create new ADR |
+| `/tiki:adr list` | List all ADRs |
+| `/tiki:adr show NNN` | Display specific ADR |
+| `/tiki:adr update NNN` | Modify an existing ADR |
+| `/tiki:adr` (no args) | Interactive mode - ask what to do |
 
 ### Step 2: Create New ADR
 
@@ -157,8 +159,8 @@ Created: .tiki/adr/003-use-prisma-over-typeorm.md
 
 ADR-003 has been recorded.
 
-View with: `/adr show 003`
-List all: `/adr list`
+View with: `/tiki:adr show 003`
+List all: `/tiki:adr list`
 ```
 
 ### Step 3: List ADRs
@@ -176,8 +178,8 @@ When listing ADRs:
 | 004 | API versioning strategy | Proposed | 2026-01-10 |
 
 ---
-View details: `/adr show <number>`
-Create new: `/adr "Decision title"`
+View details: `/tiki:adr show <number>`
+Create new: `/tiki:adr "Decision title"`
 ```
 
 ### Step 4: Show ADR
@@ -196,7 +198,7 @@ When showing a specific ADR:
 [Full ADR content displayed]
 
 ---
-Update status: `/adr update 003 --status superseded`
+Update status: `/tiki:adr update 003 --status superseded`
 ```
 
 ### Step 5: Update ADR
@@ -204,7 +206,7 @@ Update status: `/adr update 003 --status superseded`
 When updating an ADR:
 
 ```
-/adr update 003 --status superseded --superseded-by 007
+/tiki:adr update 003 --status superseded --superseded-by 007
 ```
 
 Update the ADR file:

@@ -1,7 +1,9 @@
 ---
-name: get-issue
+type: prompt
+name: tiki:get-issue
 description: Fetch and display GitHub issues with context. Use when the user wants to see a GitHub issue, review issues, or start working on an issue by number.
 allowed-tools: Bash, Read, Write
+argument-hint: <issue-number> [additional-numbers...]
 ---
 
 # Get Issue
@@ -11,15 +13,15 @@ Retrieve one or more GitHub issues and display them with useful context.
 ## Usage
 
 ```
-/get-issue 34
-/get-issue 34 45 67
+/tiki:get-issue 34
+/tiki:get-issue 34 45 67
 ```
 
 ## Instructions
 
 1. **Parse the issue number(s)** from the user's request
-   - Single issue: `/get-issue 34`
-   - Multiple issues: `/get-issue 34 45 67`
+   - Single issue: `/tiki:get-issue 34`
+   - Multiple issues: `/tiki:get-issue 34 45 67`
    - If no number provided, ask the user which issue they want
 
 2. **Fetch issue(s) using GitHub CLI**
@@ -48,13 +50,13 @@ Retrieve one or more GitHub issues and display them with useful context.
 4. **Provide context** after displaying:
    - If issue has labels like `bug`, `feature`, `enhancement`, mention what type of work this is
    - If issue references other issues, note the dependencies
-   - Suggest next steps (e.g., "Ready to plan this issue? Use `/plan-issue <number>`")
+   - Suggest next steps (e.g., "Ready to plan this issue? Use `/tiki:plan-issue <number>`")
 
 ## Examples
 
 ### Single Issue
 ```
-User: /get-issue 34
+User: /tiki:get-issue 34
 
 Claude:
 ## Issue #34: Add user authentication
@@ -79,12 +81,12 @@ We need to add user authentication to the API. Requirements:
 
 ---
 This is a **feature** request marked as **high-priority**.
-Ready to plan? Use `/plan-issue 34`
+Ready to plan? Use `/tiki:plan-issue 34`
 ```
 
 ### Multiple Issues
 ```
-User: /get-issue 34 35 36
+User: /tiki:get-issue 34 35 36
 
 Claude: [Displays all three issues in sequence, then summarizes]
 
@@ -106,4 +108,4 @@ Which issue would you like to work on?
 
 - This skill uses the `gh` CLI which must be installed and authenticated
 - Works with the current repository context
-- For planning an issue after viewing, suggest `/plan-issue <number>`
+- For planning an issue after viewing, suggest `/tiki:plan-issue <number>`

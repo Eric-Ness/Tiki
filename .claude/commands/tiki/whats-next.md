@@ -1,4 +1,6 @@
 ---
+type: prompt
+name: tiki:whats-next
 description: Show current status and suggest next actions. Use when resuming work, checking progress, or deciding what to do next.
 allowed-tools: Read, Glob, Bash
 ---
@@ -10,7 +12,7 @@ Display current Tiki state and provide actionable suggestions for what to do nex
 ## Usage
 
 ```
-/whats-next
+/tiki:whats-next
 ```
 
 ## Instructions
@@ -57,7 +59,7 @@ Based on the situation, provide specific actionable suggestions.
 ### Suggested Action
 Continue execution:
 ```
-/execute 34
+/tiki:execute 34
 ```
 
 ### Also Pending
@@ -79,12 +81,12 @@ Continue execution:
 ### Suggested Action
 Resume where you left off:
 ```
-/resume 34
+/tiki:resume 34
 ```
 
 Or start fresh from the current phase:
 ```
-/execute 34 --from 2
+/tiki:execute 34 --from 2
 ```
 ```
 
@@ -101,17 +103,17 @@ Or start fresh from the current phase:
 ### Suggested Actions
 1. **Heal automatically:**
    ```
-   /heal 34
+   /tiki:heal 34
    ```
 
 2. **Fix manually and retry:**
    ```
-   /execute 34 --from 2
+   /tiki:execute 34 --from 2
    ```
 
 3. **Skip this phase:**
    ```
-   /skip-phase 2
+   /tiki:skip-phase 2
    ```
 ```
 
@@ -129,12 +131,12 @@ Or start fresh from the current phase:
 ### Suggested Action
 Start with the highest priority:
 ```
-/execute 34
+/tiki:execute 34
 ```
 
 Or review the plan first:
 ```
-/state
+/tiki:state
 ```
 ```
 
@@ -151,7 +153,7 @@ Items discovered during execution need your review:
 ### Suggested Action
 Review and process the queue:
 ```
-/review-queue
+/tiki:review-queue
 ```
 ```
 
@@ -171,12 +173,12 @@ No active work. No planned issues.
 
 2. **Get a specific issue:**
    ```
-   /get-issue <number>
+   /tiki:get-issue <number>
    ```
 
 3. **Plan an issue for execution:**
    ```
-   /plan-issue <number>
+   /tiki:plan-issue <number>
    ```
 ```
 
@@ -201,12 +203,12 @@ Items need review after current work completes.
 ### Suggested Action
 Continue the active execution:
 ```
-/execute 34
+/tiki:execute 34
 ```
 
 After completion, review queue items:
 ```
-/review-queue
+/tiki:review-queue
 ```
 ```
 
@@ -230,16 +232,16 @@ When multiple things could be done, prioritize suggestions in this order:
 | `.tiki/queue/pending.json` | Items needing review |
 | `.tiki/context/*.json` | Saved context for resume |
 
-## Comparison with /state
+## Comparison with /tiki:state
 
-| `/state` | `/whats-next` |
+| `/tiki:state` | `/tiki:whats-next` |
 |----------|---------------|
 | Shows raw state data | Interprets state and suggests actions |
 | Comprehensive overview | Focused on "what should I do" |
 | Read-only display | Actionable recommendations |
 | For understanding status | For deciding next steps |
 
-Use `/state` when you want to see everything. Use `/whats-next` when you want guidance.
+Use `/tiki:state` when you want to see everything. Use `/tiki:whats-next` when you want guidance.
 
 ## Notes
 

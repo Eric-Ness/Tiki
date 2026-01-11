@@ -1,4 +1,6 @@
 ---
+type: prompt
+name: tiki:create-issues
 description: Batch create GitHub issues from queue items or code assessment findings. Use when you want to create multiple issues from discovered items or assessment reports.
 allowed-tools: Read, Bash, Glob, Grep
 argument-hint: [--from-queue] [--from-assessment] [--labels] [--priority <level>] [--dry-run]
@@ -11,12 +13,12 @@ Batch-creates GitHub issues from the Tiki queue or from a code quality assessmen
 ## Usage
 
 ```
-/create-issues                        # Interactive mode - shows sources and prompts
-/create-issues --from-queue           # Create issues from pending queue items
-/create-issues --from-assessment      # Create issues from CODE_QUALITY_ASSESSMENT.md
-/create-issues --dry-run              # Preview issues without creating
-/create-issues --labels               # Auto-apply labels based on category
-/create-issues --priority high        # Set priority labels
+/tiki:create-issues                        # Interactive mode - shows sources and prompts
+/tiki:create-issues --from-queue           # Create issues from pending queue items
+/tiki:create-issues --from-assessment      # Create issues from CODE_QUALITY_ASSESSMENT.md
+/tiki:create-issues --dry-run              # Preview issues without creating
+/tiki:create-issues --labels               # Auto-apply labels based on category
+/tiki:create-issues --priority high        # Set priority labels
 ```
 
 ## Instructions
@@ -131,7 +133,7 @@ Medium
 - Phase: 2
 
 ---
-*Created via Tiki /create-issues from queue*
+*Created via Tiki /tiki:create-issues from queue*
 EOF
 )" \
   --label "security" \
@@ -164,7 +166,7 @@ Add `[ValidateAntiForgeryToken]` to all POST actions.
 - **Assessment Date:** 2026-01-10
 
 ---
-*Created via Tiki /create-issues from CODE_QUALITY_ASSESSMENT.md*
+*Created via Tiki /tiki:create-issues from CODE_QUALITY_ASSESSMENT.md*
 EOF
 )" \
   --label "security" \
@@ -249,7 +251,7 @@ After creating issues from queue, update `.tiki/queue/pending.json`:
 **Next steps:**
 - View issues: `gh issue list`
 - Prioritize: `gh issue edit #45 --add-label "P1"`
-- Plan an issue: `/plan-issue 45`
+- Plan an issue: `/tiki:plan-issue 45`
 ```
 
 ## Options Reference
@@ -267,7 +269,7 @@ After creating issues from queue, update `.tiki/queue/pending.json`:
 ### Example 1: Create Issues from Queue
 
 ```
-User: /create-issues --from-queue
+User: /tiki:create-issues --from-queue
 
 Claude: ## Create Issues Preview
 
@@ -294,7 +296,7 @@ Created #46: Consider adding refresh tokens
 ### Example 2: Create Issues from Assessment with Labels
 
 ```
-User: /create-issues --from-assessment --labels --priority high
+User: /tiki:create-issues --from-assessment --labels --priority high
 
 Claude: ## Create Issues Preview
 
@@ -320,7 +322,7 @@ Created #53: Documentation: Add API documentation [documentation, high-priority]
 ### Example 3: Dry Run Preview
 
 ```
-User: /create-issues --from-queue --dry-run
+User: /tiki:create-issues --from-queue --dry-run
 
 Claude: ## Create Issues Preview (Dry Run)
 

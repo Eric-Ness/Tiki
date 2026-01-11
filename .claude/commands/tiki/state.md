@@ -1,4 +1,6 @@
 ---
+type: prompt
+name: tiki:state
 description: View current Tiki state including active issues, phase progress, and queue items. Use when checking status, seeing what's in progress, or getting an overview of work.
 allowed-tools: Read, Glob, Bash
 ---
@@ -10,7 +12,7 @@ Display the current Tiki state: active issues, phase progress, queue items, and 
 ## Usage
 
 ```
-/state
+/tiki:state
 ```
 
 ## Instructions
@@ -92,7 +94,7 @@ Format output like this:
 None
 
 ---
-**Next:** Continue with `/execute 34` or `/whats-next` for suggestions
+**Next:** Continue with `/tiki:execute 34` or `/tiki:whats-next` for suggestions
 ```
 
 ## State When Nothing is Active
@@ -118,7 +120,7 @@ Empty
 None
 
 ---
-**Next:** Start work with `/execute <issue-number>` or plan a new issue with `/plan-issue <number>`
+**Next:** Start work with `/tiki:execute <issue-number>` or plan a new issue with `/tiki:plan-issue <number>`
 ```
 
 ## State When Nothing Exists
@@ -131,9 +133,9 @@ If `.tiki/` folder is empty or doesn't exist:
 No Tiki state found. This project hasn't been set up with Tiki yet.
 
 **Get started:**
-1. View GitHub issues: `/get-issue <number>`
-2. Plan an issue: `/plan-issue <number>`
-3. Execute the plan: `/execute <number>`
+1. View GitHub issues: `/tiki:get-issue <number>`
+2. Plan an issue: `/tiki:plan-issue <number>`
+3. Execute the plan: `/tiki:execute <number>`
 ```
 
 ## Current State File Format
@@ -163,5 +165,5 @@ No Tiki state found. This project hasn't been set up with Tiki yet.
 
 - State is read-only - this skill only displays, never modifies
 - For detailed phase info, read the plan file directly
-- Queue details available via `/review-queue`
-- Use `/whats-next` for actionable suggestions
+- Queue details available via `/tiki:review-queue`
+- Use `/tiki:whats-next` for actionable suggestions

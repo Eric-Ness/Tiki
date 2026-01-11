@@ -1,4 +1,6 @@
 ---
+type: prompt
+name: tiki:update-claude
 description: Update CLAUDE.md from patterns learned during implementation. Use to sync discovered conventions and project knowledge.
 allowed-tools: Read, Write, Edit, Glob, Grep
 argument-hint: [--from-learned] [--interactive] [--dry-run]
@@ -11,10 +13,10 @@ Updates CLAUDE.md (or creates one) based on patterns learned during implementati
 ## Usage
 
 ```
-/update-claude
-/update-claude --from-learned
-/update-claude --interactive
-/update-claude --dry-run
+/tiki:update-claude
+/tiki:update-claude --from-learned
+/tiki:update-claude --interactive
+/tiki:update-claude --dry-run
 ```
 
 ## Instructions
@@ -247,7 +249,7 @@ Mark patterns as synced:
 
 ---
 View changes: `cat CLAUDE.md`
-Add more patterns: `/update-claude --interactive`
+Add more patterns: `/tiki:update-claude --interactive`
 ```
 
 ## Interactive Mode
@@ -312,7 +314,7 @@ User: "Remember that we always use Zod for validation"
 Claude: Noted. Adding to learned patterns:
 - Validation: Use Zod for all schema validation
 
-This will be synced to CLAUDE.md with `/update-claude`
+This will be synced to CLAUDE.md with `/tiki:update-claude`
 ```
 
 Write to `.tiki/learned/patterns.json`.
@@ -345,6 +347,6 @@ Adding to learned patterns for review.
 - CLAUDE.md is the primary context file Claude reads each session
 - Keep it concise - too much info reduces effectiveness
 - Patterns should be high-confidence before adding
-- Use `/update-claude --dry-run` to preview changes
+- Use `/tiki:update-claude --dry-run` to preview changes
 - Learned patterns file can be reviewed before syncing
-- Integration with `/map-codebase` for initial population
+- Integration with `/tiki:map-codebase` for initial population

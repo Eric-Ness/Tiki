@@ -1,4 +1,6 @@
 ---
+type: prompt
+name: tiki:execute
 description: Execute a planned issue by spawning sub-agents for each phase. Use when ready to implement an issue that has been planned with /plan-issue.
 allowed-tools: Bash, Read, Write, Glob, Grep, Task, Edit
 argument-hint: <issue-number> [--from <phase>] [--dry-run]
@@ -11,9 +13,9 @@ Execute a planned issue by spawning sub-agents for each phase. Each phase runs i
 ## Usage
 
 ```
-/execute 34
-/execute 34 --from 2    # Resume from phase 2
-/execute 34 --dry-run   # Preview what would run without executing
+/tiki:execute 34
+/tiki:execute 34 --from 2    # Resume from phase 2
+/tiki:execute 34 --dry-run   # Preview what would run without executing
 ```
 
 ## Instructions
@@ -28,7 +30,7 @@ cat .tiki/plans/issue-<number>.json
 If no plan exists:
 ```
 No plan found for issue #<number>.
-Create one first with `/plan-issue <number>`
+Create one first with `/tiki:plan-issue <number>`
 ```
 
 ### Step 2: Read Project Context
@@ -160,12 +162,12 @@ All <N> phases completed successfully.
 
 ### Queue Items
 <N> items discovered during execution.
-Review with `/review-queue`
+Review with `/tiki:review-queue`
 
 ### Next Steps
-- Review queue items: `/review-queue`
+- Review queue items: `/tiki:review-queue`
 - Close the issue: `gh issue close <number>`
-- View state: `/state`
+- View state: `/tiki:state`
 ```
 
 ## Sub-Agent Prompt Template
@@ -278,9 +280,9 @@ Phase <N> failed: <phase title>
 Error: <error description>
 
 Options:
-- Fix and retry: `/execute <number> --from <N>`
-- Skip this phase: `/skip-phase <N>`
-- Heal automatically: `/heal <N>`
+- Fix and retry: `/tiki:execute <number> --from <N>`
+- Skip this phase: `/tiki:skip-phase <N>`
+- Heal automatically: `/tiki:heal <N>`
 ```
 
 ### Missing Dependencies
@@ -306,7 +308,7 @@ Note: Large phase detected. Sub-agent may need to break work into smaller steps.
 
 Resume execution from a specific phase:
 ```
-/execute 34 --from 3
+/tiki:execute 34 --from 3
 ```
 
 Skip phases 1-2, start at phase 3. Useful for:
@@ -317,7 +319,7 @@ Skip phases 1-2, start at phase 3. Useful for:
 
 Preview execution without actually running:
 ```
-/execute 34 --dry-run
+/tiki:execute 34 --dry-run
 
 Would execute:
 - Phase 1: Setup auth middleware (pending)
@@ -330,7 +332,7 @@ No changes will be made.
 ## Example Execution Flow
 
 ```
-User: /execute 34
+User: /tiki:execute 34
 
 Claude: Starting execution of Issue #34: Add user authentication
         Plan has 3 phases.
@@ -365,7 +367,7 @@ Claude: Starting execution of Issue #34: Add user authentication
 
         ### Queue Items
         1 item discovered during execution.
-        Review with `/review-queue`
+        Review with `/tiki:review-queue`
 ```
 
 ## Notes
