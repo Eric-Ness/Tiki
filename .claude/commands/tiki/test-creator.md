@@ -3,7 +3,7 @@ type: prompt
 name: tiki:test-creator
 description: Create tests following TDD workflow. Supports before (TDD), after, ask, or never modes based on config.
 allowed-tools: Bash, Read, Write, Glob, Grep, Edit
-argument-hint: [--mode before|after|ask|never] [--framework jest|vitest|pytest|go|auto]
+argument-hint: [--mode before|after|ask|never] [--framework jest|vitest|pytest|go|dotnet|auto]
 ---
 
 # Test Creator
@@ -53,6 +53,9 @@ ls *_test.go 2>/dev/null || true
 
 # Check for Rust test configuration
 ls Cargo.toml 2>/dev/null && grep "\[dev-dependencies\]" Cargo.toml || true
+
+# Check for .NET test projects
+ls *.csproj *.sln 2>/dev/null && grep -l "Microsoft.NET.Test.Sdk\|xunit\|NUnit\|MSTest" *.csproj */*.csproj 2>/dev/null || true
 ```
 
 **Framework Detection Priority:**
@@ -65,6 +68,7 @@ ls Cargo.toml 2>/dev/null && grep "\[dev-dependencies\]" Cargo.toml || true
 | `pytest` in pyproject.toml/requirements | pytest |
 | `*_test.go` files exist | go test |
 | `Cargo.toml` exists | cargo test |
+| `*.csproj` with test SDK | dotnet test |
 | None detected | Prompt user |
 
 ### Step 3: Determine Test Mode
@@ -116,6 +120,7 @@ Determine test file location based on framework conventions:
 | pytest | `tests/` or `test_*.py` or `*_test.py` |
 | go test | `*_test.go` in same package |
 | cargo test | `tests/` or `#[cfg(test)]` module |
+| dotnet test | `*.Tests/` project or `*.Tests.csproj` |
 
 #### 4a.3: Write Failing Tests
 
@@ -173,6 +178,50 @@ def test_empty_array_returns_zero():
     assert calculate_total([]) == 0
 ```
 
+**Example (xUnit/.NET):**
+```csharp
+using Xunit;
+using MyApp.Utils;
+
+namespace MyApp.Tests.Utils;
+
+public class PricingTests
+{
+    [Fact]
+    public void CalculateTotal_ShouldSumItemPricesCorrectly()
+    {
+        // Arrange
+        var items = new[] { new Item { Price = 10 }, new Item { Price = 20 } };
+
+        // Act
+        var result = Pricing.CalculateTotal(items);
+
+        // Assert
+        Assert.Equal(30, result);
+    }
+
+    [Fact]
+    public void CalculateTotal_ShouldApplyDiscountWhenProvided()
+    {
+        var items = new[] { new Item { Price = 100 } };
+        Assert.Equal(90, Pricing.CalculateTotal(items, discount: 0.1m));
+    }
+
+    [Fact]
+    public void CalculateTotal_ShouldThrowOnNegativePrices()
+    {
+        var items = new[] { new Item { Price = -10 } };
+        Assert.Throws<ArgumentException>(() => Pricing.CalculateTotal(items));
+    }
+
+    [Fact]
+    public void CalculateTotal_ShouldReturnZeroForEmptyArray()
+    {
+        Assert.Equal(0, Pricing.CalculateTotal(Array.Empty<Item>()));
+    }
+}
+```
+
 #### 4a.4: Run Tests to Confirm Failure
 
 Execute tests to verify they fail (as expected):
@@ -189,6 +238,9 @@ pytest tests/test_file.py -v 2>&1 | head -50
 
 # Go
 go test ./path/to/package -v 2>&1 | head -50
+
+# .NET (xUnit/NUnit/MSTest)
+dotnet test path/to/TestProject.Tests.csproj --filter "FullyQualifiedName~ClassName" -v n 2>&1 | head -50
 ```
 
 Expected output should show failures like:
@@ -271,6 +323,9 @@ pytest tests/test_file.py -v
 
 # Go
 go test ./path/to/package -v
+
+# .NET
+dotnet test path/to/TestProject.Tests.csproj -v n
 ```
 
 If tests fail:
@@ -394,6 +449,96 @@ func TestFunctionName(t *testing.T) {
             t.Errorf("got %v, want %v", result, defaultValue)
         }
     })
+}
+```
+
+### xUnit (.NET) Template
+
+```csharp
+using Xunit;
+
+namespace MyApp.Tests;
+
+public class FunctionNameTests
+{
+    [Fact]
+    public void FunctionName_ShouldHandleNormalInput()
+    {
+        // Arrange
+        var input = new InputType();
+
+        // Act
+        var result = ClassName.FunctionName(input);
+
+        // Assert
+        Assert.Equal(expected, result);
+    }
+
+    [Fact]
+    public void FunctionName_ShouldHandleEmptyInput()
+    {
+        Assert.Equal(defaultValue, ClassName.FunctionName(null));
+    }
+
+    [Fact]
+    public void FunctionName_ShouldThrowOnInvalidInput()
+    {
+        Assert.Throws<ArgumentException>(() => ClassName.FunctionName(invalid));
+    }
+
+    [Theory]
+    [InlineData(1, 2)]
+    [InlineData(2, 4)]
+    [InlineData(3, 6)]
+    public void FunctionName_ShouldDoubleValue(int input, int expected)
+    {
+        Assert.Equal(expected, ClassName.FunctionName(input));
+    }
+}
+```
+
+### NUnit (.NET) Template
+
+```csharp
+using NUnit.Framework;
+
+namespace MyApp.Tests;
+
+[TestFixture]
+public class FunctionNameTests
+{
+    [Test]
+    public void FunctionName_ShouldHandleNormalInput()
+    {
+        // Arrange
+        var input = new InputType();
+
+        // Act
+        var result = ClassName.FunctionName(input);
+
+        // Assert
+        Assert.That(result, Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void FunctionName_ShouldHandleEmptyInput()
+    {
+        Assert.That(ClassName.FunctionName(null), Is.EqualTo(defaultValue));
+    }
+
+    [Test]
+    public void FunctionName_ShouldThrowOnInvalidInput()
+    {
+        Assert.Throws<ArgumentException>(() => ClassName.FunctionName(invalid));
+    }
+
+    [TestCase(1, 2)]
+    [TestCase(2, 4)]
+    [TestCase(3, 6)]
+    public void FunctionName_ShouldDoubleValue(int input, int expected)
+    {
+        Assert.That(ClassName.FunctionName(input), Is.EqualTo(expected));
+    }
 }
 ```
 
@@ -525,7 +670,7 @@ The test-creator can be invoked automatically during phase execution:
 Could not auto-detect test framework.
 Please specify with --framework or set testing.testFramework in .tiki/config.json
 
-Supported frameworks: jest, vitest, pytest, go, mocha, cargo
+Supported frameworks: jest, vitest, pytest, go, mocha, cargo, dotnet
 ```
 
 ### Test Run Failed (unexpected)
