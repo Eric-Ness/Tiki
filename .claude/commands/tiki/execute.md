@@ -3,7 +3,7 @@ type: prompt
 name: tiki:execute
 description: Execute a planned issue by spawning sub-agents for each phase. Use when ready to implement an issue that has been planned with /plan-issue.
 allowed-tools: Bash, Read, Write, Glob, Grep, Task, Edit
-argument-hint: <issue-number> [--from <phase>] [--dry-run]
+argument-hint: <issue-number> [--from <phase>] [--dry-run] [--tdd|--no-tdd]
 ---
 
 # Execute
@@ -12,10 +12,12 @@ Execute a planned issue by spawning sub-agents for each phase. Each phase runs i
 
 ## Usage
 
-```
+```text
 /tiki:execute 34
 /tiki:execute 34 --from 2    # Resume from phase 2
 /tiki:execute 34 --dry-run   # Preview what would run without executing
+/tiki:execute 34 --tdd       # Force TDD mode (tests before implementation)
+/tiki:execute 34 --no-tdd    # Skip TDD for this execution
 ```
 
 ## Instructions
@@ -28,17 +30,41 @@ cat .tiki/plans/issue-<number>.json
 ```
 
 If no plan exists:
-```
+
+```text
 No plan found for issue #<number>.
 Create one first with `/tiki:plan-issue <number>`
 ```
 
-### Step 2: Read Project Context
+### Step 2: Read Project Context and Configuration
 
 Read `CLAUDE.md` (if it exists) to pass to sub-agents:
 
 ```bash
 cat CLAUDE.md 2>/dev/null || echo "No CLAUDE.md found"
+```
+
+Read `.tiki/config.json` for testing preferences:
+
+```bash
+cat .tiki/config.json 2>/dev/null || echo "{}"
+```
+
+Extract TDD settings:
+
+- `testing.createTests`: "before" | "after" | "ask" | "never" (default: "ask")
+- `testing.testFramework`: framework name or "auto-detect" (default: "auto-detect")
+
+If `createTests` is "ask", prompt the user:
+
+```text
+How would you like to handle testing during execution?
+
+1. **before** (TDD) - Write failing tests first, then implement each phase
+2. **after** - Implement each phase, then write tests
+3. **never** - Skip test creation for this execution
+
+Your choice (1/2/3):
 ```
 
 ### Step 3: Initialize Execution State
@@ -64,18 +90,97 @@ Update the plan status to `in_progress`.
 For each phase in order (respecting dependencies):
 
 #### 4a. Check Dependencies
+
 If phase has `dependencies: [1, 2]`, verify phases 1 and 2 are completed before starting.
 
 #### 4b. Update State
+
 Set current phase to `in_progress` in both:
+
 - `.tiki/state/current.json` (activePhase)
 - `.tiki/plans/issue-N.json` (phase status)
 
-#### 4c. Build Sub-Agent Prompt
+#### 4c. TDD Workflow (if enabled)
 
-Construct the prompt for the Task tool:
+If `testing.createTests` is "before" (TDD mode):
 
+**Red Phase - Write Failing Tests:**
+
+Spawn a test-creator sub-agent via Task tool:
+
+```text
+Task tool call:
+- subagent_type: "general-purpose"
+- prompt: <TDD test creation prompt - see below>
+- description: "TDD: Write failing tests for phase N of issue #X"
 ```
+
+The test-creator analyzes the phase description and writes tests that:
+
+- Define expected behavior for the phase
+- Import modules/functions that will be created
+- Cover edge cases and error conditions
+
+Run the tests to confirm they fail:
+
+```bash
+# Framework-specific test command
+npx jest <test-file> --no-coverage 2>&1 | head -50
+# or: npx vitest run <test-file>
+# or: pytest <test-file> -v
+# or: go test ./... -v
+```
+
+Verify tests fail as expected (module not found, function undefined, etc.)
+
+If tests unexpectedly pass or have syntax errors, report and pause:
+
+```text
+TDD Setup Issue: Tests did not fail as expected.
+- Expected: Tests should fail (module/function not yet implemented)
+- Actual: <actual result>
+
+Please review the test file and fix before proceeding.
+```
+
+**TDD Test Creation Prompt Template:**
+
+```text
+You are creating TDD tests for Phase {phase_number} of Issue #{issue_number}: {issue_title}
+
+## Phase to Test
+{phase_title}
+
+{phase_content}
+
+## Instructions
+1. Analyze what functionality this phase will implement
+2. Write tests that define the expected behavior BEFORE implementation
+3. Tests should import modules/functions that DON'T EXIST YET
+4. Cover: basic functionality, edge cases, error handling
+5. Use the project's test framework: {test_framework}
+6. Follow existing test file conventions in the project
+
+## Test File Location
+Create tests following project conventions:
+- Jest/Vitest: `__tests__/` or `*.test.ts`
+- Pytest: `tests/` or `test_*.py`
+- Go: `*_test.go` in same package
+
+## Output Format
+After creating tests, run them and report:
+- Test file path created
+- Number of tests written
+- Test run output (should show failures)
+
+SUMMARY: Created N failing tests for <functionality>
+```
+
+#### 4d. Build Sub-Agent Prompt
+
+Construct the prompt for the Task tool. If TDD is enabled, include test context:
+
+```text
 You are executing Phase <N> of <total> for Issue #<number>: <title>
 
 ## Project Context
@@ -96,25 +201,79 @@ You are executing Phase <N> of <total> for Issue #<number>: <title>
 ## Verification Checklist
 <verification array from phase>
 
+## TDD Context (if testing.createTests is "before")
+**Mode: Test-Driven Development (Red-Green-Refactor)**
+
+Failing tests have been created for this phase:
+- Test file: <path to test file created in step 4c>
+- Tests written: <number of tests>
+- Framework: <detected test framework>
+
+Your goal is to make these tests pass (GREEN phase).
+
+After implementation, run:
+<test command for framework>
+
+All tests must pass before this phase is considered complete.
+
 ## Instructions
 1. Execute this phase completely - make actual code changes
-2. Run any relevant tests to verify your changes
-3. If you discover issues needing future attention, clearly note them at the end with "DISCOVERED:" prefix
-4. When done, provide a summary starting with "SUMMARY:" that describes what you accomplished
+2. If TDD is enabled: implement code to make the failing tests pass
+3. Run tests to verify your changes pass
+4. If you discover issues needing future attention, clearly note them at the end with "DISCOVERED:" prefix
+5. When done, provide a summary starting with "SUMMARY:" that describes what you accomplished
 ```
 
-#### 4d. Spawn Sub-Agent
+#### 4e. Spawn Sub-Agent
 
 Use the Task tool to spawn a sub-agent:
 
-```
+```text
 Task tool call:
 - subagent_type: "general-purpose"
-- prompt: <constructed prompt from 4c>
+- prompt: <constructed prompt from 4d>
 - description: "Execute phase N of issue #X"
 ```
 
-#### 4e. Process Sub-Agent Response
+#### 4f. Verify Tests Pass (TDD Green Phase)
+
+If `testing.createTests` is "before", verify the tests now pass:
+
+```bash
+# Run the tests created in step 4c
+npx jest <test-file> 2>&1 | tail -20
+# or: npx vitest run <test-file>
+# or: pytest <test-file> -v
+# or: go test ./... -v
+```
+
+**If tests pass:** Continue to step 4h (Green phase complete).
+
+**If tests fail:** Report the failure and pause execution:
+
+```text
+## TDD Verification Failed
+
+Phase <N> implementation did not pass tests.
+
+### Test Results
+<test output showing failures>
+
+### Options
+- Review and fix implementation, then retry: `/tiki:execute <number> --from <N>`
+- Skip TDD verification: `/tiki:skip-phase <N>`
+- Get automatic fix suggestions: `/tiki:heal <N>`
+```
+
+#### 4g. Create Tests After (if mode is "after")
+
+If `testing.createTests` is "after":
+
+1. Spawn test-creator sub-agent after implementation completes
+2. Run tests to verify they pass
+3. If tests fail, implementation may have bugs - report to user
+
+#### 4h. Process Sub-Agent Response
 
 After the sub-agent completes:
 
@@ -130,12 +289,14 @@ After the sub-agent completes:
 5. **Add discovered items to queue** (if any):
    - Append to `.tiki/queue/pending.json`
 
-#### 4f. Report Progress
+#### 4i. Report Progress
 
 After each phase:
-```
+
+```text
 Phase <N>/<total> complete: <phase title>
 Summary: <summary>
+<TDD status if enabled: Tests passed/failed>
 <discovered items if any>
 ```
 
@@ -149,7 +310,7 @@ When all phases are done:
    - Clear `activeIssue` and `currentPhase`
 3. Display completion message:
 
-```
+```text
 ## Execution Complete
 
 Issue #<number>: <title>
@@ -172,7 +333,7 @@ Review with `/tiki:review-queue`
 
 ## Sub-Agent Prompt Template
 
-```
+```text
 You are executing Phase {phase_number} of {total_phases} for Issue #{issue_number}: {issue_title}
 
 ## Project Context
@@ -191,16 +352,36 @@ You are executing Phase {phase_number} of {total_phases} for Issue #{issue_numbe
 ## Verification Checklist
 {verification_list}
 
+## TDD Context
+{tdd_context}
+<!-- Include this section only if testing.createTests is "before":
+**Mode: Test-Driven Development (Red-Green-Refactor)**
+
+Failing tests have been created for this phase:
+- Test file: {test_file_path}
+- Tests written: {test_count}
+- Framework: {test_framework}
+
+Your goal is to make these tests pass (GREEN phase).
+
+After implementation, run:
+{test_command}
+
+All tests must pass before this phase is considered complete.
+-->
+
 ## Instructions
 1. Execute this phase completely - make actual code changes
-2. Run any relevant tests to verify your changes
-3. If you discover issues needing future attention, clearly note them with "DISCOVERED:" prefix
-4. When done, provide a summary starting with "SUMMARY:" describing what you accomplished
+2. If TDD is enabled: implement code to make the failing tests pass
+3. Run tests to verify your changes pass
+4. If you discover issues needing future attention, clearly note them with "DISCOVERED:" prefix
+5. When done, provide a summary starting with "SUMMARY:" describing what you accomplished
 
 Important:
 - Focus ONLY on this phase - do not work ahead
 - If blocked, explain why and what would unblock you
 - Keep your summary concise but complete
+- If TDD enabled: tests must pass for phase completion
 ```
 
 ## State File Updates
@@ -208,6 +389,7 @@ Important:
 ### During Execution
 
 `.tiki/state/current.json`:
+
 ```json
 {
   "activeIssue": 34,
@@ -230,6 +412,7 @@ Important:
 ### After Completion
 
 `.tiki/state/current.json`:
+
 ```json
 {
   "activeIssue": null,
@@ -275,7 +458,7 @@ If a sub-agent reports failure or errors:
 3. Pause execution
 4. Report to user:
 
-```
+```text
 Phase <N> failed: <phase title>
 Error: <error description>
 
@@ -289,7 +472,7 @@ Options:
 
 If a phase's dependencies aren't met:
 
-```
+```text
 Cannot execute Phase <N>: dependencies not satisfied.
 Required: Phase <deps> must be completed first.
 ```
@@ -298,7 +481,7 @@ Required: Phase <deps> must be completed first.
 
 If context is getting low (this is heuristic - sub-agents manage their own context):
 
-```
+```text
 Note: Large phase detected. Sub-agent may need to break work into smaller steps.
 ```
 
@@ -307,18 +490,21 @@ Note: Large phase detected. Sub-agent may need to break work into smaller steps.
 ### --from N
 
 Resume execution from a specific phase:
-```
+
+```text
 /tiki:execute 34 --from 3
 ```
 
 Skip phases 1-2, start at phase 3. Useful for:
+
 - Resuming after a failure
 - Re-running a specific phase
 
 ### --dry-run
 
 Preview execution without actually running:
-```
+
+```text
 /tiki:execute 34 --dry-run
 
 Would execute:
@@ -329,9 +515,22 @@ Would execute:
 No changes will be made.
 ```
 
+### --tdd / --no-tdd
+
+Override the TDD setting from config for this execution:
+
+```text
+/tiki:execute 34 --tdd        # Force TDD mode (tests before implementation)
+/tiki:execute 34 --no-tdd     # Skip TDD for this execution
+```
+
+This overrides the `testing.createTests` setting in `.tiki/config.json` for the current execution only.
+
 ## Example Execution Flow
 
-```
+### Standard Execution
+
+```text
 User: /tiki:execute 34
 
 Claude: Starting execution of Issue #34: Add user authentication
@@ -370,6 +569,62 @@ Claude: Starting execution of Issue #34: Add user authentication
         Review with `/tiki:review-queue`
 ```
 
+### TDD Execution (createTests: "before")
+
+```text
+User: /tiki:execute 34
+
+Claude: Starting execution of Issue #34: Add user authentication
+        Plan has 3 phases.
+        TDD Mode: Enabled (tests before implementation)
+
+        ## Phase 1/3: Setup auth middleware
+
+        ### RED Phase - Writing Failing Tests
+        [Spawns test-creator sub-agent via Task tool]
+        Created test file: src/middleware/__tests__/auth.test.ts
+        Tests written: 4
+        Test run: 4 FAILED (expected - implementation pending)
+
+        ### GREEN Phase - Implementation
+        [Spawns implementation sub-agent via Task tool]
+        [Sub-agent implements code to make tests pass]
+
+        ### Verify Tests Pass
+        Running: npx jest src/middleware/__tests__/auth.test.ts
+        Result: 4 tests PASSED
+
+        Phase 1/3 complete: Setup auth middleware
+        Summary: Created auth middleware with JWT validation, added AuthRequest type
+        Tests: 4 passing
+
+        ## Phase 2/3: Add login endpoint
+        [TDD cycle repeats: RED -> GREEN -> verify]
+
+        Phase 2/3 complete: Add login endpoint
+        Summary: Implemented POST /api/login with password validation
+        Tests: 5 passing
+        DISCOVERED: Consider adding rate limiting
+
+        ## Phase 3/3: Add protected routes
+        [TDD cycle repeats: RED -> GREEN -> verify]
+
+        Phase 3/3 complete: Add protected routes
+        Summary: Applied auth middleware to /api/user routes
+        Tests: 3 passing
+
+        ---
+        ## Execution Complete
+
+        Issue #34: Add user authentication
+        All 3 phases completed successfully.
+        Total tests created: 12 (all passing)
+
+        ### Queue Items
+        1 item discovered during execution.
+        Review with `/tiki:review-queue`
+```
+
 ## Notes
 
 - Each sub-agent runs with fresh context (no memory of previous phases except summaries)
@@ -377,3 +632,14 @@ Claude: Starting execution of Issue #34: Add user authentication
 - The Task tool's sub-agent has access to all file tools (Read, Write, Edit, etc.)
 - If a phase is complex, the sub-agent can take multiple turns to complete it
 - State is persisted after each phase, so work is not lost if execution is interrupted
+
+### TDD Notes
+
+- TDD workflow follows Red-Green-Refactor cycle per phase
+- Tests are written by a dedicated test-creator sub-agent before implementation
+- The implementation sub-agent receives the test file path and must make tests pass
+- If tests fail after implementation, execution pauses for user intervention
+- Test framework is auto-detected or can be configured in `.tiki/config.json`
+- Supported frameworks: jest, vitest, mocha, pytest, go test, cargo test
+- Use `testing.createTests: "ask"` to be prompted for each execution
+- The "after" mode creates tests after implementation and verifies they pass

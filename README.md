@@ -230,11 +230,123 @@ Optional `.tiki/config.json` for project-level settings:
     "createTests": "ask",
     "testFramework": "auto-detect"
   },
+  "hooks": {
+    "testValidator": {
+      "enabled": true,
+      "runOn": ["phase-complete", "commit"]
+    }
+  },
   "adr": {
     "autoGenerate": true,
     "directory": ".tiki/adr"
   }
 }
+```
+
+### Testing Configuration
+
+| Setting | Values | Description |
+|---------|--------|-------------|
+| `testing.createTests` | `"before"`, `"after"`, `"ask"`, `"never"` | When to create tests (default: `"ask"`) |
+| `testing.testFramework` | `"auto-detect"`, `"jest"`, `"vitest"`, `"pytest"`, `"go"`, `"mocha"`, `"cargo"` | Test framework to use (default: `"auto-detect"`) |
+| `hooks.testValidator.enabled` | `true`, `false` | Run tests on phase completion/commit |
+| `hooks.testValidator.runOn` | `["phase-complete", "commit"]` | When to run test validation |
+
+### ADR Configuration
+
+| Setting | Values | Description |
+|---------|--------|-------------|
+| `adr.autoGenerate` | `true`, `false` | Auto-generate ADRs for significant decisions |
+| `adr.directory` | path string | Where to store ADR files (default: `".tiki/adr"`) |
+
+## Test-Driven Development (TDD)
+
+Tiki supports TDD workflows through the `/tiki:test-creator` command and integration with `/tiki:execute`.
+
+### TDD Modes
+
+| Mode | Description |
+|------|-------------|
+| `before` | Write failing tests first, then implement (true TDD) |
+| `after` | Implement first, then write tests |
+| `ask` | Prompt for preference on each task (default) |
+| `never` | Skip test creation |
+
+### Supported Test Frameworks
+
+Tiki auto-detects your test framework:
+
+| Framework | Language | Detection |
+|-----------|----------|-----------|
+| jest | JavaScript/TypeScript | `jest` in package.json |
+| vitest | JavaScript/TypeScript | `vitest` in package.json |
+| mocha | JavaScript/TypeScript | `mocha` in package.json |
+| pytest | Python | `pytest` in pyproject.toml/requirements |
+| go test | Go | `*_test.go` files |
+| cargo test | Rust | `Cargo.toml` |
+
+### Using TDD with Execute
+
+When running `/tiki:execute`, you can enable TDD:
+
+```bash
+/tiki:execute 34 --tdd          # Enable TDD (tests before implementation)
+/tiki:execute 34 --no-tdd       # Disable TDD for this execution
+/tiki:execute 34                # Use config setting (default: ask)
+```
+
+### TDD Workflow Example
+
+```text
+User: /tiki:execute 34 --tdd
+
+Claude: ## Phase 1: Add calculateTotal utility
+
+        ### TDD: Writing Tests First
+
+        Analyzing phase requirements...
+
+        Creating test file: `src/utils/__tests__/calculateTotal.test.ts`
+        Framework: vitest
+
+        Tests written:
+        - should sum item prices correctly
+        - should apply discount when provided
+        - should throw on negative prices
+        - should return 0 for empty array
+
+        Running tests to confirm failure...
+
+        $ npx vitest run src/utils/__tests__/calculateTotal.test.ts
+
+        FAIL  src/utils/__tests__/calculateTotal.test.ts
+        Tests: 4 failed, 4 total
+
+        ### Implementing Code
+
+        [Spawns sub-agent to implement...]
+
+        Created: src/utils/calculateTotal.ts
+
+        ### Verifying Tests Pass
+
+        $ npx vitest run src/utils/__tests__/calculateTotal.test.ts
+
+        PASS  src/utils/__tests__/calculateTotal.test.ts
+        Tests: 4 passed, 4 total
+
+        Phase 1 complete (TDD verified)
+```
+
+### Direct Test Creation
+
+Create tests independently with:
+
+```bash
+/tiki:test-creator                           # Use config settings
+/tiki:test-creator --mode before             # Force TDD mode
+/tiki:test-creator --mode after              # Force tests after implementation
+/tiki:test-creator --framework pytest        # Force specific framework
 ```
 
 ## Code Assessment
