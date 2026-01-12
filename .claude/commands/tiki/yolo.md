@@ -566,6 +566,20 @@ YOLO Mode Pipeline:
                       [Complete]
 ```
 
+## Cleanup
+
+After YOLO completes (success or failure), clean up any temporary artifacts:
+
+```bash
+# Remove common temporary artifacts from the project root
+rm -f ./tmpclaude-* ./nul ./NUL 2>/dev/null || true
+
+# Also clean up any temp files in .tiki directory
+rm -f .tiki/tmp-* .tiki/*.tmp 2>/dev/null || true
+```
+
+Run this cleanup silently at the end of the workflow, regardless of outcome.
+
 ## Notes
 
 - YOLO mode is designed for confident execution when you trust the workflow

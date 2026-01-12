@@ -625,6 +625,26 @@ Claude: Starting execution of Issue #34: Add user authentication
         Review with `/tiki:review-queue`
 ```
 
+## Cleanup
+
+After execution completes (success or failure), clean up any temporary artifacts that may have been created:
+
+```bash
+# Remove common temporary artifacts from the project root
+rm -f ./tmpclaude-* ./nul ./NUL 2>/dev/null || true
+
+# Also clean up any temp files in .tiki directory
+rm -f .tiki/tmp-* .tiki/*.tmp 2>/dev/null || true
+```
+
+These files are typically created in the project root by:
+
+- Sub-agent file operations (`tmpclaude-*` files)
+- Windows `nul` device references that become actual files
+- Temporary context or output files
+
+Always run this cleanup silently - do not report errors if files don't exist.
+
 ## Notes
 
 - Each sub-agent runs with fresh context (no memory of previous phases except summaries)
