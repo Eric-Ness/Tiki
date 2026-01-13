@@ -123,6 +123,12 @@ Review items discovered during execution (potential issues, questions, blockers)
 | `/tiki:update-claude` | Update CLAUDE.md with learned patterns |
 | `/tiki:commit` | Create a Tiki-aware git commit |
 
+### Utilities
+
+| Command          | Description                                              |
+|------------------|----------------------------------------------------------|
+| `/tiki:cleanup`  | Remove temporary file artifacts (tmpclaude-*, nul, etc.) |
+
 ## Typical Workflow
 
 ```

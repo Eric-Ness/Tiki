@@ -580,6 +580,8 @@ rm -f .tiki/tmp-* .tiki/*.tmp 2>/dev/null || true
 
 Run this cleanup silently at the end of the workflow, regardless of outcome.
 
+If artifacts persist, run `/tiki:cleanup` manually.
+
 ## Notes
 
 - YOLO mode is designed for confident execution when you trust the workflow

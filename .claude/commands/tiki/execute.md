@@ -645,6 +645,8 @@ These files are typically created in the project root by:
 
 Always run this cleanup silently - do not report errors if files don't exist.
 
+If artifacts persist, run `/tiki:cleanup` manually.
+
 ## Notes
 
 - Each sub-agent runs with fresh context (no memory of previous phases except summaries)
