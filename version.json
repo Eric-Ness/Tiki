@@ -1,0 +1,20 @@
+{
+  "version": "1.0.0",
+  "releaseDate": "2026-01-14",
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2026-01-14",
+      "changes": [
+        "Initial release",
+        "Core workflow commands: get-issue, plan-issue, execute",
+        "Execution control: pause, resume, skip-phase, redo-phase, heal",
+        "Planning tools: audit-plan, discuss-phases",
+        "Code quality: assess-code, map-codebase",
+        "Documentation: adr, update-claude, commit",
+        "TDD support with test-creator",
+        "Self-update capability with update-tiki"
+      ]
+    }
+  ]
+}
