@@ -84,8 +84,11 @@ Review items discovered during execution (potential issues, questions, blockers)
 |---------|-------------|
 | `/tiki:add-issue [title]` | Create a new issue with intelligent prompting |
 | `/tiki:get-issue <number>` | Fetch and display a GitHub issue |
+| `/tiki:review-issue <number>` | Review an issue before planning (identify concerns, alternatives) |
 | `/tiki:plan-issue <number>` | Create a phased execution plan |
 | `/tiki:execute <number>` | Execute a planned issue phase by phase |
+| `/tiki:ship <number>` | Complete an issue: commit, push, and close |
+| `/tiki:yolo [number]` | Full automated workflow: get → review → plan → audit → execute |
 | `/tiki:whats-next` | Show current status and suggested next action |
 
 ### Execution Control
@@ -123,11 +126,18 @@ Review items discovered during execution (potential issues, questions, blockers)
 | `/tiki:update-claude` | Update CLAUDE.md with learned patterns |
 | `/tiki:commit` | Create a Tiki-aware git commit |
 
+### Testing
+
+| Command              | Description                                                         |
+|----------------------|---------------------------------------------------------------------|
+| `/tiki:test-creator` | Create tests following TDD workflow (before/after/ask/never modes)  |
+
 ### Utilities
 
-| Command          | Description                                              |
-|------------------|----------------------------------------------------------|
-| `/tiki:cleanup`  | Remove temporary file artifacts (tmpclaude-*, nul, etc.) |
+| Command              | Description                                              |
+|----------------------|----------------------------------------------------------|
+| `/tiki:cleanup`      | Remove temporary file artifacts (tmpclaude-*, nul, etc.) |
+| `/tiki:update-tiki`  | Self-update Tiki to the latest version                   |
 
 ## Typical Workflow
 
