@@ -41,7 +41,15 @@ your-project/
 
 Fetches GitHub issue #34 and displays it with context.
 
-### 2. Plan the Issue
+### 2. Review the Issue (Optional)
+
+```
+/tiki:review-issue 34
+```
+
+Analyzes the issue before planning to identify concerns, alternatives, and clarifying questions. Helps catch scope issues or missing dependencies early.
+
+### 3. Plan the Issue
 
 ```
 /tiki:plan-issue 34
@@ -49,7 +57,7 @@ Fetches GitHub issue #34 and displays it with context.
 
 Creates a phased execution plan. If the issue is too large for one context window, it breaks it into multiple phases. Plans are stored in `.tiki/plans/issue-34.json`.
 
-### 3. Review the Plan (Optional)
+### 4. Audit the Plan (Optional)
 
 ```
 /tiki:audit-plan 34
@@ -57,7 +65,7 @@ Creates a phased execution plan. If the issue is too large for one context windo
 
 Validates the plan: checks phase sizes, dependencies, file conflicts, and verification steps.
 
-### 4. Execute
+### 5. Execute
 
 ```
 /tiki:execute 34
@@ -68,7 +76,7 @@ Runs each phase sequentially by spawning sub-agents. Each sub-agent gets:
 - Phase instructions
 - Summaries from completed phases
 
-### 5. Review Discoveries
+### 6. Review Discoveries
 
 ```
 /tiki:review-queue
