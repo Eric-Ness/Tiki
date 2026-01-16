@@ -108,6 +108,7 @@ Review items discovered during execution (potential issues, questions, blockers)
 | `/tiki:skip-phase <number>` | Skip a phase and move to the next |
 | `/tiki:redo-phase <number>` | Re-execute a completed phase |
 | `/tiki:heal` | Auto-diagnose and fix a failed phase |
+| `/tiki:debug [issue\|session]` | Start systematic debugging session with hypothesis tracking |
 
 ### Planning & Review
 
@@ -194,6 +195,53 @@ User: Yes
 Claude: Created issues #35 and #36
 ```
 
+## Debugging Workflow
+
+```
+User: /tiki:debug #42
+
+Claude: Starting debug session for Issue #42: Login fails for some users
+
+        What symptoms are you seeing?
+
+User: POST /api/login returns 500 for users with + in email
+
+Claude: Recorded symptoms. Based on this, here are possible hypotheses:
+        1. Email encoding issue in request parsing
+        2. Database query not escaping special characters
+        3. Validation regex rejecting valid emails
+
+        Which would you like to test first?
+
+User: 1
+
+Claude: Testing: Email encoding issue
+        [Runs diagnostic tests...]
+
+        Result: Email is correctly decoded in request body.
+        Marking as NOT THE CAUSE.
+
+        Next hypothesis?
+
+User: 2
+
+Claude: Testing: Database query escaping
+        [Examines query code, runs test...]
+
+        FOUND IT! The query uses string interpolation without escaping.
+
+        Resolution: Use parameterized query.
+
+        Mark as resolved?
+
+User: yes
+
+Claude: Session resolved. Summary saved to .tiki/debug/session-login-500.md
+        Creating fix commit...
+```
+
+Resume previous sessions with `/tiki:debug --list` or `/tiki:debug session-name`.
+
 ## State Storage
 
 All Tiki state is stored in the `.tiki/` folder:
@@ -211,8 +259,10 @@ All Tiki state is stored in the `.tiki/` folder:
 │   └── issue-34-phase-2.json
 ├── adr/                 # Architecture Decision Records
 │   └── 001-use-jwt.md
-└── learned/             # Patterns for CLAUDE.md updates
-    └── patterns.json
+├── learned/             # Patterns for CLAUDE.md updates
+│   └── patterns.json
+└── debug/               # Debug session documents
+    └── session-login-500.md
 ```
 
 ## Plan File Format
