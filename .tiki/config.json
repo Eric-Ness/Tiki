@@ -16,5 +16,10 @@
   "adr": {
     "autoGenerate": true,
     "directory": ".tiki/adr"
+  },
+  "autoFix": {
+    "enabled": "prompt",
+    "maxAttempts": 3,
+    "strategies": ["direct", "diagnostic-agent"]
   }
 }

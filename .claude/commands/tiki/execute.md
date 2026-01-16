@@ -55,6 +55,14 @@ Extract TDD settings:
 - `testing.createTests`: "before" | "after" | "ask" | "never" (default: "ask")
 - `testing.testFramework`: framework name or "auto-detect" (default: "auto-detect")
 
+Extract auto-fix settings:
+
+- `autoFix.enabled`: true | false | "prompt" (default: "prompt")
+- `autoFix.maxAttempts`: max fix attempts per phase (default: 3)
+- `autoFix.strategies`: array of ["direct", "diagnostic-agent"] (default: both)
+
+If `autoFix.enabled` is "prompt", the user will be asked on first verification failure whether to enable auto-fix.
+
 If `createTests` is "ask", prompt the user:
 
 ```text
@@ -66,6 +74,28 @@ How would you like to handle testing during execution?
 
 Your choice (1/2/3):
 ```
+
+#### Auto-Fix Prompt (when autoFix.enabled is "prompt")
+
+If `autoFix.enabled` is "prompt" and a verification failure occurs, prompt the user to attempt auto-fix?
+
+```text
+Phase verification failed. Would you like to enable auto-fix?
+
+Auto-fix will:
+- Analyze the error using known patterns
+- Attempt up to {maxAttempts} automatic fixes
+- Report what was tried if fixes fail
+
+Options:
+1. **yes** - Enable auto-fix for this execution
+2. **no** - Manual intervention only (pause and suggest /tiki:heal)
+3. **always** - Enable and save preference to config
+
+Your choice (1/2/3):
+```
+
+Store the choice in execution state for consistency during this execution. If the user chooses "always", update `.tiki/config.json` to set `autoFix.enabled: true`.
 
 ### Step 3: Initialize Execution State
 
@@ -249,7 +279,13 @@ npx jest <test-file> 2>&1 | tail -20
 
 **If tests pass:** Continue to step 4h (Green phase complete).
 
-**If tests fail:** Report the failure and pause execution:
+**If tests fail:** Check autoFix.enabled before pausing execution:
+
+1. **If `autoFix.enabled` is `true`:** Proceed to Step 4f-auto to attempt automatic fix
+2. **If `autoFix.enabled` is `"prompt"`:** Ask user whether to enable auto-fix using the Auto-Fix Prompt (see Step 2), then proceed accordingly
+3. **If `autoFix.enabled` is `false`:** Report failure and pause execution (see below)
+
+When auto-fix is disabled or declined, report the failure:
 
 ```text
 ## TDD Verification Failed
@@ -264,6 +300,309 @@ Phase <N> implementation did not pass tests.
 - Skip TDD verification: `/tiki:skip-phase <N>`
 - Get automatic fix suggestions: `/tiki:heal <N>`
 ```
+
+#### 4f-auto. Auto-Fix Attempt (if enabled)
+
+When verification fails and auto-fix is enabled (or user accepts when prompted), attempt automatic repair before pausing for manual intervention.
+
+##### Step 1: Classify Error Type
+
+Analyze the error output to classify the error type. Use the following table to map error patterns to error types:
+
+| Error Pattern | Error Type | Fix Strategy Hint |
+|--------------|------------|-------------------|
+| `Property 'X' does not exist on type 'Y'` | type-error | Add property to type definition or fix property name |
+| `Cannot find module 'X'` | import-error | Install package or fix import path |
+| `Type 'X' is not assignable to type 'Y'` | type-error | Fix type mismatch or add type assertion |
+| `Expected X but received Y` | test-failure | Fix implementation logic or update test expectation |
+| `Timeout` | async-error | Increase timeout or fix async handling |
+| `Module not found` | import-error | Install missing dependency or fix path |
+| `SyntaxError: Unexpected token` | syntax-error | Fix syntax issue in source file |
+| `ENOENT: no such file or directory` | runtime-error | Create missing file or fix file path |
+| `ECONNREFUSED` | runtime-error | Start required service or mock connection |
+| `Cannot read property 'X' of undefined` | runtime-error | Add null check or initialize object |
+| `assertion failed` | test-failure | Fix implementation to match expected behavior |
+
+Extract key information from the error:
+- **Error message**: The primary error text
+- **Error file**: The file path where the error originated
+- **Error line**: Line number if available
+- **Stack trace**: Relevant call stack for context
+
+##### Step 2: Check Previous Fix Attempts
+
+Before attempting a fix, check the phase's fixAttempts array from the plan file to understand what has already been tried:
+
+1. Read the phase's `fixAttempts` array from `.tiki/plans/issue-N.json`
+2. Count current attempts: `attemptCount = fixAttempts.length`
+3. Compare attempt count to `autoFix.maxAttempts` from config
+
+**If `attemptCount >= maxAttempts`:**
+
+When the maxAttempts limit is hit (maxAttempts reached), skip auto-fix and fall through to manual intervention:
+
+```text
+## Auto-Fix Limit Reached
+
+Phase <N> has exhausted all {maxAttempts} automatic fix attempts.
+No more automatic fixes will be attempted.
+
+### Previous Attempts
+<list previous fix attempts with their strategies and outcomes>
+
+### Manual Intervention Required
+- Review the error and fix manually: `/tiki:execute <number> --from <N>`
+- Get diagnostic help: `/tiki:heal <N>`
+- Skip this phase: `/tiki:skip-phase <N>`
+```
+
+**Strategy Selection and Escalation:**
+
+When auto-fix is still allowed, select the fix strategy:
+
+1. **First attempt**: Use "direct" strategy (simple, inline fix without spawning sub-agent)
+2. **If direct strategy failed previously** on the same error type: Escalate to "diagnostic-agent" strategy
+3. **Avoid repeating the same strategy** that failed on an identical error
+
+The "direct" strategy attempts a simple fix inline based on the error classification. It's fast but may miss complex issues.
+
+The "diagnostic-agent" strategy spawns a sub-agent via the Task tool to perform deeper analysis. Use this when direct fixes have failed, as it can identify root causes that simple pattern matching misses.
+
+##### Step 3: Check Debug History
+
+Before applying a fix, check if similar errors have been successfully resolved in past debug sessions:
+
+1. Read `.tiki/debug/index.json` if it exists
+2. Search for sessions matching:
+   - Error message keywords from the current error
+   - The affected file name or path
+   - The classified error type
+3. Filter to resolved sessions only (status: "resolved")
+
+Resolved sessions contain proven solutions that worked for similar problems in the past. Applying solutions from resolved sessions increases the likelihood of a successful fix.
+
+If matching resolved sessions are found:
+- Reference the past solution approach in the fix strategy
+- Set `relatedDebugSession` field in the fix attempt record
+- Apply or adapt the solution that worked before
+
+Example search logic:
+```text
+For each session in debug/index.json:
+  - Check if session.status === "resolved"
+  - Check if session.errorKeywords overlap with current error keywords
+  - Check if session.affectedFiles includes the current error file
+  - Rank matches by relevance (more keyword matches = higher rank)
+```
+
+After gathering all context (error type, previous attempts, debug history), proceed to apply the selected fix strategy. Record the attempt in the phase's fixAttempts array regardless of outcome.
+
+##### Step 4: Generate and Apply Fix
+
+Based on the selected strategy, generate and apply a fix for the error.
+
+**Strategy: Direct Fix** (for pattern-matched errors)
+
+Direct fix applies simple, inline corrections based on error classification without spawning a sub-agent. Use this strategy first for common, well-understood errors.
+
+| Error Type | Fix Pattern | Action |
+|------------|-------------|--------|
+| type-error | Property does not exist on type | Add property to interface or extend type definition |
+| type-error | Type not assignable | Fix type mismatch or add type assertion |
+| import-error | Cannot find module | Install package (`npm install`) or fix import path |
+| import-error | Module not found | Check file path, fix relative/absolute path |
+| syntax-error | Unexpected token | Fix syntax issue at indicated line |
+| test-failure | Expected X but received Y | Fix implementation logic to return expected value |
+| test-failure | Assertion failed | Update implementation to match expected behavior |
+| runtime-error | Cannot read property of undefined | Add null check or initialize object before access |
+| runtime-error | ENOENT no such file | Create missing file or fix file path reference |
+
+For direct fix:
+1. Parse the error message to identify the specific issue
+2. Locate the error file and line
+3. Apply the appropriate fix pattern inline
+4. Document the fix applied for recording in Step 5
+
+**Strategy: Diagnostic Agent** (for complex errors)
+
+When direct fixes have failed or the error is complex, spawn a diagnostic sub-agent via the Task tool to perform deeper analysis.
+
+Task tool call format:
+```text
+Task tool call:
+- subagent_type: "general-purpose"
+- prompt: <Diagnostic Agent Prompt - see template below>
+- description: "Auto-fix: Diagnose and fix {error_type} in phase N of issue #X"
+```
+
+**Diagnostic Agent Prompt Template:**
+
+```text
+You are a diagnostic agent fixing a verification failure for Phase {phase_number} of Issue #{issue_number}.
+
+## Error Context
+- **Error Type**: {error_type}
+- **Error Message**: {error_message}
+- **Error File**: {error_file}
+- **Error Line**: {error_line} (if available)
+
+## Stack Trace
+{stack_trace}
+
+## Phase Context
+{phase_title}
+{phase_content}
+
+## Previous Fix Attempts
+{previous_attempts_summary}
+
+## Related Debug Sessions
+{related_debug_sessions}
+
+## Instructions
+1. Analyze the error and its root cause
+2. Consider why previous fix attempts failed (if any)
+3. Apply a fix to resolve the error
+4. Verify the fix works locally if possible
+
+## Output Format
+When complete, provide:
+
+AUTOFIX_RESULT: success | failure
+AUTOFIX_ACTION: <description of what fix was applied>
+AUTOFIX_FILES: <comma-separated list of files modified>
+
+If the fix fails, explain why and what additional context would help.
+```
+
+The diagnostic agent has access to all file tools (Read, Write, Edit, Grep, Glob) and can perform comprehensive analysis to identify root causes that simple pattern matching might miss.
+
+##### Step 5: Record Fix Attempt
+
+After applying a fix (whether successful or not), record the attempt in the phase's fixAttempts array. This creates an audit trail and enables learning from past attempts.
+
+Update the phase in `.tiki/plans/issue-N.json`:
+
+1. Read the current plan file
+2. Find the current phase object
+3. Initialize `fixAttempts` array if not present
+4. Append a new fix attempt record with all required fields:
+
+```json
+{
+  "id": "{NN}-fix-{MM}",
+  "attemptNumber": {current_attempt_count + 1},
+  "errorType": "{classified_error_type}",
+  "errorMessage": "{error_message}",
+  "errorFile": "{error_file_path}",
+  "strategy": "{direct|diagnostic-agent}",
+  "fixApplied": "{description_of_fix}",
+  "verificationResult": "{pending}",
+  "relatedDebugSession": "{session_id_or_null}",
+  "timestamp": "{ISO_8601_timestamp}"
+}
+```
+
+Generate the fix ID using the NN-fix-NN convention:
+- Phase number zero-padded to 2 digits
+- "fix" literal
+- Attempt number zero-padded to 2 digits
+
+Example: Phase 3, attempt 2 = `03-fix-02`
+
+##### Step 6: Verify Fix
+
+After applying the fix, run the appropriate verification command to check if the error is resolved.
+
+| Error Type | Verification Command |
+|------------|---------------------|
+| typescript, type-error | `npx tsc --noEmit` |
+| test-failure | Framework-specific: `npx jest <file>`, `npx vitest run <file>`, `pytest <file>` |
+| test-* | Re-run the specific test that failed |
+| build | `npm run build` or project-specific build command |
+| runtime-error | Re-run the phase's verification steps from the plan |
+| syntax-error | `npx tsc --noEmit` or linter check |
+| import-error | `npx tsc --noEmit` or attempt to import module |
+
+Run the verification command and capture the output:
+
+```bash
+# Example for TypeScript errors
+npx tsc --noEmit 2>&1
+
+# Example for test failures
+npx jest <test-file> --no-coverage 2>&1 | tail -30
+
+# Example for build errors
+npm run build 2>&1 | tail -30
+```
+
+Analyze the output to determine if the error is resolved:
+- **Success**: No errors, tests pass, or build succeeds
+- **Failure**: Same or different error persists
+
+##### Step 7: Handle Result
+
+Based on the verification outcome, take the appropriate action.
+
+**Success Path:**
+
+When the fix succeeds and verification passes:
+
+1. Update the fixAttempts record with `verificationResult: "success"`
+2. Clear the error state from the phase
+3. Log the successful fix:
+   ```text
+   Auto-fix successful (attempt {N}, strategy: {strategy})
+   Fix applied: {fix_description}
+   ```
+4. Continue to step 4h to complete the phase
+
+**Failure Path with Retry:**
+
+When the fix fails but attempts remain:
+
+1. Update the fixAttempts record with `verificationResult: "failure"`
+2. Increment the attempt counter
+3. Escalate strategy if appropriate:
+   - If "direct" strategy failed → try "diagnostic-agent" on next attempt
+   - If same error persists with same strategy → escalate to diagnostic-agent
+4. Loop back to Step 2 (Check Previous Fix Attempts) to retry with the new strategy
+5. Log the retry:
+   ```text
+   Auto-fix attempt {N} failed. Escalating to {next_strategy} strategy.
+   Retrying... (attempt {N+1} of {maxAttempts})
+   ```
+
+**Exhausted Path (All Attempts Failed):**
+
+When `attemptCount >= maxAttempts` and all strategies have been tried:
+
+1. Update the final fixAttempts record with `verificationResult: "failure"`
+2. Set phase status to indicate manual intervention required
+3. Fall through to manual intervention:
+
+```text
+## Auto-Fix Exhausted
+
+Phase {N} could not be automatically fixed after {maxAttempts} attempts.
+
+### Attempt Summary
+| # | Strategy | Error | Result |
+|---|----------|-------|--------|
+| 1 | direct | {error_type} | failure |
+| 2 | diagnostic-agent | {error_type} | failure |
+| 3 | diagnostic-agent | {error_type} | failure |
+
+### Manual Intervention Required
+The following options are available:
+- Fix manually and retry: `/tiki:execute {number} --from {N}`
+- Get diagnostic help: `/tiki:heal {N}`
+- Skip this phase: `/tiki:skip-phase {N}`
+- Start debug session: `/tiki:debug {number}`
+```
+
+After Step 7 completes (success or exhausted), execution continues appropriately - either to the next phase on success, or paused for manual intervention on exhaustion.
 
 #### 4g. Create Tests After (if mode is "after")
 
@@ -425,6 +764,88 @@ Important:
 }
 ```
 
+## Fix Attempt Tracking
+
+When auto-fix is enabled and a verification failure occurs, fix attempts are recorded in the plan file under each phase. This provides a complete history of what was tried and enables learning from past fix attempts.
+
+### Schema
+
+Each phase in the plan file can contain a `fixAttempts` array:
+
+```json
+{
+  "number": 1,
+  "title": "Setup auth middleware",
+  "status": "completed",
+  "fixAttempts": [
+    {
+      "id": "01-fix-01",
+      "attemptNumber": 1,
+      "errorType": "test-failure",
+      "errorMessage": "TypeError: Cannot read property 'user' of undefined",
+      "errorFile": "src/middleware/auth.ts",
+      "strategy": "direct",
+      "fixApplied": "Added null check for request.user before accessing properties",
+      "verificationResult": "failure",
+      "relatedDebugSession": null,
+      "timestamp": "2026-01-10T10:30:00Z"
+    },
+    {
+      "id": "01-fix-02",
+      "attemptNumber": 2,
+      "errorType": "test-failure",
+      "errorMessage": "TypeError: Cannot read property 'user' of undefined",
+      "errorFile": "src/middleware/auth.ts",
+      "strategy": "diagnostic-agent",
+      "fixApplied": "Spawned diagnostic agent which identified missing middleware initialization",
+      "verificationResult": "success",
+      "relatedDebugSession": "issue-34-auth-middleware",
+      "timestamp": "2026-01-10T10:45:00Z"
+    }
+  ]
+}
+```
+
+### Fix ID Naming Convention
+
+Fix IDs follow the format `NN-fix-NN` where:
+- First `NN` = phase number (zero-padded)
+- Second `NN` = attempt number within that phase (zero-padded, sequential)
+
+Examples:
+- `01-fix-01` - Phase 1, first fix attempt
+- `01-fix-02` - Phase 1, second fix attempt
+- `02-fix-01` - Phase 2, first fix attempt
+- `03-fix-05` - Phase 3, fifth fix attempt
+
+This format allows easy sorting and identification of fix attempts across phases.
+
+### Fix Attempt Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique identifier in NN-fix-NN format |
+| `attemptNumber` | number | Sequential attempt number within the phase (1, 2, 3...) |
+| `errorType` | string | Category of error (e.g., "test-failure", "syntax-error", "type-error", "runtime-error") |
+| `errorMessage` | string | The actual error message that triggered the fix attempt |
+| `errorFile` | string | File path where the error originated (if identifiable) |
+| `strategy` | string | Fix strategy used: "direct" or "diagnostic-agent" |
+| `fixApplied` | string | Description of the fix that was applied |
+| `verificationResult` | string | Outcome: "success" or "failure" |
+| `relatedDebugSession` | string\|null | ID of related debug session if diagnostic-agent was used |
+| `timestamp` | string | ISO 8601 timestamp when the fix was attempted |
+
+### Persistence
+
+Fix attempts are stored in the plan file at `.tiki/plans/issue-N.json` under each phase object. This ensures:
+
+- **Audit trail**: Complete history of what was tried for each phase
+- **Learning**: Future fix attempts can reference past failures
+- **Resume capability**: If execution is paused, fix history is preserved
+- **Debugging**: Easy to review what was attempted when investigating issues
+
+When a phase with fixAttempts completes successfully, the fixAttempts array remains in the plan file for historical reference.
+
 ## Queue Items
 
 When a sub-agent discovers items, add to `.tiki/queue/pending.json`:
@@ -456,8 +877,11 @@ If a sub-agent reports failure or errors:
 1. Set phase status to `failed`
 2. Record error in phase
 3. Check for similar past debug sessions (see below)
-4. Pause execution
-5. Report to user with relevant history
+4. **If auto-fix enabled:** Attempt auto-fix (Step 4f-auto)
+   - If auto-fix success: Continue execution after auto-fix completes (resume execution to next phase)
+   - If auto-fix exhausted: Continue to step 5 (pause for manual intervention)
+5. Pause execution
+6. Report to user with relevant history
 
 #### Check Debug History on Failure
 

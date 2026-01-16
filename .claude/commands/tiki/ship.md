@@ -128,7 +128,38 @@ Please close issue #34 manually at:
 https://github.com/<owner>/<repo>/issues/34
 ```
 
-### Step 6: Clean Up Tiki State
+### Step 6: Bump Version
+
+Read `version.json` from the project root and increment the patch version:
+
+```json
+{
+  "version": "1.0.0",  // becomes "1.0.1"
+  "releaseDate": "2026-01-14",  // update to today
+  "changelog": [...]
+}
+```
+
+1. Parse the current version (e.g., "1.0.0")
+2. Increment the patch number: "1.0.0" → "1.0.1"
+3. Update `releaseDate` to today's date
+4. Add a changelog entry for this issue:
+
+```json
+{
+  "version": "1.0.1",
+  "date": "2026-01-15",
+  "changes": [
+    "Issue #34: Add user authentication"
+  ]
+}
+```
+
+Write the updated `version.json` back to the file.
+
+If version.json doesn't exist, create it with version "0.0.1".
+
+### Step 7: Clean Up Tiki State
 
 Update `.tiki/state/current.json` to clear the active issue:
 
@@ -152,7 +183,7 @@ Update the plan file status:
 }
 ```
 
-### Step 7: Report Results
+### Step 8: Report Results
 
 Display a summary:
 
@@ -165,6 +196,7 @@ Summary:
 - 3 phases completed
 - 5 commits made
 - Issue closed on GitHub
+- Version: 1.0.0 → 1.0.1
 
 Git log for this issue:
   abc1234 feat(auth): Add user model (#34)
@@ -195,6 +227,9 @@ Pushed to origin/main ✓
 
 Closing issue #34...
 Issue #34 closed ✓
+
+Bumping version...
+1.0.0 → 1.0.1 ✓
 
 Cleaning up state...
 State cleared ✓
