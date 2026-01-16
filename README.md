@@ -93,6 +93,7 @@ Review items discovered during execution (potential issues, questions, blockers)
 | `/tiki:add-issue [title]` | Create a new issue with intelligent prompting |
 | `/tiki:get-issue <number>` | Fetch and display a GitHub issue |
 | `/tiki:review-issue <number>` | Review an issue before planning (identify concerns, alternatives) |
+| `/tiki:research <topic>` | Research unfamiliar domains before planning |
 | `/tiki:plan-issue <number>` | Create a phased execution plan with success criteria and backward planning |
 | `/tiki:execute <number>` | Execute a planned issue phase by phase |
 | `/tiki:ship <number>` | Complete an issue: commit, push, and close |
@@ -274,6 +275,62 @@ Claude: Session resolved. Summary saved to .tiki/debug/issue-42-login-500.md
 
 Resume previous sessions with `/tiki:debug --resume` or `/tiki:debug show session-name`.
 
+## Research Workflow
+
+Use `/tiki:research` to investigate unfamiliar technologies or domains before planning.
+
+### Usage
+
+```bash
+/tiki:research react-query                    # Research a topic
+/tiki:research #42                            # Research topics from an issue
+/tiki:research "authentication for Next.js"  # Free-form query
+/tiki:research topic --refresh                # Force refresh existing research
+/tiki:research topic --quick                  # Quick mode (fewer dimensions)
+```
+
+### Research Dimensions
+
+| Dimension             | Full Mode | Quick Mode     |
+|-----------------------|-----------|----------------|
+| Ecosystem Analysis    | ✓         | ✓ (condensed)  |
+| Architecture Patterns | ✓         | -              |
+| Best Practices        | ✓         | ✓              |
+| Common Pitfalls       | ✓         | -              |
+| Recommendations       | ✓         | ✓              |
+
+### Output
+
+Research is saved to `.tiki/research/[topic]/research.md` with:
+
+- Executive summary
+- Detailed findings per dimension
+- Sources with confidence levels
+- Specific recommendations for your project
+
+### Example
+
+```text
+User: /tiki:research "GraphQL vs REST for mobile app"
+
+Claude: Researching: GraphQL vs REST for mobile app
+
+        Spawning research agents...
+        [1/5] Ecosystem Analysis... Done
+        [2/5] Architecture Patterns... Done
+        [3/5] Best Practices... Done
+        [4/5] Common Pitfalls... Done
+        [5/5] Recommendations... Done
+
+        Research complete. Saved to:
+        .tiki/research/graphql-vs-rest-mobile-app/research.md
+
+        Key Recommendations:
+        - GraphQL recommended for mobile due to reduced over-fetching
+        - Use Apollo Client for caching and offline support
+        - Consider hybrid approach: GraphQL for complex queries, REST for simple CRUD
+```
+
 ## State Storage
 
 All Tiki state is stored in the `.tiki/` folder:
@@ -293,10 +350,14 @@ All Tiki state is stored in the `.tiki/` folder:
 │   └── 001-use-jwt.md
 ├── learned/             # Patterns for CLAUDE.md updates
 │   └── patterns.json
-└── debug/               # Debug session documents
-    ├── index.json       # Searchable index of all sessions
-    ├── issue-42-login-500.md
-    └── archive/         # Archived sessions
+├── debug/               # Debug session documents
+│   ├── index.json       # Searchable index of all sessions
+│   ├── issue-42-login-500.md
+│   └── archive/         # Archived sessions
+└── research/            # Domain research documents
+    ├── index.json       # Research index for lookup
+    └── react-query/
+        └── research.md
 ```
 
 ## Plan File Format
