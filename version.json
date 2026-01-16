@@ -1,7 +1,14 @@
 {
-  "version": "1.0.4",
+  "version": "1.0.5",
   "releaseDate": "2026-01-16",
   "changelog": [
+    {
+      "version": "1.0.5",
+      "date": "2026-01-16",
+      "changes": [
+        "Issue #17: Add emoji-based progress notifications to auto-fix UX"
+      ]
+    },
     {
       "version": "1.0.4",
       "date": "2026-01-16",
