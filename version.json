@@ -1,7 +1,14 @@
 {
-  "version": "1.0.2",
+  "version": "1.0.3",
   "releaseDate": "2026-01-16",
   "changelog": [
+    {
+      "version": "1.0.3",
+      "date": "2026-01-16",
+      "changes": [
+        "Issue #15: Add trigger processing to review-queue for ADRs and CLAUDE.md updates"
+      ]
+    },
     {
       "version": "1.0.2",
       "date": "2026-01-16",
