@@ -128,9 +128,13 @@ Please close issue #34 manually at:
 https://github.com/<owner>/<repo>/issues/34
 ```
 
-### Step 6: Bump Version
+### Step 6: Bump Version (Tiki repo only)
 
-Read `version.json` from the project root and increment the patch version:
+**This step only applies when working on the Tiki project itself** (i.e., the repo containing `.claude/commands/tiki/`).
+
+Check if this is the Tiki repo by verifying `.claude/commands/tiki/ship.md` exists in the project root. If not, skip this step.
+
+If this IS the Tiki repo, read `version.json` from the project root and increment the patch version:
 
 ```json
 {
@@ -158,6 +162,8 @@ Read `version.json` from the project root and increment the patch version:
 Write the updated `version.json` back to the file.
 
 If version.json doesn't exist, create it with version "0.0.1".
+
+**For other projects using Tiki:** This version bump step is skipped. Projects can add their own versioning logic if desired.
 
 ### Step 7: Clean Up Tiki State
 
