@@ -305,6 +305,22 @@ Phase <N> implementation did not pass tests.
 
 When verification fails and auto-fix is enabled (or user accepts when prompted), attempt automatic repair before pausing for manual intervention.
 
+**Notification Format:**
+
+Before starting auto-fix, display the failure notification:
+
+```text
+✗ Verification failed: <error summary>
+```
+
+Then display the auto-fix attempt header:
+
+```text
+🔧 Auto-fix attempt {N}/{maxAttempts}:
+  Issue: <error message summary>
+  Strategy: <direct|diagnostic-agent>
+```
+
 ##### Step 1: Classify Error Type
 
 Analyze the error output to classify the error type. Use the following table to map error patterns to error types:
@@ -329,6 +345,25 @@ Extract key information from the error:
 - **Error line**: Line number if available
 - **Stack trace**: Relevant call stack for context
 
+**Detailed Error Logging:**
+
+After classifying the error, display the detailed fix attempt header:
+
+```text
+🔧 Auto-fix attempt {N}/{maxAttempts}:
+  Issue: {error_type} - {brief_error_description}
+  File: {error_file}:{error_line}
+  Strategy: {selected_strategy}
+```
+
+Where placeholders are:
+
+- `{error_type}` is the classified error type (e.g., "type-error", "test-failure")
+- `{brief_error_description}` is a concise summary of the error (max ~50 chars)
+- `{error_file}` is the path to the file where the error originated
+- `{error_line}` is the line number (use "?" if unknown)
+- `{selected_strategy}` is either "direct" or "diagnostic-agent"
+
 ##### Step 2: Check Previous Fix Attempts
 
 Before attempting a fix, check the phase's fixAttempts array from the plan file to understand what has already been tried:
@@ -342,15 +377,27 @@ Before attempting a fix, check the phase's fixAttempts array from the plan file 
 When the maxAttempts limit is hit (maxAttempts reached), skip auto-fix and fall through to manual intervention:
 
 ```text
-## Auto-Fix Limit Reached
+## 🔧 Auto-Fix Limit Reached
 
 Phase <N> has exhausted all {maxAttempts} automatic fix attempts.
 No more automatic fixes will be attempted.
 
 ### Previous Attempts
-<list previous fix attempts with their strategies and outcomes>
+
+| # | Strategy | Error | Action Taken | Result |
+|---|----------|-------|--------------|--------|
+| 1 | {strategy_1} | {error_type_1} | {fix_description_1} | ✗ |
+| 2 | {strategy_2} | {error_type_2} | {fix_description_2} | ✗ |
+| ... | ... | ... | ... | ... |
+
+### What Was Tried
+
+1. **Attempt 1 ({strategy_1})**: {detailed_description_of_first_fix_attempt}
+2. **Attempt 2 ({strategy_2})**: {detailed_description_of_second_fix_attempt}
+<!-- Continue for each attempt in fixAttempts array -->
 
 ### Manual Intervention Required
+
 - Review the error and fix manually: `/tiki:execute <number> --from <N>`
 - Get diagnostic help: `/tiki:heal <N>`
 - Skip this phase: `/tiki:skip-phase <N>`
@@ -400,6 +447,45 @@ After gathering all context (error type, previous attempts, debug history), proc
 ##### Step 4: Generate and Apply Fix
 
 Based on the selected strategy, generate and apply a fix for the error.
+
+**Progress Indicators:**
+
+Before applying the fix, display what action is being taken:
+
+```text
+⏳ Applying fix: {description_of_fix_being_applied}
+```
+
+Where `{description_of_fix_being_applied}` briefly describes the specific fix action, for example:
+
+- "Adding null check before accessing user.id"
+- "Installing missing package 'lodash'"
+- "Fixing import path from './utils' to '../utils'"
+- "Adding 'email' property to User interface"
+
+After the fix is applied, display the result with what was done:
+
+```text
+✓ Fix applied: {fix_description}
+```
+
+Where `{fix_description}` confirms what change was made, for example:
+
+- "Added null check in auth.ts:45"
+- "Installed lodash@4.17.21"
+- "Updated import path in handler.ts"
+
+If the fix application fails:
+
+```text
+✗ Fix failed: {reason}
+```
+
+Where `{reason}` explains why the fix could not be applied, for example:
+
+- "File not found: src/auth.ts"
+- "Syntax error after applying change"
+- "Package installation failed: network error"
 
 **Strategy: Direct Fix** (for pattern-matched errors)
 
@@ -456,21 +542,60 @@ You are a diagnostic agent fixing a verification failure for Phase {phase_number
 ## Previous Fix Attempts
 {previous_attempts_summary}
 
+## Why This Escalation
+{escalation_reason}
+<!-- Include one of these explanations:
+- "Direct fix strategy failed on attempt N. The simple pattern-based fix did not resolve the issue, suggesting a deeper root cause."
+- "Multiple direct fixes have failed. Escalating to diagnostic analysis to identify underlying issues."
+- "Error type '{error_type}' requires deeper analysis than pattern matching can provide."
+-->
+
 ## Related Debug Sessions
 {related_debug_sessions}
 
 ## Instructions
+
+**IMPORTANT: Announce your actions as you work using these progress indicators:**
+
+Before investigating, announce:
+
+```text
+⏳ Diagnostic analysis: <what you're investigating>
+```
+
+Examples:
+
+- "⏳ Diagnostic analysis: Checking import paths in auth module"
+- "⏳ Diagnostic analysis: Tracing undefined value through call stack"
+- "⏳ Diagnostic analysis: Comparing expected vs actual types"
+
+Before making changes, announce:
+
+```text
+⏳ Applying fix: <what change you're making>
+```
+
+Examples:
+
+- "⏳ Applying fix: Adding middleware initialization in app.ts"
+- "⏳ Applying fix: Updating return type to include null case"
+- "⏳ Applying fix: Fixing circular dependency between modules"
+
+**Analysis Steps:**
+
 1. Analyze the error and its root cause
 2. Consider why previous fix attempts failed (if any)
-3. Apply a fix to resolve the error
-4. Verify the fix works locally if possible
+3. Look for patterns the direct fix strategy would have missed
+4. Apply a fix to resolve the error
+5. Verify the fix works locally if possible
 
 ## Output Format
+
 When complete, provide:
 
 AUTOFIX_RESULT: success | failure
-AUTOFIX_ACTION: <description of what fix was applied>
-AUTOFIX_FILES: <comma-separated list of files modified>
+AUTOFIX_ACTION: [description of what fix was applied]
+AUTOFIX_FILES: [comma-separated list of files modified]
 
 If the fix fails, explain why and what additional context would help.
 ```
@@ -545,6 +670,26 @@ Analyze the output to determine if the error is resolved:
 
 Based on the verification outcome, take the appropriate action.
 
+**Verification Notifications:**
+
+Before re-running verification after a fix, display:
+
+```text
+🔄 Re-running verification...
+```
+
+After verification completes, display the result:
+
+```text
+✓ All verifications passed
+```
+
+or:
+
+```text
+✗ Verification failed: <error summary>
+```
+
 **Success Path:**
 
 When the fix succeeds and verification passes:
@@ -552,11 +697,18 @@ When the fix succeeds and verification passes:
 1. Update the fixAttempts record with `verificationResult: "success"`
 2. Clear the error state from the phase
 3. Log the successful fix:
+
    ```text
-   Auto-fix successful (attempt {N}, strategy: {strategy})
-   Fix applied: {fix_description}
+   ✓ Auto-fix successful (attempt {N}/{maxAttempts}, strategy: {strategy})
    ```
-4. Continue to step 4h to complete the phase
+
+4. Display continuation indicator:
+
+   ```text
+   → Continuing to Phase {N+1}
+   ```
+
+5. Continue to step 4h to complete the phase
 
 **Failure Path with Retry:**
 
@@ -567,12 +719,16 @@ When the fix fails but attempts remain:
 3. Escalate strategy if appropriate:
    - If "direct" strategy failed → try "diagnostic-agent" on next attempt
    - If same error persists with same strategy → escalate to diagnostic-agent
-4. Loop back to Step 2 (Check Previous Fix Attempts) to retry with the new strategy
-5. Log the retry:
+4. Log the retry attempt:
+
    ```text
-   Auto-fix attempt {N} failed. Escalating to {next_strategy} strategy.
-   Retrying... (attempt {N+1} of {maxAttempts})
+   ✗ Auto-fix attempt {N}/{maxAttempts} failed
+   🔧 Auto-fix attempt {N+1}/{maxAttempts}:
+     Issue: <error message summary>
+     Strategy: <escalated strategy>
    ```
+
+5. Loop back to Step 2 (Check Previous Fix Attempts) to retry with the new strategy
 
 **Exhausted Path (All Attempts Failed):**
 
@@ -583,18 +739,26 @@ When `attemptCount >= maxAttempts` and all strategies have been tried:
 3. Fall through to manual intervention:
 
 ```text
-## Auto-Fix Exhausted
+## 🔧 Auto-Fix Exhausted
 
 Phase {N} could not be automatically fixed after {maxAttempts} attempts.
 
 ### Attempt Summary
-| # | Strategy | Error | Result |
-|---|----------|-------|--------|
-| 1 | direct | {error_type} | failure |
-| 2 | diagnostic-agent | {error_type} | failure |
-| 3 | diagnostic-agent | {error_type} | failure |
+
+| # | Strategy | Error | Action Taken | Result |
+|---|----------|-------|--------------|--------|
+| 1 | direct | {error_type} | {fix_description_1} | ✗ |
+| 2 | diagnostic-agent | {error_type} | {fix_description_2} | ✗ |
+| 3 | diagnostic-agent | {error_type} | {fix_description_3} | ✗ |
+
+### What Was Tried
+
+1. **Attempt 1 (direct)**: {detailed_description_of_first_fix_attempt}
+2. **Attempt 2 (diagnostic-agent)**: {detailed_description_of_second_fix_attempt}
+3. **Attempt 3 (diagnostic-agent)**: {detailed_description_of_third_fix_attempt}
 
 ### Manual Intervention Required
+
 The following options are available:
 - Fix manually and retry: `/tiki:execute {number} --from {N}`
 - Get diagnostic help: `/tiki:heal {N}`
@@ -603,6 +767,54 @@ The following options are available:
 ```
 
 After Step 7 completes (success or exhausted), execution continues appropriately - either to the next phase on success, or paused for manual intervention on exhaustion.
+
+##### Example: Complete Auto-Fix Notification Flow
+
+The following example shows the full notification output during an auto-fix cycle:
+
+```text
+✓ Phase 01 execution complete
+
+✗ Verification failed: Test auth.test.ts failed - Token undefined in test
+
+🔧 Auto-fix attempt 1/3:
+  Issue: test-failure - Token undefined when accessing user.authToken
+  File: src/middleware/auth.test.ts:45
+  Strategy: direct
+
+⏳ Applying fix: Adding token initialization in test setup
+✓ Fix applied: Added authToken mock in beforeEach block
+
+🔄 Re-running verification...
+✗ Verification failed: Test auth.test.ts failed - Token still undefined
+
+✗ Auto-fix attempt 1/3 failed
+🔧 Auto-fix attempt 2/3:
+  Issue: test-failure - Token still undefined after mock setup
+  File: src/middleware/auth.test.ts:45
+  Strategy: diagnostic-agent
+
+⏳ Diagnostic analysis: Tracing token value through middleware chain
+⏳ Diagnostic analysis: Checking mock injection timing
+⏳ Applying fix: Moving token setup before middleware initialization
+✓ Fix applied: Reordered test setup to initialize token before middleware
+
+🔄 Re-running verification...
+✓ All verifications passed
+
+✓ Auto-fix successful (attempt 2/3, strategy: diagnostic-agent)
+
+→ Continuing to Phase 02
+```
+
+**Emoji Reference:**
+
+- ✓ = success/passed/complete
+- ✗ = failure/error
+- 🔧 = fix/repair operation starting
+- ⏳ = in progress/executing
+- 🔄 = retry/re-run verification
+- → = continue/proceed to next phase
 
 #### 4g. Create Tests After (if mode is "after")
 
