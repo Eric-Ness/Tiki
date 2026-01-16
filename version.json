@@ -1,7 +1,14 @@
 {
-  "version": "1.0.3",
+  "version": "1.0.4",
   "releaseDate": "2026-01-16",
   "changelog": [
+    {
+      "version": "1.0.4",
+      "date": "2026-01-16",
+      "changes": [
+        "Issue #16: Add filter flags and category batch operations to review-queue"
+      ]
+    },
     {
       "version": "1.0.3",
       "date": "2026-01-16",
