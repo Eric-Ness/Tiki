@@ -3,7 +3,7 @@ type: prompt
 name: tiki:review-queue
 description: Review and process items discovered during execution. Use when there are queue items to review, create issues from, or dismiss.
 allowed-tools: Read, Write, Bash, Glob
-argument-hint: [--create-all] [--dismiss-all]
+argument-hint: [--create-all] [--dismiss-all] [--approve-all-docs] [--dismiss-all-adr] [--dismiss-all-claude] [--issues] [--docs] [--adr] [--claude]
 ---
 
 # Review Queue
@@ -16,6 +16,13 @@ Review items that accumulated during phase execution. These are potential issues
 /tiki:review-queue
 /tiki:review-queue --create-all    # Create issues for all items
 /tiki:review-queue --dismiss-all   # Clear all items
+/tiki:review-queue --issues        # Only queue items (issues, questions, notes)
+/tiki:review-queue --docs          # Only triggers (ADR + convention)
+/tiki:review-queue --adr           # Only ADR triggers
+/tiki:review-queue --claude        # Only convention triggers
+/tiki:review-queue --approve-all-docs   # Create all ADRs + update CLAUDE.md for all conventions
+/tiki:review-queue --dismiss-all-adr    # Dismiss all ADR triggers
+/tiki:review-queue --dismiss-all-claude # Dismiss all convention triggers
 ```
 
 ## Instructions
@@ -110,9 +117,38 @@ Use `/tiki:state` to see current status.
 If queue is empty but triggers present, skip to the triggers display sections.
 If triggers are empty but queue items present, show queue items and note "No triggers pending."
 
+### Step 1.5: Apply Filters
+
+Parse filter flags from arguments:
+
+```javascript
+const showIssues = args.includes('--issues');
+const showDocs = args.includes('--docs');
+const showAdr = args.includes('--adr');
+const showClaude = args.includes('--claude');
+
+// If no filter specified, show all
+const noFilter = !showIssues && !showDocs && !showAdr && !showClaude;
+```
+
+Apply filters:
+
+- `--issues`: Show only queue items, hide all triggers
+- `--docs`: Show only triggers (both ADR and convention), hide queue items
+- `--adr`: Show only ADR triggers, hide queue items and convention triggers
+- `--claude`: Show only convention triggers, hide queue items and ADR triggers
+- No filter: Show everything (current behavior)
+
+When displaying (Step 2), skip sections based on active filter:
+
+- If `showIssues` and not `noFilter`: Skip "ADR Triggers" and "Convention Triggers" sections
+- If `showDocs` and not `noFilter`: Skip "Potential Issues", "Questions", "Notes" sections
+- If `showAdr` and not `noFilter`: Show only "ADR Triggers" section
+- If `showClaude` and not `noFilter`: Show only "Convention Triggers" section
+
 ### Step 2: Display Items
 
-Show all queue items grouped by type:
+Show all queue items grouped by type. When filters are active (from Step 1.5), skip sections that don't match the filter criteria:
 
 ```
 ## Queue Review
@@ -175,7 +211,7 @@ Show all queue items grouped by type:
 - **Confidence:** high
 - **Details:** Chose JWT over session-based auth for stateless API. Enables horizontal scaling without session store.
 
-**Actions:** [Create ADR] [Edit] [Dismiss]
+**Actions:** [Create ADR] [View] [Edit] [Dismiss]
 
 #### 7. PostgreSQL for primary database
 - **Type:** technology-choice
@@ -183,7 +219,7 @@ Show all queue items grouped by type:
 - **Confidence:** high
 - **Details:** Selected PostgreSQL for ACID compliance and JSON support.
 
-**Actions:** [Create ADR] [Edit] [Dismiss]
+**Actions:** [Create ADR] [View] [Edit] [Dismiss]
 
 ---
 
@@ -196,7 +232,7 @@ Show all queue items grouped by type:
 - **Pattern:** All API errors return { error: string, code: number }
 - **Examples:** { error: 'Not found', code: 404 }, { error: 'Unauthorized', code: 401 }
 
-**Actions:** [Update CLAUDE.md] [Edit] [Dismiss]
+**Actions:** [Update CLAUDE.md] [View] [Edit] [Dismiss]
 
 ---
 
@@ -468,6 +504,59 @@ Appended to CLAUDE.md under "## Code Conventions"
 [Trigger removed from triggers file]
 ```
 
+#### View Trigger
+
+When user selects [View], display the full trigger content without processing:
+
+**For ADR triggers:**
+
+```
+## Viewing ADR Trigger
+
+**Title:** <trigger title>
+**Type:** technology-choice | library-selection | architecture
+**Confidence:** high | medium | low
+**Source:** Issue #<issue>, Phase <phase>
+**Created:** <createdAt>
+
+### Decision
+<trigger decision>
+
+### Rationale
+<trigger rationale>
+
+### Alternatives (if present)
+- <alternative 1>
+- <alternative 2>
+
+---
+**Actions:** [Create ADR] [Edit] [Dismiss] [Back to list]
+```
+
+**For Convention triggers:**
+
+```
+## Viewing Convention Trigger
+
+**Title:** <trigger title>
+**Type:** naming | structure | pattern | practice
+**Confidence:** high | medium | low
+**Source:** Issue #<issue>, Phase <phase>
+**Created:** <createdAt>
+
+### Pattern
+<trigger pattern>
+
+### Examples
+- `<example 1>`
+- `<example 2>`
+
+---
+**Actions:** [Update CLAUDE.md] [Edit] [Dismiss] [Back to list]
+```
+
+The [View] action is read-only - it just displays content. User can then choose another action or go back to the list.
+
 #### Edit Trigger
 
 When user selects [Edit], allow modifying the trigger details before processing.
@@ -667,6 +756,60 @@ Dismissed:
   1 convention trigger removed
 
 All items and triggers cleared.
+```
+
+### --approve-all-docs
+
+Process all triggers: create ADRs for all ADR triggers and update CLAUDE.md for all convention triggers:
+
+```
+Processing all documentation triggers...
+
+ADRs Created:
+  Created .tiki/adr/0005-use-jwt-for-authentication.md
+  Created .tiki/adr/0006-postgresql-for-primary-database.md
+
+CLAUDE.md Updates:
+  Added: Error response format convention
+  Added: API versioning convention
+
+Summary:
+  2 ADRs created
+  2 conventions added to CLAUDE.md
+
+All documentation triggers processed.
+```
+
+Note: This processes ALL triggers regardless of confidence level (unlike --create-all which only processes high-confidence ADR triggers).
+
+### --dismiss-all-adr
+
+Dismiss only ADR triggers, leaving queue items and convention triggers:
+
+```
+Dismissing all ADR triggers...
+
+Dismissed:
+  - Use JWT for authentication
+  - PostgreSQL for primary database
+
+2 ADR triggers dismissed.
+Queue items and convention triggers unchanged.
+```
+
+### --dismiss-all-claude
+
+Dismiss only convention triggers, leaving queue items and ADR triggers:
+
+```
+Dismissing all convention triggers...
+
+Dismissed:
+  - Error response format
+  - API versioning convention
+
+2 convention triggers dismissed.
+Queue items and ADR triggers unchanged.
 ```
 
 ## Integration with Execute
