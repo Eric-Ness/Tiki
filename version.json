@@ -1,7 +1,14 @@
 {
-  "version": "1.0.1",
+  "version": "1.0.2",
   "releaseDate": "2026-01-16",
   "changelog": [
+    {
+      "version": "1.0.2",
+      "date": "2026-01-16",
+      "changes": [
+        "Issue #14: Detect ADR and Update-Claude triggers during phase execution"
+      ]
+    },
     {
       "version": "1.0.1",
       "date": "2026-01-16",
