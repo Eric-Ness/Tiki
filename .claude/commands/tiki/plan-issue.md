@@ -3,7 +3,7 @@ type: prompt
 name: tiki:plan-issue
 description: Break a GitHub issue into executable phases. Use when planning work on an issue, creating a phased implementation plan, or before executing an issue.
 allowed-tools: Bash, Read, Write, Glob, Grep
-argument-hint: <issue-number> [additional-numbers...] [--no-research]
+argument-hint: <issue-number> [additional-numbers...] [--no-research] [--no-project]
 ---
 
 # Plan Issue
@@ -16,6 +16,7 @@ Take a GitHub issue and create a phased execution plan. Each phase should be sma
 /tiki:plan-issue 34
 /tiki:plan-issue 34 45    # Plan multiple issues together
 /tiki:plan-issue 34 --no-research  # Skip research integration
+/tiki:plan-issue 34 --no-project   # Skip PROJECT.md context loading
 ```
 
 ## Instructions
@@ -24,6 +25,71 @@ Take a GitHub issue and create a phased execution plan. Each phase should be sma
 
 ```bash
 gh issue view <number> --json number,title,body,state,labels,assignees,milestone
+```
+
+### Step 1.5: Load Project Context (if available)
+
+**Skip this step if `--no-project` flag is provided.**
+
+Check if PROJECT.md exists in the project root to load project-level context:
+
+```bash
+cat PROJECT.md 2>/dev/null
+```
+
+#### 1.5a. If PROJECT.md Exists
+
+Extract key sections to inform planning:
+
+1. **Vision & Goals** - Ensures phases align with project objectives
+2. **Technical Constraints** - Respects platform, performance, and security requirements
+3. **Tech Stack Preferences** - Uses preferred technologies and patterns
+4. **Success Criteria** - References project-level success metrics where applicable
+
+Store the project context for use in phase generation:
+
+```javascript
+const projectContext = {
+  hasProject: true,
+  name: extractSection(content, 'h1'),  // Project name from top heading
+  vision: extractSection(content, 'Vision'),
+  goals: extractSection(content, 'Goals'),
+  constraints: extractSection(content, 'Technical Constraints'),
+  techStack: extractSection(content, 'Tech Stack Preferences'),
+  patterns: extractSection(content, 'Patterns and Conventions'),
+  successCriteria: extractSection(content, 'Success Criteria'),
+  nonGoals: extractSection(content, 'Non-Goals')
+};
+```
+
+#### 1.5b. Display Project Context Detection
+
+**If PROJECT.md found:**
+
+```text
+## Project Context Detected
+
+**Project:** {Project Name}
+**Vision:** {First line of vision section}
+
+Key constraints that will inform planning:
+- {Constraint 1}
+- {Constraint 2}
+
+Tech stack preferences loaded: {language} / {framework} / {database}
+```
+
+**If PROJECT.md not found:**
+
+Display nothing (silent skip). The planning process continues normally without project context.
+
+Optionally, if this appears to be a greenfield project (no existing code structure), suggest:
+
+```text
+No PROJECT.md found. For new projects, consider running:
+/tiki:new-project
+
+This creates project context that improves planning quality.
 ```
 
 ### Step 2: Analyze the Issue
@@ -474,6 +540,51 @@ When research context is available, incorporate it into phase planning:
    - Add a phase note: "Note: Research is {N} days old. Consider refreshing before implementation."
    - Suggest `/tiki:research {topic} --refresh` in the plan output
 
+**Incorporating Project Context (if available from Step 1.5):**
+
+When project context is available from PROJECT.md, incorporate it into phase planning:
+
+1. **Align phases with project goals**
+
+   Ensure phase objectives support the project's stated goals:
+   - Reference relevant project goals in phase descriptions
+   - Verify phases don't contradict project non-goals
+
+2. **Respect technical constraints**
+
+   Use project constraints to guide implementation:
+   - Platform constraints → affect architecture decisions
+   - Performance requirements → inform verification criteria
+   - Security requirements → add security-focused verification steps
+
+3. **Apply tech stack preferences**
+
+   Use preferred technologies from PROJECT.md:
+   - Language/framework choices
+   - Database preferences
+   - Testing framework
+
+4. **Reference patterns and conventions**
+
+   Follow project-defined patterns:
+   - Folder structure conventions
+   - API design patterns (REST vs GraphQL)
+   - Code organization preferences
+
+5. **Add projectContext field to plan**
+
+   When PROJECT.md is loaded, include context in the plan:
+
+   ```json
+   {
+     "projectContext": {
+       "name": "ProjectName",
+       "constraintsApplied": ["GDPR compliance", "offline support"],
+       "techStackUsed": ["TypeScript", "React", "PostgreSQL"]
+     }
+   }
+   ```
+
 ### Step 5: Create the Plan File
 
 Create `.tiki/plans/issue-<number>.json` with this structure:
@@ -533,6 +644,13 @@ Create `.tiki/plans/issue-<number>.json` with this structure:
     "matched": ["react-query"],
     "keywords": ["react", "data-fetching", "state-management"],
     "staleWarnings": []
+  },
+  "projectContext": {
+    "name": "ProjectName",
+    "hasProject": true,
+    "constraintsApplied": ["GDPR compliance", "offline support"],
+    "techStackUsed": ["TypeScript", "React", "PostgreSQL"],
+    "patternsFollowed": ["REST API", "feature-based folders"]
   },
   "coverageMatrix": {
     "functional-1": { "phases": [1, 2], "tasks": [1, 3] },
@@ -601,13 +719,26 @@ Suggested actions when criteria are uncovered:
 
 ### Step 6: Display the Plan
 
-After creating the plan, display a summary showing research context (if available), success criteria before phases, which criteria each phase addresses, and a criteria coverage table:
+After creating the plan, display a summary showing project context (if available), research context (if available), success criteria before phases, which criteria each phase addresses, and a criteria coverage table:
 
 ```markdown
 ## Plan for Issue #34: Add user authentication
 
 **Phases:** 3
 **Parallelizable:** No
+
+### Project Context
+
+**Project:** TaskFlow
+**Vision:** A streamlined task management app for small teams
+
+Constraints applied:
+- GDPR compliance required
+- Must work offline
+
+Tech stack: TypeScript / React / PostgreSQL
+
+---
 
 ### Research Context
 
@@ -673,6 +804,42 @@ Plan saved to `.tiki/plans/issue-34.json`
 Ready to execute? Use `/tiki:execute 34`
 Want to adjust phases? Use `/tiki:discuss-phases 34`
 ```
+
+#### Project Context Display Rules
+
+**When PROJECT.md is found:**
+
+Display the Project Context section at the top of the plan summary:
+
+```markdown
+### Project Context
+
+**Project:** {Project Name}
+**Vision:** {First line of vision}
+
+Constraints applied:
+- {Constraint 1}
+- {Constraint 2}
+
+Tech stack: {language} / {framework} / {database}
+
+---
+```
+
+Include:
+
+1. Project name (from h1 heading)
+2. Vision (first line of Vision section)
+3. Key constraints that affect this issue
+4. Tech stack preferences being used
+
+**When PROJECT.md is not found:**
+
+Omit the Project Context section entirely (silent skip).
+
+**When --no-project flag is used:**
+
+Omit the Project Context section entirely. Do not display any project-related content.
 
 #### Research Context Display Rules
 

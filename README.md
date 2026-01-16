@@ -84,12 +84,102 @@ Runs each phase sequentially by spawning sub-agents. Each sub-agent gets:
 
 Review items discovered during execution (potential issues, questions, blockers). Create GitHub issues or dismiss items.
 
+## Greenfield Project Setup
+
+For new projects without existing GitHub issues, start with `/tiki:new-project` to establish project context before creating issues.
+
+### 1. Initialize Project
+
+```
+/tiki:new-project
+```
+
+Claude will ask about:
+
+- **Vision and goals** - What is this project trying to achieve?
+- **Target users** - Who will use this? What are their needs?
+- **Technical constraints** - Platform, performance, security requirements
+- **Tech preferences** - Language, framework, database, patterns
+- **Success criteria** - How will you know the project succeeded?
+- **Non-goals** - What is explicitly out of scope?
+
+This creates `PROJECT.md` in your project root and stores raw responses in `.tiki/project-config.json`.
+
+### 2. Create Initial Issues
+
+Based on your PROJECT.md, create GitHub issues:
+
+```
+/tiki:add-issue "Setup project structure"
+/tiki:add-issue "Implement user authentication"
+```
+
+### 3. Plan and Execute
+
+```
+/tiki:plan-issue 1
+/tiki:execute 1
+```
+
+PROJECT.md context is automatically loaded during planning, ensuring phases align with your vision and respect technical constraints.
+
+### PROJECT.md Format
+
+```markdown
+# Project Name
+
+## Vision
+What this project is trying to achieve.
+
+## Goals
+- Goal 1
+- Goal 2
+
+## Target Users
+Who will use this and their needs.
+
+## Technical Constraints
+- Platform constraints
+- Performance requirements
+- Security requirements
+
+## Tech Stack Preferences
+- Language: TypeScript
+- Framework: React
+- Database: PostgreSQL
+
+## Success Criteria
+- [ ] Measurable criterion 1
+- [ ] Measurable criterion 2
+
+## Non-Goals / Out of Scope
+- What we're NOT building
+```
+
+### How PROJECT.md Integrates with Planning
+
+When `/tiki:plan-issue` runs, it automatically:
+
+1. Detects PROJECT.md in the project root
+2. Loads vision, constraints, and tech preferences
+3. Displays "Project Context Detected" with key details
+4. Ensures phases align with project goals
+5. Uses preferred technologies from tech stack
+6. Adds `projectContext` to the plan file
+
+Use `--no-project` to skip PROJECT.md loading:
+
+```
+/tiki:plan-issue 34 --no-project
+```
+
 ## Commands Reference
 
 ### Core Workflow
 
 | Command | Description |
 |---------|-------------|
+| `/tiki:new-project` | Initialize a new project with vision, goals, and technical context (creates PROJECT.md) |
 | `/tiki:add-issue [title]` | Create a new issue with intelligent prompting |
 | `/tiki:get-issue <number>` | Fetch and display a GitHub issue |
 | `/tiki:review-issue <number>` | Review an issue before planning (identify concerns, alternatives) |
@@ -380,6 +470,7 @@ All Tiki state is stored in the `.tiki/` folder:
 ```
 .tiki/
 ├── config.json          # Project settings
+├── project-config.json  # Raw responses from /new-project questionnaire
 ├── plans/               # Phase plans for issues
 │   └── issue-34.json
 ├── state/               # Current execution state
