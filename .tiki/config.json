@@ -20,6 +20,6 @@
   "autoFix": {
     "enabled": "prompt",
     "maxAttempts": 3,
-    "strategies": ["direct", "diagnostic-agent"]
+    "strategies": ["direct", "contextual-analysis", "approach-review"]
   }
 }

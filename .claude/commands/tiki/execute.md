@@ -59,7 +59,15 @@ Extract auto-fix settings:
 
 - `autoFix.enabled`: true | false | "prompt" (default: "prompt")
 - `autoFix.maxAttempts`: max fix attempts per phase (default: 3)
-- `autoFix.strategies`: array of ["direct", "diagnostic-agent"] (default: both)
+- `autoFix.strategies`: array of ["direct", "contextual-analysis", "approach-review"] (default: all three)
+
+Auto-fix uses progressive escalation through three strategies:
+
+1. **direct**: Pattern-matched inline fix (fast, no sub-agent)
+2. **contextual-analysis**: Diagnostic agent with git/dependency context
+3. **approach-review**: Full issue context, can signal fundamental approach issues
+
+Each strategy provides deeper analysis than the previous one. When a fix attempt fails, the next strategy in the sequence is tried until all configured strategies are exhausted.
 
 If `autoFix.enabled` is "prompt", the user will be asked on first verification failure whether to enable auto-fix.
 
@@ -318,7 +326,7 @@ Then display the auto-fix attempt header:
 ```text
 🔧 Auto-fix attempt {N}/{maxAttempts}:
   Issue: <error message summary>
-  Strategy: <direct|diagnostic-agent>
+  Strategy: <direct|contextual-analysis|approach-review>
 ```
 
 ##### Step 1: Classify Error Type
@@ -362,7 +370,7 @@ Where placeholders are:
 - `{brief_error_description}` is a concise summary of the error (max ~50 chars)
 - `{error_file}` is the path to the file where the error originated
 - `{error_line}` is the line number (use "?" if unknown)
-- `{selected_strategy}` is either "direct" or "diagnostic-agent"
+- `{selected_strategy}` is "direct", "contextual-analysis", or "approach-review"
 
 ##### Step 2: Check Previous Fix Attempts
 
@@ -405,15 +413,17 @@ No more automatic fixes will be attempted.
 
 **Strategy Selection and Escalation:**
 
-When auto-fix is still allowed, select the fix strategy:
+When auto-fix is still allowed, select the fix strategy using three-tier escalation:
 
-1. **First attempt**: Use "direct" strategy (simple, inline fix without spawning sub-agent)
-2. **If direct strategy failed previously** on the same error type: Escalate to "diagnostic-agent" strategy
-3. **Avoid repeating the same strategy** that failed on an identical error
+1. **Attempt 1 - Direct Fix**: Use "direct" strategy (simple, inline fix without spawning sub-agent)
+2. **Attempt 2 - Contextual Analysis**: Use "contextual-analysis" strategy (spawn diagnostic agent WITH additional file and test context)
+3. **Attempt 3 - Approach Review**: Use "approach-review" strategy (spawn diagnostic agent with full issue context and ability to signal fundamental approach issues)
 
-The "direct" strategy attempts a simple fix inline based on the error classification. It's fast but may miss complex issues.
+The escalation tiers provide progressively deeper analysis:
 
-The "diagnostic-agent" strategy spawns a sub-agent via the Task tool to perform deeper analysis. Use this when direct fixes have failed, as it can identify root causes that simple pattern matching misses.
+- **direct**: Pattern-matched inline fix. Fast but may miss complex issues.
+- **contextual-analysis**: Spawns a sub-agent via the Task tool to analyze the error with additional context about related files and test patterns. Use when direct fixes have failed, as it can identify root causes that simple pattern matching misses.
+- **approach-review**: Spawns a sub-agent with the full issue context and ability to signal that the implementation approach itself may be flawed. Use when contextual analysis has failed, suggesting the problem may be architectural rather than localized.
 
 ##### Step 3: Check Debug History
 
@@ -446,7 +456,11 @@ After gathering all context (error type, previous attempts, debug history), proc
 
 ##### Step 4: Generate and Apply Fix
 
-Based on the selected strategy, generate and apply a fix for the error.
+Based on the selected strategy, route to the appropriate fix approach:
+
+- **"direct"** → Apply inline fix using pattern matching (see Strategy: Direct Fix below)
+- **"contextual-analysis"** → Spawn diagnostic agent with file and test context (see Strategy: Contextual Analysis below)
+- **"approach-review"** → Spawn diagnostic agent with full issue context (see Strategy: Approach Review below)
 
 **Progress Indicators:**
 
@@ -509,19 +523,64 @@ For direct fix:
 3. Apply the appropriate fix pattern inline
 4. Document the fix applied for recording in Step 5
 
-**Strategy: Diagnostic Agent** (for complex errors)
+**Strategy: Contextual Analysis** (attempt 2 - enhanced diagnostic)
 
-When direct fixes have failed or the error is complex, spawn a diagnostic sub-agent via the Task tool to perform deeper analysis.
+When the direct fix has failed (attempt 1), spawn a diagnostic sub-agent via the Task tool to perform deeper analysis with additional context about related files, git history, and test patterns.
+
+**Step 1: Gather Git Context**
+
+Before spawning the diagnostic agent, gather recent changes to the error file:
+
+```bash
+# Check diff size first
+diff_size=$(git diff HEAD~3 -- {error_file} 2>/dev/null | wc -l)
+if [ "$diff_size" -gt 150 ]; then
+    # Large diff: show stat summary + last 100 lines
+    git diff HEAD~3 --stat -- {error_file}
+    git diff HEAD~3 -- {error_file} | tail -100
+else
+    # Small diff: show full content
+    git diff HEAD~3 -- {error_file}
+fi
+```
+
+Where `{error_file}` is the file path extracted from the error. If the error file cannot be determined, skip git context gathering.
+
+**Step 2: Identify Related Files**
+
+Use language-aware grep patterns to find files that import or depend on the error file:
+
+For TypeScript/JavaScript files (`.ts`, `.tsx`, `.js`, `.jsx`):
+```bash
+# Extract basename without extension for import matching
+basename=$(basename {error_file} | sed 's/\.[^.]*$//')
+grep -r "from.*['\"].*${basename}['\"]" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" . 2>/dev/null | head -10
+```
+
+For Python files (`.py`):
+```bash
+# Extract module name from file path
+module=$(basename {error_file} .py)
+grep -r "from ${module} import\|import ${module}" --include="*.py" . 2>/dev/null | head -10
+```
+
+For other languages: Skip related files identification or use generic grep if helpful.
+
+**Step 3: Get Phase Files Context**
+
+Extract the list of other files from the current phase's `files` array in the plan. These are files being modified together and may have interdependencies.
+
+**Step 4: Spawn Diagnostic Agent**
 
 Task tool call format:
 ```text
 Task tool call:
 - subagent_type: "general-purpose"
-- prompt: <Diagnostic Agent Prompt - see template below>
-- description: "Auto-fix: Diagnose and fix {error_type} in phase N of issue #X"
+- prompt: <Contextual Analysis Prompt - see template below>
+- description: "Auto-fix: Contextual analysis of {error_type} in phase N of issue #X"
 ```
 
-**Diagnostic Agent Prompt Template:**
+**Contextual Analysis Prompt Template:**
 
 ```text
 You are a diagnostic agent fixing a verification failure for Phase {phase_number} of Issue #{issue_number}.
@@ -538,6 +597,27 @@ You are a diagnostic agent fixing a verification failure for Phase {phase_number
 ## Phase Context
 {phase_title}
 {phase_content}
+
+## Recent Changes to Error File
+
+Consider if recent changes introduced the issue. Here are the changes from the last 3 commits:
+
+{git_diff_output}
+<!-- Output from git diff HEAD~3 command, truncated if >150 lines -->
+
+## Files That Import This Module
+
+Check if related files have inconsistent types or interfaces:
+
+{related_files_output}
+<!-- Output from language-aware grep command -->
+
+## Other Files in This Phase
+
+These files are being modified together in this phase and may have interdependencies:
+
+{phase_files_list}
+<!-- List from phase's files array in the plan -->
 
 ## Previous Fix Attempts
 {previous_attempts_summary}
@@ -568,6 +648,8 @@ Examples:
 - "⏳ Diagnostic analysis: Checking import paths in auth module"
 - "⏳ Diagnostic analysis: Tracing undefined value through call stack"
 - "⏳ Diagnostic analysis: Comparing expected vs actual types"
+- "⏳ Diagnostic analysis: Reviewing recent changes for regression"
+- "⏳ Diagnostic analysis: Checking type consistency across importing files"
 
 Before making changes, announce:
 
@@ -580,14 +662,18 @@ Examples:
 - "⏳ Applying fix: Adding middleware initialization in app.ts"
 - "⏳ Applying fix: Updating return type to include null case"
 - "⏳ Applying fix: Fixing circular dependency between modules"
+- "⏳ Applying fix: Reverting problematic change from recent commit"
+- "⏳ Applying fix: Synchronizing interface across dependent files"
 
 **Analysis Steps:**
 
 1. Analyze the error and its root cause
-2. Consider why previous fix attempts failed (if any)
-3. Look for patterns the direct fix strategy would have missed
-4. Apply a fix to resolve the error
-5. Verify the fix works locally if possible
+2. **Consider if recent changes introduced the issue** - review the git diff output
+3. **Check if related files have inconsistent types or interfaces** - review importing files
+4. Consider why previous fix attempts failed (if any)
+5. Look for patterns the direct fix strategy would have missed
+6. Apply a fix to resolve the error
+7. Verify the fix works locally if possible
 
 ## Output Format
 
@@ -600,7 +686,209 @@ AUTOFIX_FILES: [comma-separated list of files modified]
 If the fix fails, explain why and what additional context would help.
 ```
 
-The diagnostic agent has access to all file tools (Read, Write, Edit, Grep, Glob) and can perform comprehensive analysis to identify root causes that simple pattern matching might miss.
+The contextual analysis agent has access to all file tools (Read, Write, Edit, Grep, Glob) and can perform comprehensive analysis to identify root causes that simple pattern matching might miss.
+
+**Strategy: Approach Review** (attempt 3 - fundamental review)
+
+When contextual analysis has failed (attempt 2), spawn a diagnostic sub-agent with full issue context and the ability to signal that the implementation approach itself may need to change.
+
+Task tool call format:
+```text
+Task tool call:
+- subagent_type: "general-purpose"
+- prompt: <Approach Review Prompt - see template below>
+- description: "Auto-fix: Approach review for {error_type} in phase N of issue #X"
+```
+
+**Step 1: Gather Issue Context**
+
+Before spawning the diagnostic agent, gather the full issue context from the plan file:
+
+```bash
+# Read the plan file to extract issue details and fix history
+cat .tiki/plans/issue-{issue_number}.json
+```
+
+Extract from the plan file:
+- `issue.title` - The issue title
+- `issue.body` - The full issue description/requirements
+- `successCriteria` - All success criteria from the plan
+- Current phase's `content` - The full phase instructions
+- Current phase's `fixAttempts` - All previous fix attempt records
+
+**Step 2: Format Previous Fix Attempts**
+
+Build a summary of all previous fix attempts from the phase's `fixAttempts` array:
+
+```text
+### Previous Fix Attempts
+
+| # | Strategy | Error Type | Action Taken | Result |
+|---|----------|------------|--------------|--------|
+| 1 | {strategy_1} | {error_type_1} | {fix_applied_1} | {result_1} |
+| 2 | {strategy_2} | {error_type_2} | {fix_applied_2} | {result_2} |
+
+**Attempt 1 ({strategy_1})**: {detailed_description_from_fixApplied_field}
+**Attempt 2 ({strategy_2})**: {detailed_description_from_fixApplied_field}
+```
+
+**Step 3: Spawn Diagnostic Agent**
+
+Task tool call format:
+```text
+Task tool call:
+- subagent_type: "general-purpose"
+- prompt: <Approach Review Prompt - see template below>
+- description: "Auto-fix: Approach review for {error_type} in phase N of issue #X"
+```
+
+**Approach Review Prompt Template:**
+
+```text
+You are a diagnostic agent performing an approach review for Phase {phase_number} of Issue #{issue_number}.
+
+This is the third-tier analysis strategy, used after direct fixes and contextual analysis have both failed. You have access to the full issue context and can determine if the implementation approach itself is fundamentally wrong.
+
+## Original Issue Requirements
+
+### Issue Title
+{issue_title}
+
+### Issue Description
+{issue_body}
+<!-- Full issue body/description from plan file -->
+
+### Success Criteria
+{success_criteria}
+<!-- All success criteria from the plan, formatted as a list:
+- [functional] Criterion 1
+- [functional] Criterion 2
+- [testing] Criterion 3
+- etc.
+-->
+
+## Current Phase Context
+
+### Phase Title
+{phase_title}
+
+### Phase Intent
+{phase_content}
+<!-- Full phase content/instructions from the plan -->
+
+### Files Being Modified
+{phase_files_list}
+
+## Error Context
+
+- **Error Type**: {error_type}
+- **Error Message**: {error_message}
+- **Error File**: {error_file}
+- **Error Line**: {error_line} (if available)
+
+### Stack Trace
+{stack_trace}
+
+## Previous Fix Attempts
+
+The following fixes have already been attempted and failed:
+
+| # | Strategy | Error Type | Action Taken | Result |
+|---|----------|------------|--------------|--------|
+{fix_attempts_table}
+
+### Detailed Attempt History
+
+{fix_attempts_details}
+<!-- For each attempt:
+**Attempt N ({strategy})**: {fixApplied description}
+- Error: {errorMessage}
+- File: {errorFile}
+- Result: {verificationResult}
+-->
+
+## Why This Escalation
+
+Both direct fix and contextual analysis strategies have failed. This suggests the problem may be:
+- Architectural rather than localized
+- A conflict between the implementation approach and the requirements
+- A fundamental misunderstanding of what needs to be built
+
+## Instructions
+
+**IMPORTANT: Consider whether the implementation approach is fundamentally wrong.**
+
+Before attempting another fix, review:
+1. Do the original issue requirements align with what was implemented?
+2. Are the fix attempts failing for the same root cause repeatedly?
+3. Would a different architectural approach solve this more cleanly?
+4. Is there a mismatch between the success criteria and the implementation strategy?
+
+**Progress Indicators:**
+
+Announce your analysis steps:
+
+```text
+⏳ Approach review: <what you're analyzing>
+```
+
+Examples:
+- "⏳ Approach review: Comparing implementation against success criteria"
+- "⏳ Approach review: Checking if architectural pattern matches requirements"
+- "⏳ Approach review: Analyzing why previous fixes keep failing"
+- "⏳ Approach review: Evaluating alternative implementation strategies"
+
+## Output Format
+
+You MUST output one of the following:
+
+### Option 1: APPROACH_ISSUE (Fundamental Problem Detected)
+
+If you determine the implementation approach is fundamentally wrong, output:
+
+```text
+APPROACH_ISSUE: <explanation of why the approach is wrong and what should change>
+```
+
+Use APPROACH_ISSUE when:
+- The fix attempts keep failing for the same root cause
+- The implementation strategy conflicts with the original requirements
+- A different architectural approach is needed
+- The phase content/instructions themselves may need revision
+- Re-planning this phase would be more effective than more fix attempts
+
+This will pause execution for human review rather than continuing to attempt fixes.
+
+Example APPROACH_ISSUE outputs:
+- "APPROACH_ISSUE: The phase implements synchronous file processing but the requirements call for async streaming. Need to redesign with event-based architecture."
+- "APPROACH_ISSUE: Tests keep failing because the middleware is being applied after route handlers. The phase plan should be revised to apply middleware before routes are registered."
+- "APPROACH_ISSUE: The current approach uses polling but the success criteria require real-time updates. Should use WebSocket or SSE instead."
+
+### Option 2: AUTOFIX_RESULT (Fix Applied)
+
+If you can identify and apply a fix despite the complexity, output:
+
+```text
+AUTOFIX_RESULT: success | failure
+AUTOFIX_ACTION: [description of what fix was applied]
+AUTOFIX_FILES: [comma-separated list of files modified]
+```
+
+Only use AUTOFIX_RESULT if you are confident the fix will resolve the issue. Given that two previous strategies have failed, be cautious about attempting another fix unless you have identified a clear root cause that was missed.
+
+## Decision Guidance
+
+Choose APPROACH_ISSUE when:
+- You see a pattern in the failures pointing to a design issue
+- The requirements and implementation seem misaligned
+- More fixes would just be "whack-a-mole" without addressing root cause
+- You would need to change the fundamental structure, not just fix a bug
+
+Choose AUTOFIX_RESULT when:
+- You found a clear root cause that previous attempts missed
+- The fix is substantial but still within the current approach
+- You are highly confident this fix will resolve the issue
+```
 
 ##### Step 5: Record Fix Attempt
 
@@ -620,7 +908,7 @@ Update the phase in `.tiki/plans/issue-N.json`:
   "errorType": "{classified_error_type}",
   "errorMessage": "{error_message}",
   "errorFile": "{error_file_path}",
-  "strategy": "{direct|diagnostic-agent}",
+  "strategy": "{direct|contextual-analysis|approach-review}",
   "fixApplied": "{description_of_fix}",
   "verificationResult": "{pending}",
   "relatedDebugSession": "{session_id_or_null}",
@@ -690,6 +978,71 @@ or:
 ✗ Verification failed: <error summary>
 ```
 
+**APPROACH_ISSUE Path (Check First):**
+
+Before checking success or failure paths, first check if the diagnostic agent (from approach-review strategy) output an APPROACH_ISSUE marker. This indicates a fundamental problem with the implementation approach rather than a fixable bug.
+
+When the approach-review diagnostic agent returns, scan its output for `APPROACH_ISSUE:`. If found:
+
+1. Extract the explanation text following `APPROACH_ISSUE:`
+2. Do NOT treat this as a normal fix attempt failure
+3. Do NOT continue to retry with another strategy
+4. Record a special fix attempt entry (see below)
+5. Update the phase status to indicate approach review is needed
+6. Display the special notification and pause execution
+
+**Recording APPROACH_ISSUE in fixAttempts:**
+
+When APPROACH_ISSUE is detected, record it in the phase's fixAttempts array with a special marker:
+
+```json
+{
+  "id": "{NN}-fix-{MM}",
+  "attemptNumber": {current_attempt_number},
+  "errorType": "{original_error_type}",
+  "errorMessage": "{original_error_message}",
+  "errorFile": "{original_error_file}",
+  "strategy": "approach-review",
+  "fixApplied": "Diagnostic agent identified fundamental approach issue",
+  "verificationResult": "approach-issue",
+  "approachIssueExplanation": "{explanation from APPROACH_ISSUE output}",
+  "relatedDebugSession": null,
+  "timestamp": "{ISO_8601_timestamp}"
+}
+```
+
+Note the special fields:
+- `verificationResult` is set to `"approach-issue"` (not "success" or "failure")
+- `approachIssueExplanation` contains the full explanation from the diagnostic agent
+
+**APPROACH_ISSUE Notification:**
+
+Display this special notification when APPROACH_ISSUE is detected:
+
+```text
+## ⚠️ Implementation Approach Issue Detected
+
+Phase {N} may have a fundamental approach problem.
+
+### Analysis
+
+{explanation from APPROACH_ISSUE}
+
+### Recommendation
+
+The diagnostic agent suggests the implementation approach needs to change,
+rather than applying more fixes to the current approach.
+
+### Options
+
+- Review and revise the approach, then retry: `/tiki:execute {number} --from {N}`
+- Get more details: `/tiki:debug {number}`
+- Re-plan this phase: `/tiki:discuss-phases {number}`
+- Skip this phase: `/tiki:skip-phase {N}`
+```
+
+After displaying this notification, pause execution. Do not proceed to the success or failure paths.
+
 **Success Path:**
 
 When the fix succeeds and verification passes:
@@ -717,8 +1070,8 @@ When the fix fails but attempts remain:
 1. Update the fixAttempts record with `verificationResult: "failure"`
 2. Increment the attempt counter
 3. Escalate strategy if appropriate:
-   - If "direct" strategy failed → try "diagnostic-agent" on next attempt
-   - If same error persists with same strategy → escalate to diagnostic-agent
+   - If "direct" strategy failed (attempt 1) → try "contextual-analysis" on attempt 2
+   - If "contextual-analysis" strategy failed (attempt 2) → try "approach-review" on attempt 3
 4. Log the retry attempt:
 
    ```text
@@ -748,14 +1101,14 @@ Phase {N} could not be automatically fixed after {maxAttempts} attempts.
 | # | Strategy | Error | Action Taken | Result |
 |---|----------|-------|--------------|--------|
 | 1 | direct | {error_type} | {fix_description_1} | ✗ |
-| 2 | diagnostic-agent | {error_type} | {fix_description_2} | ✗ |
-| 3 | diagnostic-agent | {error_type} | {fix_description_3} | ✗ |
+| 2 | contextual-analysis | {error_type} | {fix_description_2} | ✗ |
+| 3 | approach-review | {error_type} | {fix_description_3} | ✗ |
 
 ### What Was Tried
 
 1. **Attempt 1 (direct)**: {detailed_description_of_first_fix_attempt}
-2. **Attempt 2 (diagnostic-agent)**: {detailed_description_of_second_fix_attempt}
-3. **Attempt 3 (diagnostic-agent)**: {detailed_description_of_third_fix_attempt}
+2. **Attempt 2 (contextual-analysis)**: {detailed_description_of_second_fix_attempt}
+3. **Attempt 3 (approach-review)**: {detailed_description_of_third_fix_attempt}
 
 ### Manual Intervention Required
 
@@ -792,7 +1145,7 @@ The following example shows the full notification output during an auto-fix cycl
 🔧 Auto-fix attempt 2/3:
   Issue: test-failure - Token still undefined after mock setup
   File: src/middleware/auth.test.ts:45
-  Strategy: diagnostic-agent
+  Strategy: contextual-analysis
 
 ⏳ Diagnostic analysis: Tracing token value through middleware chain
 ⏳ Diagnostic analysis: Checking mock injection timing
@@ -802,7 +1155,7 @@ The following example shows the full notification output during an auto-fix cycl
 🔄 Re-running verification...
 ✓ All verifications passed
 
-✓ Auto-fix successful (attempt 2/3, strategy: diagnostic-agent)
+✓ Auto-fix successful (attempt 2/3, strategy: contextual-analysis)
 
 → Continuing to Phase 02
 ```
@@ -1047,7 +1400,7 @@ Each phase in the plan file can contain a `fixAttempts` array:
       "errorType": "test-failure",
       "errorMessage": "TypeError: Cannot read property 'user' of undefined",
       "errorFile": "src/middleware/auth.ts",
-      "strategy": "diagnostic-agent",
+      "strategy": "contextual-analysis",
       "fixApplied": "Spawned diagnostic agent which identified missing middleware initialization",
       "verificationResult": "success",
       "relatedDebugSession": "issue-34-auth-middleware",
@@ -1080,10 +1433,10 @@ This format allows easy sorting and identification of fix attempts across phases
 | `errorType` | string | Category of error (e.g., "test-failure", "syntax-error", "type-error", "runtime-error") |
 | `errorMessage` | string | The actual error message that triggered the fix attempt |
 | `errorFile` | string | File path where the error originated (if identifiable) |
-| `strategy` | string | Fix strategy used: "direct" or "diagnostic-agent" |
+| `strategy` | string | Fix strategy used: "direct", "contextual-analysis", or "approach-review" |
 | `fixApplied` | string | Description of the fix that was applied |
 | `verificationResult` | string | Outcome: "success" or "failure" |
-| `relatedDebugSession` | string\|null | ID of related debug session if diagnostic-agent was used |
+| `relatedDebugSession` | string\|null | ID of related debug session if contextual-analysis or approach-review was used |
 | `timestamp` | string | ISO 8601 timestamp when the fix was attempted |
 
 ### Persistence
