@@ -618,15 +618,21 @@ After the sub-agent completes:
 
 1. **Extract summary** - Look for "SUMMARY:" in the response
 2. **Extract discovered items** - Look for "DISCOVERED:" items
-3. **Update phase in plan**:
+3. **Extract trigger markers** - Look for "ADR_TRIGGER:" and "CONVENTION_TRIGGER:" markers
+   - Parse the JSON content following each trigger marker
+   - Validate the JSON contains required fields (triggerType, decision/pattern, rationale, confidence)
+4. **Update phase in plan**:
    - Set `status: "completed"`
    - Set `summary: <extracted summary>`
    - Set `completedAt: <current timestamp>`
-4. **Update state file**:
+5. **Update state file**:
    - Add to `completedPhases` array
    - Update `lastActivity`
-5. **Add discovered items to queue** (if any):
+6. **Add discovered items to queue** (if any):
    - Append to `.tiki/queue/pending.json`
+7. **Add triggers to pending triggers** (if any):
+   - Create `.tiki/triggers/` directory if it doesn't exist
+   - Append to `.tiki/triggers/pending.json` with enriched schema (see Trigger Items section below)
 
 #### 4i. Report Progress
 
@@ -708,6 +714,39 @@ After implementation, run:
 
 All tests must pass before this phase is considered complete.
 -->
+
+## Trigger Detection
+
+During execution, watch for decisions or patterns that should be captured for project knowledge.
+
+### ADR Triggers
+When you make or encounter a significant architectural or technology decision, emit:
+```
+ADR_TRIGGER: {"triggerType": "architecture|technology|library|pattern", "decision": "<what was decided>", "rationale": "<why this choice>", "alternatives": ["<other options considered>"], "confidence": "high|medium|low"}
+```
+
+Emit ADR triggers when:
+- Choosing between competing libraries or frameworks
+- Selecting architectural patterns (e.g., repository pattern, event sourcing)
+- Making significant trade-off decisions
+- Establishing conventions that affect multiple components
+
+### Convention Triggers
+When you discover or establish a project convention/pattern, emit:
+```
+CONVENTION_TRIGGER: {"triggerType": "naming|structure|pattern|practice", "pattern": "<the convention>", "rationale": "<why this is a good convention>", "examples": ["<code examples>"], "confidence": "high|medium|low"}
+```
+
+Emit CONVENTION triggers when:
+- Discovering existing naming conventions in the codebase
+- Establishing new patterns for consistency
+- Finding implicit rules that should be documented
+- Identifying best practices specific to this project
+
+### Confidence Levels
+- **high**: Clear, deliberate decision with strong rationale
+- **medium**: Reasonable choice but alternatives could work
+- **low**: Tentative decision that may need revisiting
 
 ## Instructions
 1. Execute this phase completely - make actual code changes
@@ -867,6 +906,88 @@ When a sub-agent discovers items, add to `.tiki/queue/pending.json`:
   ]
 }
 ```
+
+## Trigger Items
+
+When a sub-agent emits ADR_TRIGGER or CONVENTION_TRIGGER markers, store them in `.tiki/triggers/pending.json`:
+
+```json
+{
+  "triggers": [
+    {
+      "id": "trg-001",
+      "triggerType": "architecture",
+      "category": "adr",
+      "title": "Repository pattern for data access",
+      "details": {
+        "decision": "Use repository pattern to abstract database operations",
+        "rationale": "Enables testing with mock repositories and future database migrations",
+        "alternatives": ["Direct database queries", "Active Record pattern"]
+      },
+      "confidence": "high",
+      "source": {
+        "issue": 34,
+        "phase": 2
+      },
+      "createdAt": "2026-01-10T11:00:00Z"
+    },
+    {
+      "id": "trg-002",
+      "triggerType": "naming",
+      "category": "convention",
+      "title": "Use camelCase for function names",
+      "details": {
+        "pattern": "All exported functions use camelCase naming",
+        "rationale": "Consistent with existing codebase and JavaScript conventions",
+        "examples": ["getUserById", "createAuthToken", "validateRequest"]
+      },
+      "confidence": "high",
+      "source": {
+        "issue": 34,
+        "phase": 3
+      },
+      "createdAt": "2026-01-10T12:00:00Z"
+    }
+  ]
+}
+```
+
+### Trigger Schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique identifier in `trg-NNN` format (sequential) |
+| `triggerType` | string | Subtype: "architecture", "technology", "library", "pattern" (for ADR) or "naming", "structure", "pattern", "practice" (for convention) |
+| `category` | string | Either "adr" or "convention" indicating the trigger source |
+| `title` | string | Brief descriptive title for the trigger |
+| `details` | object | Original trigger payload containing decision/pattern, rationale, alternatives/examples |
+| `confidence` | string | Confidence level: "high", "medium", or "low" |
+| `source` | object | Issue number and phase where trigger was detected |
+| `createdAt` | string | ISO 8601 timestamp when trigger was captured |
+
+### Trigger ID Generation
+
+Trigger IDs use sequential numbering with the format `trg-NNN`:
+- Read existing triggers from `.tiki/triggers/pending.json`
+- Find the highest existing ID number
+- Increment by 1 for each new trigger
+- Zero-pad to 3 digits (e.g., `trg-001`, `trg-002`, `trg-015`)
+
+### Processing Triggers
+
+When extracting triggers from sub-agent response:
+
+1. Search for `ADR_TRIGGER:` followed by JSON object
+2. Search for `CONVENTION_TRIGGER:` followed by JSON object
+3. For each found trigger:
+   - Parse the JSON payload
+   - Set `category` based on marker type ("adr" for ADR_TRIGGER, "convention" for CONVENTION_TRIGGER)
+   - Generate unique `id`
+   - Generate `title` from the decision/pattern field
+   - Store original fields in `details` object
+   - Add `source` with current issue and phase
+   - Add `createdAt` timestamp
+4. Append all triggers to `.tiki/triggers/pending.json`
 
 ## Error Handling
 
