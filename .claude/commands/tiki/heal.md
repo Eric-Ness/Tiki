@@ -84,7 +84,49 @@ npm run build 2>&1
 
 ### Step 4: Display Diagnosis
 
+Before displaying the diagnosis, check for similar past debug sessions that might help:
+
+#### 4a. Check Debug History
+
+1. Read `.tiki/debug/index.json` if it exists
+2. Search for sessions matching:
+   - Error message patterns (e.g., "Property X does not exist")
+   - Affected file (e.g., "auth.ts")
+   - Error type keywords (e.g., "typescript", "compilation")
+3. Filter to resolved sessions (they have solutions)
+4. Sort by relevance score
+
+#### 4b. Display Related Sessions
+
+If similar resolved sessions are found, include them in the diagnosis:
+
+```text
+## Heal Analysis: Issue #34, Phase 2
+
+### Related Past Debug Sessions
+
+Similar errors were debugged before:
+
+| Session | Root Cause | Solution |
+|---------|------------|----------|
+| issue-12-request-type | Missing Express type extension | Created express.d.ts with Request interface |
+| issue-8-auth-middleware | Middleware not typed correctly | Added AuthenticatedRequest type |
+
+View details: `/tiki:debug show issue-12-request-type`
+
+---
+
+### Error Summary
+**Type:** TypeScript compilation error
+**File:** src/routes/auth.ts:45
+**Message:** Property 'user' does not exist on type 'Request'
 ```
+
+If no similar sessions found, proceed with diagnosis without the "Related Past Debug Sessions" section.
+
+#### 4c. Standard Diagnosis Output
+
+```text
 ## Heal Analysis: Issue #34, Phase 2
 
 ### Error Summary

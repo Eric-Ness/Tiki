@@ -20,9 +20,115 @@ Start a systematic debugging session with hypothesis tracking and solution docum
 /tiki:debug 42 --resume              # Resume specific issue's debug session
 /tiki:debug list                     # List all debug sessions
 /tiki:debug show <session>           # Show specific session details
+/tiki:debug --search "keyword"       # Search past debug sessions
+/tiki:debug --search "error" --status resolved    # Search with status filter
+/tiki:debug --search "auth" --file "login.ts"     # Search with file filter
 ```
 
 ## Instructions
+
+### Step 0: Check for Similar Past Sessions
+
+Before starting a new debug session, check if similar issues have been debugged before. This step runs automatically when starting a new session (not when resuming, listing, or showing).
+
+#### 0a. Load Debug Index
+
+```bash
+# Check if index exists
+if [ -f .tiki/debug/index.json ]; then
+  # Read and parse the index
+  cat .tiki/debug/index.json
+fi
+```
+
+If no index exists or no sessions exist, skip to Step 1.
+
+#### 0b. Extract Search Terms
+
+From the current context, extract terms to match against past sessions:
+
+1. **From issue (if issue-linked):**
+   - Issue title words
+   - Error messages in issue body
+   - File paths mentioned
+
+2. **From symptom description (if untracked):**
+   - Key words from the description
+   - Error patterns (e.g., "500", "undefined", "timeout")
+
+3. **From error output (if provided):**
+   - Error type (TypeError, Error, etc.)
+   - Error message
+   - First line of stack trace
+
+#### 0c. Calculate Similarity Scores
+
+For each session in the index, calculate a relevance score:
+
+| Match Type | Points |
+|------------|--------|
+| Exact error message match | +10 |
+| Partial error pattern match | +5 |
+| Same affected file | +3 per file |
+| Keyword overlap | +2 per keyword |
+| Same linked issue | +8 |
+| Resolved session bonus | +2 |
+| Recent session bonus (< 30 days) | +1 |
+| Archived session penalty | -3 |
+
+**Minimum threshold:** 5 points to be considered "similar"
+
+#### 0d. Display Similar Sessions
+
+If similar sessions are found (score >= 5), display them before proceeding:
+
+```text
+## Related Past Debug Sessions Found
+
+Before starting a new session, you may want to review these similar past debug sessions:
+
+### 1. issue-42-api-500-error (Score: 17) [RESOLVED]
+   **Root Cause:** Connection pool exhausted due to leak in error handler
+   **Solution:** Added finally block for connection cleanup
+   **Matching:** Error pattern "500", file "api/users.ts"
+   View: `/tiki:debug show issue-42-api-500-error`
+
+### 2. issue-23-null-check-missing (Score: 8) [RESOLVED]
+   **Root Cause:** Missing null check after API call
+   **Solution:** Added defensive null checks
+   **Matching:** Keyword "undefined"
+   View: `/tiki:debug show issue-23-null-check-missing`
+
+---
+
+**Options:**
+1. Review a past session first (enter session name)
+2. Continue with new debug session
+3. Cancel
+
+Enter your choice:
+```
+
+#### 0e. Handle User Choice
+
+Based on user response:
+
+- **Session name entered:** Run `/tiki:debug show <session-name>` and end
+- **"Continue" or "2":** Proceed to Step 1 (start new session)
+- **"Cancel" or "3":** End command
+
+If no similar sessions found, proceed directly to Step 1 without prompting.
+
+#### 0f. Skip Conditions
+
+Skip Step 0 (similar session check) when:
+
+- `--resume` flag is present (resuming existing session)
+- `list` argument (listing sessions)
+- `show <name>` argument (viewing specific session)
+- `--search` argument (searching sessions)
+- No index file exists
+- Index has no sessions
 
 ### Step 1: Parse Arguments
 
@@ -36,6 +142,7 @@ Determine the debugging mode from the arguments:
 | `--resume` | Resume | Continue an existing debug session |
 | `list` | List Sessions | Show all existing debug sessions |
 | `show <name>` | Show Session | Display details of a specific session |
+| `--search "query"` | Search | Search past debug sessions by keyword |
 
 #### 1a. Current Issue Mode
 
@@ -157,6 +264,78 @@ Try: `/tiki:debug show issue-42-api-500-error`
 
 5. **End command execution** - do not proceed to debugging workflow
 
+#### 1g. Search Mode
+
+If argument contains `--search`:
+
+1. Parse the search query and optional filters:
+   - `--search "query"` - Required: keywords to search
+   - `--status <status>` - Optional: filter by "resolved", "active", or "abandoned"
+   - `--file <filename>` - Optional: filter by affected file
+
+2. Load the debug index from `.tiki/debug/index.json`
+
+3. If no index exists:
+
+```text
+No debug history found.
+
+The debug index will be created when you start your first debug session.
+Start debugging: `/tiki:debug 42` or `/tiki:debug "symptom description"`
+```
+
+4. Search the index:
+   - Split query into keywords
+   - For each session, calculate match score:
+     - Keyword in `keywords` array: +2 per match
+     - Keyword in `title`: +3
+     - Keyword in `rootCause`: +4
+     - Keyword in `errorPatterns`: +5
+   - Apply filters if specified:
+     - `--status`: only include sessions with matching status
+     - `--file`: only include sessions where `affectedFiles` contains the file
+
+5. Sort results by score (descending) and display:
+
+```text
+## Debug History Search Results
+
+Query: "connection timeout"
+Filters: status=resolved
+
+### Results (3 found)
+
+| # | Session | Status | Score | Root Cause |
+|---|---------|--------|-------|------------|
+| 1 | issue-42-api-500-error | Resolved | 12 | Connection pool exhausted |
+| 2 | issue-15-db-timeout | Resolved | 10 | Database connection timeout |
+| 3 | untracked-slow-api | Resolved | 6 | Network latency issues |
+
+---
+
+**Actions:**
+- View session details: `/tiki:debug show <session-name>`
+- Start new debug session: `/tiki:debug "connection timeout"`
+```
+
+6. If no results:
+
+```text
+## Debug History Search Results
+
+Query: "foobar widget"
+Filters: none
+
+No matching debug sessions found.
+
+Try:
+- Different keywords
+- Remove filters
+- Start a new debug session: `/tiki:debug "foobar widget"`
+```
+
+7. **End command execution** - do not proceed to debugging workflow
+
 ### Step 2: Session Initialization/Resume
 
 #### 2a. Check for Existing Session
@@ -228,10 +407,12 @@ Ready to continue testing H4 or formulate new hypothesis?
 If no existing session or starting fresh:
 
 1. Create `.tiki/debug/` directory if it doesn't exist
-2. Generate session filename:
+2. Initialize debug index if it doesn't exist (see "Debug History Index" section)
+3. Generate session filename:
    - Issue-based: `issue-{N}-{kebab-title}.md`
    - Untracked: `untracked-{timestamp}.md`
-3. Create initial document structure (see below)
+4. Create initial document structure (see below)
+5. Add initial entry to index with status "active"
 
 ### Step 3: Create Debug Document
 
@@ -936,6 +1117,18 @@ Update the session info and status:
 | Duration | 2h 45m |
 ```
 
+**Update the debug index:**
+
+1. Read `.tiki/debug/index.json`
+2. Find session entry by id
+3. Update fields:
+   - `status`: "resolved"
+   - `resolvedAt`: current timestamp
+   - `rootCause`: summary from Root Cause section
+   - `solution`: summary from Solution Applied section
+   - `keywords`: re-extract including root cause terms
+4. Write updated index
+
 Display completion message:
 
 ```
@@ -1098,6 +1291,15 @@ Update the session document:
 This session was abandoned because the issue could not be reproduced after a server restart.
 If the issue recurs, the hypotheses and investigation log above may still be useful.
 ```
+
+**Update the debug index:**
+
+1. Read `.tiki/debug/index.json`
+2. Find session entry by id
+3. Update fields:
+   - `status`: "abandoned"
+   - `rootCause`: null (or keep any partial findings)
+4. Write updated index
 
 ### Step 13: Session Naming Convention
 
@@ -1314,6 +1516,173 @@ Create a GitHub issue from this debug session?
 The session findings will be included in the issue description.
 ```
 
+## Debug History Index
+
+The debug history index (`.tiki/debug/index.json`) enables fast lookup and similarity matching of past debug sessions. This index is automatically maintained when sessions are created, updated, or resolved.
+
+### Index Schema
+
+```json
+{
+  "version": "1.0",
+  "generatedAt": "2026-01-16T16:00:00Z",
+  "sessions": [
+    {
+      "id": "issue-42-api-500-error",
+      "filename": "issue-42-api-500-error.md",
+      "issue": 42,
+      "title": "API returns 500 error on user endpoint",
+      "type": "issue-linked",
+      "status": "resolved",
+      "createdAt": "2026-01-15T14:30:00Z",
+      "resolvedAt": "2026-01-15T17:15:00Z",
+      "rootCause": "Connection pool exhausted due to leak in error handler",
+      "keywords": ["api", "500", "error", "database", "connection", "pool", "leak"],
+      "errorPatterns": ["ECONNREFUSED", "connection pool exhausted"],
+      "affectedFiles": ["src/handlers/user.js", "src/utils/db.js"],
+      "solution": "Added finally block for connection cleanup",
+      "archived": false
+    }
+  ]
+}
+```
+
+### Index Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | string | Unique session identifier (filename without .md) |
+| `filename` | string | Full filename of the session document |
+| `issue` | number\|null | Linked GitHub issue number, or null for untracked |
+| `title` | string | Session title (from issue title or symptom) |
+| `type` | string | "issue-linked" or "untracked" |
+| `status` | string | "active", "resolved", or "abandoned" |
+| `createdAt` | ISO date | When the session was created |
+| `resolvedAt` | ISO date\|null | When resolved (null if not resolved) |
+| `rootCause` | string\|null | Root cause summary (null if not resolved) |
+| `keywords` | string[] | Extracted keywords for search |
+| `errorPatterns` | string[] | Error messages/patterns from symptoms |
+| `affectedFiles` | string[] | Files mentioned in the session |
+| `solution` | string\|null | Solution summary (null if not resolved) |
+| `archived` | boolean | Whether session is in archive folder |
+
+### Index Management
+
+#### Initialization
+
+When `.tiki/debug/` directory is first created:
+
+```bash
+# Create index if it doesn't exist
+if [ ! -f .tiki/debug/index.json ]; then
+  echo '{"version":"1.0","generatedAt":"'$(date -Iseconds)'","sessions":[]}' > .tiki/debug/index.json
+fi
+```
+
+#### Updating the Index
+
+**When to update:**
+- After creating a new session (Step 3)
+- After resolving a session (Step 11d)
+- After abandoning a session (Step 12d)
+- After archiving a session (Step 2b)
+
+**Update procedure:**
+
+1. Read current index from `.tiki/debug/index.json`
+2. Extract metadata from the session document:
+   - Parse Session Info table for status, dates
+   - Extract keywords from Symptoms section
+   - Extract error patterns from Error Output
+   - Find affected files from code references
+   - Get root cause and solution if resolved
+3. Update or add the session entry in index
+4. Write updated index back to file
+
+#### Keyword Extraction
+
+Extract keywords from session documents:
+
+1. **From Symptoms section:**
+   - Error messages (e.g., "ECONNREFUSED", "undefined", "null")
+   - HTTP status codes (e.g., "500", "404", "401")
+   - Technical terms (e.g., "connection", "timeout", "memory")
+
+2. **From Root Cause section:**
+   - Key nouns and verbs
+   - Technical identifiers
+
+3. **Normalization:**
+   - Lowercase all keywords
+   - Remove common words (the, a, is, are, etc.)
+   - Deduplicate
+
+Example extraction:
+```
+Input: "API endpoint /api/users returns HTTP 500 error when called with valid authentication"
+Keywords: ["api", "endpoint", "users", "500", "error", "authentication"]
+```
+
+#### Error Pattern Extraction
+
+Extract error patterns from Error Output:
+
+1. Look for common error formats:
+   - `Error: <message>`
+   - `TypeError: <message>`
+   - Exception names
+   - Error codes
+
+2. Capture first line of stack traces
+3. Store as patterns for matching
+
+#### Affected Files Extraction
+
+Find file references:
+
+1. Look for file paths in backticks: `` `src/file.js` ``
+2. Extract from "Affected Code" sections
+3. Extract from "Files Modified" sections
+4. Normalize paths (remove line numbers)
+
+### Index Validation
+
+If the index becomes corrupted or out of sync:
+
+```
+## Index Repair
+
+The debug index appears to be missing or corrupted.
+
+Options:
+1. Rebuild index from existing session files
+2. Start with empty index
+
+Rebuilding will scan all .md files in `.tiki/debug/` and regenerate the index.
+
+Proceed with rebuild? (yes/no):
+```
+
+**Rebuild procedure:**
+
+1. Find all `.md` files in `.tiki/debug/` (including archive/)
+2. Parse each file to extract metadata
+3. Build new index entries
+4. Write fresh index file
+
+```bash
+# Find all debug session files
+find .tiki/debug -name "*.md" -type f
+```
+
+### Using the Index
+
+The index is used by:
+- **Similar session detection** (Step 0) - Find sessions with matching keywords/errors
+- **Search functionality** (`--search`) - Query by keyword, status, or file
+- **List sessions** (`list`) - Fast listing without parsing all files
+- **Cross-references** - Find related sessions during debugging
+
 ## Notes
 
 - Debug sessions persist across Claude conversations
@@ -1322,3 +1691,5 @@ The session findings will be included in the issue description.
 - Document everything - your future self will thank you
 - Don't skip the symptom gathering - it often reveals the answer
 - If stuck, try explaining the problem out loud (rubber duck debugging)
+- The debug index is automatically maintained - no manual updates needed
+- If index gets out of sync, use rebuild option to regenerate

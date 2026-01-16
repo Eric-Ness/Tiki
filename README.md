@@ -109,6 +109,7 @@ Review items discovered during execution (potential issues, questions, blockers)
 | `/tiki:redo-phase <number>` | Re-execute a completed phase |
 | `/tiki:heal` | Auto-diagnose and fix a failed phase |
 | `/tiki:debug [issue\|session]` | Start systematic debugging session with hypothesis tracking |
+| `/tiki:debug --search "query"` | Search past debug sessions by keyword, status, or file |
 
 ### Planning & Review
 
@@ -200,6 +201,17 @@ Claude: Created issues #35 and #36
 ```
 User: /tiki:debug #42
 
+Claude: ## Related Past Debug Sessions Found
+
+        Before starting a new session, you may want to review:
+
+        1. issue-15-login-encoding (Resolved) - URL encoding issue in auth
+           View: /tiki:debug show issue-15-login-encoding
+
+        Continue with new session? [Yes/Review/Cancel]
+
+User: Continue
+
 Claude: Starting debug session for Issue #42: Login fails for some users
 
         What symptoms are you seeing?
@@ -236,11 +248,25 @@ Claude: Testing: Database query escaping
 
 User: yes
 
-Claude: Session resolved. Summary saved to .tiki/debug/session-login-500.md
-        Creating fix commit...
+Claude: Session resolved. Summary saved to .tiki/debug/issue-42-login-500.md
+        Debug index updated.
 ```
 
-Resume previous sessions with `/tiki:debug --list` or `/tiki:debug session-name`.
+### Debug History Features
+
+- **Auto-detect similar sessions**: When starting a new debug session, Tiki checks for past sessions with similar error patterns and offers to show relevant solutions
+- **Search history**: Use `/tiki:debug --search "query"` to search past sessions by keyword, status, or affected file
+- **Integration with heal/execute**: When a phase fails, related debug history is shown to help diagnose the issue faster
+- **Index**: Debug sessions are indexed in `.tiki/debug/index.json` for fast lookup
+
+```
+# Search examples
+/tiki:debug --search "connection timeout"
+/tiki:debug --search "auth" --status resolved
+/tiki:debug --search "500" --file "api.ts"
+```
+
+Resume previous sessions with `/tiki:debug --resume` or `/tiki:debug show session-name`.
 
 ## State Storage
 
@@ -262,7 +288,9 @@ All Tiki state is stored in the `.tiki/` folder:
 ├── learned/             # Patterns for CLAUDE.md updates
 │   └── patterns.json
 └── debug/               # Debug session documents
-    └── session-login-500.md
+    ├── index.json       # Searchable index of all sessions
+    ├── issue-42-login-500.md
+    └── archive/         # Archived sessions
 ```
 
 ## Plan File Format

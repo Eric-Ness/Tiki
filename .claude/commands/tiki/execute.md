@@ -455,8 +455,48 @@ If a sub-agent reports failure or errors:
 
 1. Set phase status to `failed`
 2. Record error in phase
-3. Pause execution
-4. Report to user:
+3. Check for similar past debug sessions (see below)
+4. Pause execution
+5. Report to user with relevant history
+
+#### Check Debug History on Failure
+
+Before displaying the failure message, check if similar errors have been debugged before:
+
+1. Read `.tiki/debug/index.json` if it exists
+2. Search for sessions matching:
+   - Error message keywords
+   - Affected file name
+   - Error type (e.g., "typescript", "test failure")
+3. Filter to resolved sessions only
+4. Include top matches in the failure message
+
+#### Failure Output with History
+
+```text
+Phase <N> failed: <phase title>
+Error: <error description>
+
+### Related Debug History
+
+A similar error was resolved before:
+
+| Session | Root Cause | Solution |
+|---------|------------|----------|
+| issue-12-request-type | Missing type extension | Created express.d.ts |
+
+View details: `/tiki:debug show issue-12-request-type`
+
+---
+
+Options:
+- Fix and retry: `/tiki:execute <number> --from <N>`
+- Skip this phase: `/tiki:skip-phase <N>`
+- Heal automatically: `/tiki:heal <N>`
+- Start debug session: `/tiki:debug <number>`
+```
+
+If no similar debug sessions found, omit the "Related Debug History" section:
 
 ```text
 Phase <N> failed: <phase title>
@@ -466,6 +506,7 @@ Options:
 - Fix and retry: `/tiki:execute <number> --from <N>`
 - Skip this phase: `/tiki:skip-phase <N>`
 - Heal automatically: `/tiki:heal <N>`
+- Start debug session: `/tiki:debug <number>`
 ```
 
 ### Missing Dependencies
