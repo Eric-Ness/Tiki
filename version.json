@@ -1,7 +1,14 @@
 {
-  "version": "1.0.0",
-  "releaseDate": "2026-01-14",
+  "version": "1.0.1",
+  "releaseDate": "2026-01-16",
   "changelog": [
+    {
+      "version": "1.0.1",
+      "date": "2026-01-16",
+      "changes": [
+        "Issue #12: Add auto-fix infrastructure for verification failures"
+      ]
+    },
     {
       "version": "1.0.0",
       "date": "2026-01-14",
