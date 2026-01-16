@@ -93,7 +93,7 @@ Review items discovered during execution (potential issues, questions, blockers)
 | `/tiki:add-issue [title]` | Create a new issue with intelligent prompting |
 | `/tiki:get-issue <number>` | Fetch and display a GitHub issue |
 | `/tiki:review-issue <number>` | Review an issue before planning (identify concerns, alternatives) |
-| `/tiki:plan-issue <number>` | Create a phased execution plan |
+| `/tiki:plan-issue <number>` | Create a phased execution plan with success criteria and backward planning |
 | `/tiki:execute <number>` | Execute a planned issue phase by phase |
 | `/tiki:ship <number>` | Complete an issue: commit, push, and close |
 | `/tiki:yolo [number]` | Full automated workflow: get → review → plan → audit → execute |
@@ -162,12 +162,18 @@ Claude: Issue #34: Add user authentication
 
 User: /tiki:plan-issue 34
 
-Claude: Created plan with 3 phases:
+Claude: Extracting success criteria from issue...
+        Found 3 explicit criteria, generating 2 additional criteria.
+
+        Working backward from criteria to derive phases...
+
+        Created plan with 3 phases:
 
         Phase 1: Setup auth middleware
         Phase 2: Add login endpoint
         Phase 3: Add protected routes
 
+        Criteria coverage: 5/5 (100%)
         Stored in .tiki/plans/issue-34.json
 
 User: /tiki:execute 34
@@ -295,7 +301,7 @@ All Tiki state is stored in the `.tiki/` folder:
 
 ## Plan File Format
 
-Plans are stored as JSON with phase details:
+Plans are stored as JSON with phase details and success criteria:
 
 ```json
 {
@@ -305,6 +311,13 @@ Plans are stored as JSON with phase details:
     "url": "https://github.com/owner/repo/issues/34"
   },
   "status": "in_progress",
+  "successCriteria": [
+    { "category": "functional", "description": "User can log in with valid credentials" },
+    { "category": "functional", "description": "Invalid credentials return appropriate error" },
+    { "category": "non-functional", "description": "Login response time under 500ms" },
+    { "category": "testing", "description": "Unit tests cover auth middleware functions" },
+    { "category": "documentation", "description": "API docs updated with auth endpoints" }
+  ],
   "phases": [
     {
       "number": 1,
@@ -312,11 +325,19 @@ Plans are stored as JSON with phase details:
       "status": "completed",
       "dependencies": [],
       "files": ["src/middleware/auth.ts"],
+      "addressesCriteria": ["functional-1", "functional-2", "testing-1"],
       "content": "Create the authentication middleware...",
       "verification": ["Middleware file exists", "No TypeScript errors"],
       "summary": "Created auth middleware with JWT validation"
     }
-  ]
+  ],
+  "coverageMatrix": {
+    "functional-1": { "phases": [1, 2], "tasks": [1, 3] },
+    "functional-2": { "phases": [1, 3], "tasks": [2, 4] },
+    "non-functional-1": { "phases": [2], "tasks": [3] },
+    "testing-1": { "phases": [1], "tasks": [2] },
+    "documentation-1": { "phases": [3], "tasks": [5] }
+  }
 }
 ```
 

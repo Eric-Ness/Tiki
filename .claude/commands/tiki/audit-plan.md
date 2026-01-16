@@ -159,6 +159,48 @@ for (const phase of plan.phases) {
 }
 ```
 
+#### Check 6: Criteria Coverage Validation
+
+Validate that all success criteria from `plan.successCriteria` are adequately addressed by phases. Read `addressesCriteria` from each phase and optionally use `coverageMatrix` if available.
+
+**Coverage thresholds:**
+
+- **Error (0 tasks):** A criterion with no mapped tasks is an error - the plan cannot proceed until all criteria are addressed by at least one phase
+- **Warning (1 task):** A single task covering a criterion produces a warning for weak coverage - consider adding more tasks to strengthen coverage
+- **Good (2+ tasks):** Criterion has adequate coverage
+
+```javascript
+// Build coverage map from phases
+const criterionCoverage = new Map();
+
+// Initialize all criteria with zero coverage
+for (const criterion of plan.successCriteria || []) {
+  criterionCoverage.set(criterion.id, { criterion, phases: [] });
+}
+
+// Count which phases address each criterion
+for (const phase of plan.phases) {
+  for (const criterionId of phase.addressesCriteria || []) {
+    if (criterionCoverage.has(criterionId)) {
+      criterionCoverage.get(criterionId).phases.push(phase.number);
+    }
+  }
+}
+
+// Validate coverage for each criterion
+for (const [criterionId, coverage] of criterionCoverage) {
+  const count = coverage.phases.length;
+
+  if (count === 0) {
+    // Error: criterion not covered by any phase
+    errors.push(`Criterion "${coverage.criterion.text}" has no coverage - not addressed by any phase`);
+  } else if (count === 1) {
+    // Warning: weak coverage with only 1 task
+    warnings.push(`Criterion "${coverage.criterion.text}" has weak coverage - only 1 task addresses it. Consider adding more tasks for stronger coverage.`);
+  }
+}
+```
+
 ### Step 3: Generate Report
 
 Output the audit report:
@@ -171,6 +213,7 @@ Plan Audit for Issue #34
 {warning} Phase 3 and 4 both modify api.ts - consider splitting differently
 {checkmark} All referenced files exist
 {checkmark} Verification steps included
+{checkmark} Criteria coverage: All criteria are covered (4/4)
 
 Recommendation: Adjust phase boundaries before executing.
 ```
@@ -212,6 +255,8 @@ Run `/tiki:plan-issue {issue}` to revise the plan.
 
 ## Validation Details
 
+This section documents the validation rules including phase sizes, dependencies, file conflicts, and criteria coverage validation thresholds.
+
 ### Phase Size Guidelines
 
 | Aspect | Good | Warning | Error |
@@ -235,6 +280,18 @@ Run `/tiki:plan-issue {issue}` to revise the plan.
 | Non-adjacent phases | Warning | Consider restructuring |
 | Many phases same file | Error | Likely should consolidate |
 
+### Criteria Coverage Validation
+
+Criteria coverage ensures each success criterion is addressed by plan tasks.
+
+A criterion with no mapped tasks results in an error - the plan cannot proceed until all criteria are addressed.
+
+| Tasks Addressing | Severity | Recommendation |
+|------------------|----------|----------------|
+| 0 | Error | Criterion not covered - must add tasks |
+| 1 | Warning | Weak coverage - consider adding more tasks |
+| 2+ | Good | Adequate coverage |
+
 ## Examples
 
 ### Example 1: Clean Plan
@@ -248,6 +305,7 @@ Plan Audit for Issue #42
 ✓ No file conflicts
 ✓ All referenced files exist
 ✓ Verification steps included
+✓ Criteria coverage: All criteria are covered (3/3)
 
 Plan is ready for execution.
 
@@ -265,12 +323,14 @@ Plan Audit for Issue #18
 ⚠ Phases 1 and 3 both modify src/config.ts
 ✓ All referenced files exist
 ✓ Verification steps included
+⚠ Criteria coverage: "Performance improves by 20%" has weak coverage - only 1 task addresses it
 
 Recommendation: Review warnings before executing.
 
 The plan can proceed, but consider:
 - Split Phase 2 into two smaller phases
 - Move config.ts changes to Phase 1 or consolidate in Phase 3
+- Add more tasks to strengthen coverage for performance criterion
 
 Run `/tiki:execute 18` when ready, or `/tiki:plan-issue 18` to revise.
 ```
@@ -284,18 +344,20 @@ Plan Audit for Issue #7
 ✗ Circular dependency: Phase 2 -> Phase 4 -> Phase 2
 ✗ Phase 3 references non-existent file: src/legacy/old-api.ts
 ⚠ Phase 4 has no verification steps
+✗ Criteria coverage: "Security audit passes" is not covered - not addressed by any phase
 
 Plan has blocking issues that must be resolved:
 
 1. Fix circular dependency between phases 2 and 4
 2. Verify src/legacy/old-api.ts path or update phase 3
+3. Add tasks to address the "Security audit passes" criterion
 
 Run `/tiki:plan-issue 7` to revise the plan.
 ```
 
 ### Example 4: Verbose Output
 
-With `--verbose` flag, show additional details:
+With `--verbose` flag, show additional details including criteria coverage analysis and which phases address which criteria:
 
 ```
 Plan Audit for Issue #34 (Verbose)
@@ -308,6 +370,7 @@ Plan Audit for Issue #34 (Verbose)
 - Files: 3 (src/models/user.ts, src/models/session.ts, src/db/migrations/001.ts)
 - Dependencies: none
 - Verification: ✓ (2 steps)
+- Addresses Criteria: C1 (Database schema defined), C2 (Migrations work)
 - Estimated complexity: Low
 
 ### Phase 2: Add authentication endpoints
@@ -315,6 +378,7 @@ Plan Audit for Issue #34 (Verbose)
 - Files: 5
 - Dependencies: Phase 1
 - Verification: ✓ (3 steps)
+- Addresses Criteria: C3 (Auth endpoints respond), C4 (Sessions persist)
 - Estimated complexity: Medium
 
 [... more phases ...]
@@ -334,6 +398,15 @@ src/routes/auth.ts: Phase 2, Phase 3 ⚠
 src/middleware/auth.ts: Phase 2
 src/components/Login.tsx: Phase 3
 
+## Criteria Coverage Analysis
+
+| Criterion | Coverage | Phases |
+|-----------|----------|--------|
+| C1: Database schema defined | ✓ Good (2) | Phase 1, Phase 4 |
+| C2: Migrations work | ✓ Good (2) | Phase 1, Phase 4 |
+| C3: Auth endpoints respond | ✓ Good (3) | Phase 2, Phase 3, Phase 4 |
+| C4: Sessions persist | ⚠ Weak (1) | Phase 2 |
+
 ## Summary
 
 ✓ 5 phases defined
@@ -341,6 +414,7 @@ src/components/Login.tsx: Phase 3
 ⚠ Phase 2 and 3 both modify src/routes/auth.ts
 ✓ All referenced files exist
 ✓ Verification steps included
+⚠ Criteria coverage: 3/4 criteria have good coverage, 1 has weak coverage
 
 Recommendation: Adjust phase boundaries before executing.
 ```
