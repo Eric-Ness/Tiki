@@ -20,7 +20,7 @@ Review items that accumulated during phase execution. These are potential issues
 
 ## Instructions
 
-### Step 1: Read Queue
+### Step 1: Read Queue and Triggers
 
 Load `.tiki/queue/pending.json`:
 
@@ -55,14 +55,60 @@ Load `.tiki/queue/pending.json`:
 }
 ```
 
-If queue is empty:
+Also load `.tiki/triggers/pending.json`. If it doesn't exist, create empty structure:
+
+```json
+{
+  "triggers": []
+}
+```
+
+Expected triggers file structure with ADR and Convention triggers:
+
+```json
+{
+  "triggers": [
+    {
+      "id": "t-001",
+      "triggerType": "adr",
+      "title": "Use JWT for authentication",
+      "decision": "Chose JWT over session-based auth for stateless API",
+      "rationale": "Enables horizontal scaling without session store",
+      "confidence": "high",
+      "source": {
+        "issue": 34,
+        "phase": 2
+      },
+      "createdAt": "2026-01-10T12:00:00Z"
+    },
+    {
+      "id": "t-002",
+      "triggerType": "convention",
+      "title": "Error response format",
+      "pattern": "All API errors return { error: string, code: number }",
+      "examples": ["{ error: 'Not found', code: 404 }"],
+      "confidence": "medium",
+      "source": {
+        "issue": 34,
+        "phase": 3
+      },
+      "createdAt": "2026-01-10T13:00:00Z"
+    }
+  ]
+}
+```
+
+If both queue and triggers are empty:
 ```
 ## Queue Empty
 
-No items pending review.
+No items or triggers pending review.
 
 Use `/tiki:state` to see current status.
 ```
+
+If queue is empty but triggers present, skip to the triggers display sections.
+If triggers are empty but queue items present, show queue items and note "No triggers pending."
 
 ### Step 2: Display Items
 
@@ -120,6 +166,41 @@ Show all queue items grouped by type:
 **Actions:** [Convert to Issue] [Add to CONCERNS.md] [Dismiss]
 
 ---
+
+### ADR Triggers (2)
+
+#### 6. Use JWT for authentication
+- **Type:** technology-choice
+- **Source:** Issue #34, Phase 2
+- **Confidence:** high
+- **Details:** Chose JWT over session-based auth for stateless API. Enables horizontal scaling without session store.
+
+**Actions:** [Create ADR] [Edit] [Dismiss]
+
+#### 7. PostgreSQL for primary database
+- **Type:** technology-choice
+- **Source:** Issue #34, Phase 1
+- **Confidence:** high
+- **Details:** Selected PostgreSQL for ACID compliance and JSON support.
+
+**Actions:** [Create ADR] [Edit] [Dismiss]
+
+---
+
+### Convention Triggers (1)
+
+#### 8. Error response format
+- **Type:** code-pattern
+- **Source:** Issue #34, Phase 3
+- **Confidence:** medium
+- **Pattern:** All API errors return { error: string, code: number }
+- **Examples:** { error: 'Not found', code: 404 }, { error: 'Unauthorized', code: 401 }
+
+**Actions:** [Update CLAUDE.md] [Edit] [Dismiss]
+
+---
+
+**Summary:** Total items and triggers pending review: 5 queue items + 2 ADR triggers + 1 convention trigger = **8 total**
 
 **Batch Actions:**
 - Create all issues: `/tiki:review-queue --create-all`
@@ -202,7 +283,245 @@ Added to CONCERNS.md:
 [Item removed from queue]
 ```
 
-### Step 4: Update Queue
+### Step 3b: Process Triggers
+
+Handle trigger actions:
+
+#### Create ADR (for ADR Triggers)
+
+When user selects [Create ADR], generate ADR file from trigger data directly:
+
+**Creating ADR from trigger workflow:**
+
+1. **Find next ADR number**: Read `.tiki/adr/` directory to find the highest numbered ADR. Use the same numbering logic as `/tiki:adr` - if no ADRs exist, NNN starts at 001. Increment from the highest existing number.
+
+   ```bash
+   # Find highest numbered ADR in .tiki/adr/
+   ls .tiki/adr/*.md | sort -V | tail -1
+   ```
+
+2. **Generate ADR file from trigger**: Use the trigger details to populate the ADR template below.
+
+3. **Save to .tiki/adr/<NNN>-<kebab-case-title>.md**: Convert <trigger title> to kebab-case (lowercase, hyphens between words).
+
+   Example: "Use JWT for authentication" becomes `0005-use-jwt-for-authentication.md`
+
+4. **Remove trigger from pending.json**: After successful ADR creation.
+
+5. **Confirm creation with file path**.
+
+**ADR Template from Trigger:**
+
+```markdown
+# ADR-<NNN>: <trigger title>
+
+## Status
+
+Accepted
+
+## Date
+
+<current date YYYY-MM-DD>
+
+## Context
+
+During implementation of Issue #<issue> (Phase <phase>), this decision was made.
+
+<trigger rationale>
+
+## Decision
+
+<trigger decision>
+
+## Alternatives Considered
+
+For each alternative in trigger.details.alternatives (if present):
+
+### <alternative name>
+- Pros: <alternative pros>
+- Cons: <alternative cons>
+
+If no alternatives in trigger, include:
+
+*No alternatives were formally documented during the decision.*
+
+## Consequences
+
+Based on the decision, consider the positive and negative impacts:
+
+### Positive
+- <inferred positive consequence from decision>
+
+### Negative
+- <inferred negative consequence or trade-off>
+
+## Related
+
+- Issue #<issue>: <issue title>
+- Phase <phase> of execution
+- Generated from Tiki trigger via `/tiki:adr show <NNN>`
+```
+
+**Example output:**
+
+```
+Creating ADR from trigger...
+
+Reading .tiki/adr/ to find next number... (highest: 004)
+Next ADR number: 005
+
+Generating ADR file from trigger data:
+- Title: Use JWT for authentication
+- Decision: Chose JWT over session-based auth for stateless API
+- Rationale: Enables horizontal scaling without session store
+
+Saving to .tiki/adr/0005-use-jwt-for-authentication.md (kebab-case filename)...
+
+[ADR created: .tiki/adr/0005-use-jwt-for-authentication.md]
+[Trigger removed from triggers file]
+```
+
+#### Update CLAUDE.md (for Convention Triggers)
+
+When user selects [Update CLAUDE.md], add the convention to CLAUDE.md following this workflow:
+
+**Adding convention to CLAUDE.md workflow:**
+
+1. **Read existing CLAUDE.md** (or prepare to create if doesn't exist): Check if CLAUDE.md exists in the project root.
+
+2. **Handle missing CLAUDE.md file**: If CLAUDE.md doesn't exist, create it with a minimal template:
+
+   ```markdown
+   # CLAUDE.md
+
+   Project-specific guidance for Claude Code.
+
+   ## Code Conventions
+
+   <!-- Conventions will be added below -->
+   ```
+
+3. **Determine section based on triggerType**: Map the convention trigger's type to the appropriate CLAUDE.md section:
+   - `'naming'` -> `## Code Conventions` or `## Naming Conventions`
+   - `'structure'` -> `## File Organization` or `## Project Structure`
+   - `'pattern'` -> `## Patterns` or `## Code Conventions`
+   - `'practice'` -> `## Best Practices` or `## Development Practices`
+
+4. **Section detection**: Use grep/search to find existing sections in CLAUDE.md. Look for the target section heading.
+
+5. **Create section if needed**: If the target section doesn't exist, append it to CLAUDE.md before adding the convention.
+
+6. **Format the convention entry**: Use markdown list format with pattern description:
+
+   ```markdown
+   - <pattern description>
+     - Rationale: <rationale>
+     - Examples: `<example1>`, `<example2>`
+     - Source: Issue #<issue>, Phase <phase>
+   ```
+
+7. **Append to appropriate section**: Add the formatted convention entry under the target section.
+
+8. **Remove trigger from pending.json**: After successful update.
+
+9. **Confirm update with details**: Show what was added and where.
+
+**Example output:**
+
+```
+Adding convention to CLAUDE.md...
+
+Reading CLAUDE.md... (found)
+Section detection: Looking for "## Code Conventions"... (found at line 42)
+
+Formatting convention entry:
+- All API errors return { error: string, code: number }
+  - Rationale: Consistent error handling across all endpoints
+  - Examples: `{ error: 'Not found', code: 404 }`, `{ error: 'Unauthorized', code: 401 }`
+  - Source: Issue #34, Phase 3
+
+Appended to CLAUDE.md under "## Code Conventions"
+
+[Convention added to CLAUDE.md]
+[Trigger removed from triggers file]
+```
+
+**Example when CLAUDE.md is missing:**
+
+```
+Adding convention to CLAUDE.md...
+
+CLAUDE.md missing - creating with minimal template...
+Created CLAUDE.md with basic structure.
+
+Creating section "## Code Conventions"...
+
+Formatting convention entry:
+- All API errors return { error: string, code: number }
+  - Rationale: Consistent error handling across all endpoints
+  - Examples: `{ error: 'Not found', code: 404 }`, `{ error: 'Unauthorized', code: 401 }`
+  - Source: Issue #34, Phase 3
+
+Appended to CLAUDE.md under "## Code Conventions"
+
+[Convention added to CLAUDE.md]
+[Trigger removed from triggers file]
+```
+
+#### Edit Trigger
+
+When user selects [Edit], allow modifying the trigger details before processing.
+
+**[Edit] for ADR triggers** - Edit trigger details before creating ADR:
+
+```
+Editing trigger: Use JWT for authentication
+
+Current trigger values:
+- Title: Use JWT for authentication
+- Decision: Chose JWT over session-based auth for stateless API
+- Rationale: Enables horizontal scaling without session store
+- Confidence: high
+
+Update title? (press Enter to keep current)
+>
+
+Update decision? (press Enter to keep current)
+> Chose JWT over session cookies for stateless API design
+
+Update rationale? (press Enter to keep current)
+>
+
+Updated trigger. Ready for [Create ADR] or [Dismiss].
+```
+
+**[Edit] for Convention triggers** - Edit pattern before updating CLAUDE.md:
+
+```
+Editing trigger: Error response format
+
+Current trigger values:
+- Pattern: All API errors return { error: string, code: number }
+- Confidence: medium
+
+Update pattern? (press Enter to keep current)
+> All API errors return { error: string, code: number, details?: string }
+
+Updated trigger. Ready for [Update CLAUDE.md] or [Dismiss].
+```
+
+#### Dismiss Trigger
+
+Remove trigger without creating ADR or updating CLAUDE.md:
+
+```
+Dismissed trigger: Error response format
+Reason: Already documented elsewhere
+
+[Trigger removed from triggers file]
+```
+
+### Step 4: Update Queue and Triggers
 
 After processing each item, update `.tiki/queue/pending.json`:
 
@@ -228,6 +547,31 @@ Remove processed items:
 }
 ```
 
+Also update `.tiki/triggers/pending.json` after processing triggers:
+
+Remove processed triggers and track actions:
+```json
+{
+  "triggers": [
+    // remaining triggers only
+  ],
+  "processed": [
+    {
+      "id": "t-001",
+      "action": "created-adr",
+      "adrPath": ".tiki/adr/0005-use-jwt-for-authentication.md",
+      "processedAt": "2026-01-10T15:00:00Z"
+    },
+    {
+      "id": "t-002",
+      "action": "dismissed",
+      "reason": "Already documented",
+      "processedAt": "2026-01-10T15:01:00Z"
+    }
+  ]
+}
+```
+
 ### Step 5: Summary
 
 After processing:
@@ -235,13 +579,15 @@ After processing:
 ```
 ## Queue Processing Complete
 
-**Processed 5 items:**
+**Processed 8 items and triggers:**
 - 2 issues created (#37, #38)
 - 1 question answered
 - 1 note added to CONCERNS.md
 - 1 item dismissed
+- 2 ADR triggers processed (1 ADR created, 1 dismissed)
+- 1 convention trigger processed (added to CLAUDE.md)
 
-**Queue now empty.**
+**Queue now empty. No triggers pending.**
 ```
 
 ## Queue Item Types
@@ -274,27 +620,53 @@ After processing:
 
 ## Batch Operations
 
+Batch operations affect both queue items and triggers. When running batch commands, both the `.tiki/queue/pending.json` items and `.tiki/triggers/pending.json` triggers are processed together. For example, if you have 5 items and 3 ADR triggers pending, batch operations will process all 8 entries.
+
 ### --create-all
 
-Create GitHub issues for all `potential-issue` and `tech-debt` items:
+Create GitHub issues for all `potential-issue` and `tech-debt` queue items, AND create ADRs for all high-confidence ADR triggers:
+
+**What gets processed:**
+
+- Queue items with type `potential-issue` or `tech-debt` -> GitHub Issues created
+- ADR triggers with `confidence: high` -> ADRs created automatically
+- Low/medium confidence ADR triggers are skipped (require manual review)
+- Convention triggers are skipped (require manual review for CLAUDE.md updates)
 
 ```
-Creating issues for 3 items...
+Processing 3 queue items and 2 high-confidence ADR triggers...
 
-Created #37: Add rate limiting to login endpoint
-Created #38: Consider adding refresh tokens
-Created #39: Password strength validation needed
+Issues Created:
+  Created #37: Add rate limiting to login endpoint
+  Created #38: Consider adding refresh tokens
+  Created #39: Password strength validation needed
 
-3 issues created. Queue cleared.
+ADRs Created:
+  Created .tiki/adr/0005-use-jwt-for-authentication.md
+  Created .tiki/adr/0006-postgresql-for-primary-database.md
+
+Summary:
+  3 issues created
+  2 ADRs created from high-confidence triggers
+  1 ADR trigger skipped (medium confidence - review manually)
+  1 convention trigger skipped (requires manual review)
+
+Queue items cleared. High-confidence ADR triggers processed.
 ```
 
 ### --dismiss-all
 
-Clear all items without action:
+Clear all queue items and all triggers without action:
 
 ```
-Dismissed 5 items.
-Queue cleared.
+Dismissing 5 queue items and 3 triggers...
+
+Dismissed:
+  5 queue items removed
+  2 ADR triggers removed
+  1 convention trigger removed
+
+All items and triggers cleared.
 ```
 
 ## Integration with Execute
