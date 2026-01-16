@@ -178,7 +178,60 @@ Usage: /tiki:research <topic> [--refresh] [--quick]
 
 Before starting new research, check if cached research exists.
 
-#### 2a. Locate Research Cache
+#### 2a. Check Research Index First (Fast Lookup)
+
+For faster lookup, first check the research index at `.tiki/research/index.json`:
+
+```javascript
+async function checkResearchIndex(topic) {
+  const indexPath = '.tiki/research/index.json';
+
+  try {
+    const index = JSON.parse(await readFile(indexPath));
+
+    // Direct topic match
+    if (index.topics[topic]) {
+      return {
+        found: true,
+        topic: topic,
+        ...index.topics[topic]
+      };
+    }
+
+    // Check aliases for all topics
+    for (const [topicKey, topicData] of Object.entries(index.topics)) {
+      if (topicData.aliases?.some(alias =>
+        alias.toLowerCase() === topic.toLowerCase()
+      )) {
+        return {
+          found: true,
+          topic: topicKey,  // Return canonical topic name
+          matchedAlias: topic,
+          ...topicData
+        };
+      }
+    }
+
+    return { found: false };
+  } catch (error) {
+    // Index doesn't exist, fall back to filesystem check
+    return { found: false, indexMissing: true };
+  }
+}
+```
+
+If the index lookup finds a match:
+- Use the canonical topic key (not the alias) for file paths
+- Display which alias matched if applicable
+- Check if research has expired based on `expires_at`
+
+```
+Found existing research for "{topic}" (matched alias: "{alias}")
+```
+
+#### 2b. Fallback to Filesystem Check
+
+If index.json doesn't exist or topic not found in index, check the filesystem directly:
 
 Research is cached at: `.tiki/research/{topic}/research.md`
 
@@ -189,7 +242,7 @@ if [ -d ".tiki/research/{topic}" ] && [ -f ".tiki/research/{topic}/research.md" 
 fi
 ```
 
-#### 2b. Parse Cache Metadata
+#### 2c. Parse Cache Metadata
 
 If research exists, read the metadata section from the file:
 
@@ -209,7 +262,7 @@ Extract:
 - `expires_at`: When research should be refreshed (default: 7 days)
 - `mode`: `full` or `quick`
 
-#### 2c. Calculate Research Age
+#### 2d. Calculate Research Age
 
 ```javascript
 const researchedAt = new Date(metadata.researched_at);
@@ -224,7 +277,7 @@ Format age for display:
 - 1-30 days: "X days ago"
 - 30+ days: "X weeks ago" or "X months ago"
 
-#### 2d. Handle Existing Research (No Refresh Flag)
+#### 2e. Handle Existing Research (No Refresh Flag)
 
 If research exists and `--refresh` is NOT set:
 
@@ -254,7 +307,7 @@ Handle user response:
 - **Option 3 (Supplement):** Ask for specific questions to research additionally
 - **Option 4 (Cancel):** Exit command
 
-#### 2e. Handle Refresh Flag
+#### 2f. Handle Refresh Flag
 
 If `--refresh` flag is set:
 
@@ -272,7 +325,7 @@ mkdir -p .tiki/research/{topic}/archive
 mv .tiki/research/{topic}/research.md .tiki/research/{topic}/archive/research-{timestamp}.md
 ```
 
-#### 2f. Handle No Existing Research
+#### 2g. Handle No Existing Research
 
 If no research cache exists:
 
@@ -288,13 +341,14 @@ No existing research for "{topic}".
 Starting new research session...
 ```
 
-#### 2g. Research Cache Structure
+#### 2h. Research Cache Structure
 
 Research files are stored in this structure:
 
 ```
 .tiki/
   research/
+    index.json              # Central index for fast topic lookup (see Step 8.5)
     react-query/
       research.md           # Main research document
       sources.json          # Source URLs and metadata
@@ -1445,6 +1499,165 @@ Update the `.tiki/research/{topic}/sources.json` with complete source list:
 }
 ```
 
+### Step 8.5: Update Research Index
+
+After generating research output, update the central research index for faster lookups.
+
+#### 8.5a. Research Index Structure
+
+The research index at `.tiki/research/index.json` tracks all researched topics with aliases for flexible matching:
+
+```json
+{
+  "lastUpdated": "2026-01-16T17:30:00Z",
+  "topics": {
+    "react-query": {
+      "researched_at": "2026-01-15T14:30:00Z",
+      "expires_at": "2026-01-22T14:30:00Z",
+      "confidence": "high",
+      "aliases": ["React Query", "TanStack Query", "@tanstack/react-query"]
+    },
+    "nextjs-auth": {
+      "researched_at": "2026-01-16T10:00:00Z",
+      "expires_at": "2026-01-23T10:00:00Z",
+      "confidence": "medium",
+      "aliases": ["NextAuth", "next-auth", "NextAuth.js", "Auth.js"]
+    }
+  }
+}
+```
+
+#### 8.5b. Generate Aliases for Topic
+
+When creating a research entry, generate sensible aliases from multiple sources:
+
+```javascript
+function generateAliases(topic, synthesizedData) {
+  const aliases = new Set();
+
+  // 1. Original topic name (as provided)
+  aliases.add(topic);
+
+  // 2. Common variations
+  // PascalCase: "react-query" -> "ReactQuery"
+  const pascalCase = topic
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join('');
+  aliases.add(pascalCase);
+
+  // With spaces: "react-query" -> "React Query"
+  const withSpaces = topic
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+  aliases.add(withSpaces);
+
+  // Lowercase: "ReactQuery" -> "reactquery"
+  aliases.add(topic.replace(/-/g, '').toLowerCase());
+
+  // 3. Extract from ecosystem analysis
+  // Look for package names, alternative library names mentioned
+  if (synthesizedData.dimensions?.ecosystem?.findings) {
+    synthesizedData.dimensions.ecosystem.findings.forEach(finding => {
+      // Extract npm package names (e.g., "@tanstack/react-query")
+      const npmMatches = finding.text?.match(/@[\w-]+\/[\w-]+/g) || [];
+      npmMatches.forEach(pkg => aliases.add(pkg));
+
+      // Extract quoted library names
+      const quotedMatches = finding.text?.match(/"([^"]+)"/g) || [];
+      quotedMatches.forEach(quoted => {
+        const name = quoted.replace(/"/g, '');
+        if (name.length > 2 && name.length < 50) {
+          aliases.add(name);
+        }
+      });
+    });
+  }
+
+  // 4. Extract from sources (library names often appear in source titles)
+  if (synthesizedData.sources) {
+    synthesizedData.sources.forEach(source => {
+      // If source title contains the topic, extract variations
+      if (source.title?.toLowerCase().includes(topic.replace(/-/g, ''))) {
+        // Add the capitalized version from the title if found
+        const titleMatch = source.title.match(new RegExp(topic.replace(/-/g, '\\s*'), 'i'));
+        if (titleMatch) {
+          aliases.add(titleMatch[0].trim());
+        }
+      }
+    });
+  }
+
+  // Remove empty strings and the kebab-case topic (it's the key)
+  return Array.from(aliases).filter(a => a && a !== topic && a.length > 0);
+}
+```
+
+#### 8.5c. Read Existing Index
+
+Before updating, read any existing index to preserve other topics:
+
+```javascript
+async function readExistingIndex() {
+  const indexPath = '.tiki/research/index.json';
+
+  try {
+    const content = await readFile(indexPath);
+    return JSON.parse(content);
+  } catch (error) {
+    // Index doesn't exist yet, return empty structure
+    return {
+      lastUpdated: null,
+      topics: {}
+    };
+  }
+}
+```
+
+#### 8.5d. Update Index with New Topic
+
+Merge the new topic entry with existing index:
+
+```javascript
+async function updateResearchIndex(topic, metadata, aliases) {
+  // Read existing index (or create new)
+  const index = await readExistingIndex();
+
+  // Update the lastUpdated timestamp
+  index.lastUpdated = new Date().toISOString();
+
+  // Add or update the topic entry
+  index.topics[topic] = {
+    researched_at: metadata.researchedAt,
+    expires_at: metadata.expiresAt,
+    confidence: metadata.overallConfidence,
+    aliases: aliases
+  };
+
+  // Write updated index
+  const indexPath = '.tiki/research/index.json';
+  await writeFile(indexPath, JSON.stringify(index, null, 2));
+
+  console.log(`Research index updated: ${Object.keys(index.topics).length} topics tracked`);
+}
+```
+
+#### 8.5e. Index Update Workflow
+
+```
+Updating research index...
+
+Topic: {topic}
+Aliases generated: {N}
+  - {alias1}
+  - {alias2}
+  - {alias3}
+
+Index updated: .tiki/research/index.json
+Topics tracked: {N}
+```
+
 ### Step 9: Display Completion Summary
 
 Show the user what was learned and next steps.
@@ -1473,7 +1686,9 @@ Display a clear summary when research completes:
 - **Pitfalls:** {One-line pitfalls summary}
 
 ### Output Location
-.tiki/research/{topic}/research.md
+
+- Research: `.tiki/research/{topic}/research.md`
+- Index updated: `.tiki/research/index.json` ({N} aliases registered)
 
 ### Next Steps
 
@@ -1588,35 +1803,20 @@ These related topics were mentioned in the research:
 Research a related topic: `/tiki:research {related-topic}`
 ```
 
-#### 9e. Update Research Index
+#### 9e. Confirm Index Update
 
-Maintain an index of all research at `.tiki/research/index.json`:
+Step 8.5 handles updating the research index (`.tiki/research/index.json`). In the completion summary, confirm the index was updated:
 
-```json
-{
-  "lastUpdated": "{ISO timestamp}",
-  "topics": [
-    {
-      "topic": "react-query",
-      "researchedAt": "{ISO timestamp}",
-      "expiresAt": "{ISO timestamp}",
-      "mode": "full",
-      "confidence": "high",
-      "sourcesCount": 31,
-      "path": ".tiki/research/react-query/research.md"
-    },
-    {
-      "topic": "auth-patterns-nextjs",
-      "researchedAt": "{ISO timestamp}",
-      "expiresAt": "{ISO timestamp}",
-      "mode": "quick",
-      "confidence": "medium",
-      "sourcesCount": 12,
-      "path": ".tiki/research/auth-patterns-nextjs/research.md"
-    }
-  ]
-}
 ```
+### Index Updated
+
+Research index updated with {N} aliases for "{topic}".
+Total topics tracked: {N}
+
+Index location: .tiki/research/index.json
+```
+
+This allows future lookups by topic name or any of its aliases (see Step 2a for index lookup).
 
 #### 9f. Final Completion Message
 

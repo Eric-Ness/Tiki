@@ -94,7 +94,7 @@ Review items discovered during execution (potential issues, questions, blockers)
 | `/tiki:get-issue <number>` | Fetch and display a GitHub issue |
 | `/tiki:review-issue <number>` | Review an issue before planning (identify concerns, alternatives) |
 | `/tiki:research <topic>` | Research unfamiliar domains before planning |
-| `/tiki:plan-issue <number>` | Create a phased execution plan with success criteria and backward planning |
+| `/tiki:plan-issue <number>` | Create a phased execution plan with success criteria, backward planning, and research integration |
 | `/tiki:execute <number>` | Execute a planned issue phase by phase |
 | `/tiki:ship <number>` | Complete an issue: commit, push, and close |
 | `/tiki:yolo [number]` | Full automated workflow: get → review → plan → audit → execute |
@@ -329,6 +329,48 @@ Claude: Researching: GraphQL vs REST for mobile app
         - GraphQL recommended for mobile due to reduced over-fetching
         - Use Apollo Client for caching and offline support
         - Consider hybrid approach: GraphQL for complex queries, REST for simple CRUD
+```
+
+### Integration with Planning
+
+Research is automatically integrated into the planning workflow:
+
+1. **Auto-detection**: `/plan-issue` scans the issue for technology keywords and matches against your research library
+
+2. **Context injection**: Relevant recommendations and pitfalls are included in the plan context
+
+3. **Phase guidance**: Phase descriptions reference research findings where applicable
+
+4. **Freshness warnings**: Stale research (>30 days old) triggers a refresh suggestion
+
+#### Planning with Research Context
+
+```text
+User: /tiki:plan-issue 42
+
+Claude:
+## Plan for Issue #42: Add React Query caching
+
+### Research Context
+
+Relevant research found:
+- **react-query** (researched 3 days ago)
+
+#### Key Recommendations
+- Use React Query for server state management
+- Implement stale-while-revalidate pattern
+- Avoid: Mixing server and client state
+
+### Phases
+...
+```
+
+#### Skipping Research Integration
+
+Use `--no-research` to plan without research context:
+
+```
+/tiki:plan-issue 42 --no-research
 ```
 
 ## State Storage

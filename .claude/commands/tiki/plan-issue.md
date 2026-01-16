@@ -3,7 +3,7 @@ type: prompt
 name: tiki:plan-issue
 description: Break a GitHub issue into executable phases. Use when planning work on an issue, creating a phased implementation plan, or before executing an issue.
 allowed-tools: Bash, Read, Write, Glob, Grep
-argument-hint: <issue-number> [additional-numbers...]
+argument-hint: <issue-number> [additional-numbers...] [--no-research]
 ---
 
 # Plan Issue
@@ -15,6 +15,7 @@ Take a GitHub issue and create a phased execution plan. Each phase should be sma
 ```
 /tiki:plan-issue 34
 /tiki:plan-issue 34 45    # Plan multiple issues together
+/tiki:plan-issue 34 --no-research  # Skip research integration
 ```
 
 ## Instructions
@@ -32,6 +33,260 @@ Read the issue content and understand:
 - What files will likely need to change?
 - What are the dependencies?
 - How complex is this task?
+
+### Step 2.25: Check for Relevant Research
+
+**Skip this step if `--no-research` flag is provided.**
+
+Check if any existing research is relevant to this issue and incorporate key insights into the planning process.
+
+#### 2.25a. Check Research Index
+
+Read the research index at `.tiki/research/index.json` if it exists:
+
+```javascript
+async function checkResearchIndex() {
+  const indexPath = '.tiki/research/index.json';
+
+  try {
+    const content = await readFile(indexPath);
+    return JSON.parse(content);
+  } catch (error) {
+    // No research index exists yet
+    return null;
+  }
+}
+```
+
+#### 2.25b. Extract Keywords from Issue
+
+Extract technology names, patterns, and keywords from the issue title and body:
+
+```javascript
+function extractKeywords(issue) {
+  const keywords = new Set();
+  const text = `${issue.title} ${issue.body}`.toLowerCase();
+
+  // Common technology patterns
+  const patterns = [
+    /\b(react|vue|angular|svelte)\b/gi,
+    /\b(next\.?js|nuxt|gatsby|remix)\b/gi,
+    /\b(typescript|javascript)\b/gi,
+    /\b(prisma|drizzle|typeorm|sequelize)\b/gi,
+    /\b(react-query|tanstack|swr|rtk-query)\b/gi,
+    /\b(tailwind|styled-components|css-modules)\b/gi,
+    /\b(jest|vitest|playwright|cypress)\b/gi,
+    /\b(auth|authentication|oauth|jwt)\b/gi,
+    /\b(graphql|rest|trpc|grpc)\b/gi,
+    /\b([a-z]+-[a-z]+(?:-[a-z]+)*)\b/g,  // kebab-case terms
+  ];
+
+  patterns.forEach(pattern => {
+    const matches = text.match(pattern) || [];
+    matches.forEach(m => keywords.add(m.toLowerCase()));
+  });
+
+  // Also extract from labels
+  (issue.labels || []).forEach(label => {
+    keywords.add(label.name.toLowerCase());
+  });
+
+  return Array.from(keywords);
+}
+```
+
+#### 2.25c. Normalize Keywords for Matching
+
+Convert keywords to kebab-case for matching against research topics:
+
+```javascript
+function toKebabCase(input) {
+  return input
+    .replace(/([a-z])([A-Z])/g, '$1-$2')
+    .replace(/[\s_]+/g, '-')
+    .replace(/[^a-zA-Z0-9-]/g, '')
+    .toLowerCase()
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+function normalizeKeywords(keywords) {
+  return keywords.map(k => toKebabCase(k)).filter(k => k.length > 2);
+}
+```
+
+#### 2.25d. Match Against Research Index
+
+Match extracted keywords against both topic folder names AND aliases in the index:
+
+```javascript
+function findMatchingResearch(keywords, index) {
+  if (!index || !index.topics) return [];
+
+  const matches = [];
+  const normalizedKeywords = normalizeKeywords(keywords);
+
+  for (const [topic, data] of Object.entries(index.topics)) {
+    // Direct topic match
+    if (normalizedKeywords.includes(topic)) {
+      matches.push({ topic, ...data, matchType: 'direct' });
+      continue;
+    }
+
+    // Alias match
+    const aliases = (data.aliases || []).map(a => toKebabCase(a));
+    const matchedAlias = normalizedKeywords.find(k => aliases.includes(k));
+    if (matchedAlias) {
+      matches.push({ topic, ...data, matchType: 'alias', matchedAlias });
+    }
+  }
+
+  return matches;
+}
+```
+
+#### 2.25e. Check Research Freshness
+
+For each matched research, check if it's stale (older than 30 days):
+
+```javascript
+function checkFreshness(researchedAt) {
+  const researchDate = new Date(researchedAt);
+  const now = new Date();
+  const ageMs = now - researchDate;
+  const ageDays = Math.floor(ageMs / (1000 * 60 * 60 * 24));
+
+  return {
+    ageDays,
+    isStale: ageDays > 30,
+    ageText: ageDays === 0 ? 'today' :
+             ageDays === 1 ? 'yesterday' :
+             ageDays < 7 ? `${ageDays} days ago` :
+             ageDays < 30 ? `${Math.floor(ageDays / 7)} weeks ago` :
+             `${Math.floor(ageDays / 30)} months ago`
+  };
+}
+```
+
+#### 2.25f. Extract Key Sections from Research
+
+For each matched research, read the research.md file and extract only key sections to manage token usage:
+
+```javascript
+async function extractKeyResearchSections(topic) {
+  const researchPath = `.tiki/research/${topic}/research.md`;
+
+  try {
+    const content = await readFile(researchPath);
+
+    // Extract specific sections only
+    const sections = {
+      executiveSummary: extractSection(content, 'Executive Summary'),
+      suggestedApproach: extractSection(content, 'Recommendations', 'Suggested Approach'),
+      mistakesToAvoid: extractSection(content, 'Common Pitfalls', 'Mistakes to Avoid', 3) // First 3 items
+    };
+
+    return {
+      topic,
+      path: researchPath,
+      ...sections
+    };
+  } catch (error) {
+    return null;
+  }
+}
+
+function extractSection(content, mainHeader, subHeader = null, maxItems = null) {
+  // Find section by header
+  const headerPattern = subHeader
+    ? new RegExp(`## ${mainHeader}[\\s\\S]*?### ${subHeader}\\n([\\s\\S]*?)(?=###|$)`, 'i')
+    : new RegExp(`## ${mainHeader}\\n([\\s\\S]*?)(?=##|$)`, 'i');
+
+  const match = content.match(headerPattern);
+  if (!match) return null;
+
+  let sectionContent = match[1].trim();
+
+  // If maxItems specified, limit to first N list items
+  if (maxItems) {
+    const lines = sectionContent.split('\n');
+    const itemLines = [];
+    let itemCount = 0;
+
+    for (const line of lines) {
+      if (line.match(/^\d+\.\s|^-\s|^\*\s/)) {
+        if (itemCount >= maxItems) break;
+        itemCount++;
+      }
+      if (itemCount > 0 && itemCount <= maxItems) {
+        itemLines.push(line);
+      }
+    }
+    sectionContent = itemLines.join('\n');
+  }
+
+  return sectionContent;
+}
+```
+
+#### 2.25g. Store Research Context for Later Use
+
+Store the matched research context for use in phase generation and display:
+
+```javascript
+// This will be used in Step 4 and Step 6
+const researchContext = {
+  matches: [], // Array of matched research with extracted sections
+  keywords: [], // Keywords extracted from issue
+  hasResearch: false
+};
+
+// After finding matches:
+for (const match of matchingResearch) {
+  const freshness = checkFreshness(match.researched_at);
+  const sections = await extractKeyResearchSections(match.topic);
+
+  if (sections) {
+    researchContext.matches.push({
+      topic: match.topic,
+      confidence: match.confidence,
+      matchType: match.matchType,
+      matchedAlias: match.matchedAlias,
+      freshness,
+      sections,
+      path: `.tiki/research/${match.topic}/research.md`
+    });
+  }
+}
+
+researchContext.keywords = keywords;
+researchContext.hasResearch = researchContext.matches.length > 0;
+```
+
+#### 2.25h. Display Research Discovery
+
+If research matches are found, display them:
+
+```
+## Research Context Detected
+
+Found {N} relevant research document(s) based on issue keywords:
+
+Keywords extracted: {keyword1}, {keyword2}, {keyword3}...
+
+Matched research:
+- **{topic1}** ({confidence} confidence) - researched {ageText}
+- **{topic2}** ({confidence} confidence) - researched {ageText} [STALE - consider refreshing]
+
+Research insights will be incorporated into phase planning.
+```
+
+If no research matches:
+
+```
+No relevant research found for this issue.
+Consider running /tiki:research before planning if this involves unfamiliar technology.
+```
 
 ### Step 2.5: Extract Success Criteria
 
@@ -166,6 +421,59 @@ Phases are created from criteria as criteria-derived units of work:
 | Verify coverage after planning | Build phases from grouped criterion changes |
 | May miss implicit requirements | Every phase has criterion justification |
 
+**Incorporating Research Context (if available from Step 2.25):**
+
+When research context is available, incorporate it into phase planning:
+
+1. **Reference research recommendations in phase content**
+
+   When a phase relates to a researched topic, include relevant recommendations:
+
+   ```markdown
+   Phase 2: Implement data fetching with React Query
+
+   **Research Reference:** react-query (researched 3 days ago)
+
+   Tasks:
+   1. Install @tanstack/react-query v5
+   2. Set up QueryClient with recommended defaults
+   3. Create custom hooks for data fetching
+
+   **From research - Key recommendations:**
+   - Use React Query for server state, local state for UI state
+   - Implement stale-while-revalidate pattern for better UX
+
+   **From research - Avoid:**
+   - Mixing server and client state in the same store
+   ```
+
+2. **Add researchReferences field to phases**
+
+   When a phase is informed by research, add the reference:
+
+   ```json
+   {
+     "number": 2,
+     "title": "Implement data fetching",
+     "researchReferences": ["react-query"],
+     "content": "... includes research recommendations ..."
+   }
+   ```
+
+3. **Consider research-informed success criteria**
+
+   Research may suggest additional non-functional criteria:
+   - Performance patterns from research → non-functional criteria
+   - Security considerations from research → non-functional criteria
+   - Testing patterns from research → testing criteria
+
+4. **Handle stale research warnings**
+
+   If matched research is stale (>30 days old):
+   - Still use the recommendations but note the staleness
+   - Add a phase note: "Note: Research is {N} days old. Consider refreshing before implementation."
+   - Suggest `/tiki:research {topic} --refresh` in the plan output
+
 ### Step 5: Create the Plan File
 
 Create `.tiki/plans/issue-<number>.json` with this structure:
@@ -208,6 +516,7 @@ Create `.tiki/plans/issue-<number>.json` with this structure:
       "status": "pending",
       "priority": "high|medium|low",
       "addressesCriteria": ["functional-1", "functional-2", "testing-1"],
+      "researchReferences": ["react-query"],
       "dependencies": [],
       "files": ["src/file1.ts", "src/file2.ts"],
       "content": "Detailed instructions for what to do in this phase...",
@@ -220,6 +529,11 @@ Create `.tiki/plans/issue-<number>.json` with this structure:
       "completedAt": null
     }
   ],
+  "researchContext": {
+    "matched": ["react-query"],
+    "keywords": ["react", "data-fetching", "state-management"],
+    "staleWarnings": []
+  },
   "coverageMatrix": {
     "functional-1": { "phases": [1, 2], "tasks": [1, 3] },
     "functional-2": { "phases": [1, 3], "tasks": [2, 4] },
@@ -287,13 +601,25 @@ Suggested actions when criteria are uncovered:
 
 ### Step 6: Display the Plan
 
-After creating the plan, display a summary showing success criteria before phases, which criteria each phase addresses, and a criteria coverage table:
+After creating the plan, display a summary showing research context (if available), success criteria before phases, which criteria each phase addresses, and a criteria coverage table:
 
 ```markdown
 ## Plan for Issue #34: Add user authentication
 
 **Phases:** 3
 **Parallelizable:** No
+
+### Research Context
+
+Relevant research found:
+- **react-query** (researched 3 days ago) - [View full research](.tiki/research/react-query/research.md)
+
+#### Key Recommendations
+- Use React Query for server state, local state for UI state
+- Implement optimistic updates for better UX
+- Avoid: Mixing server and client state in the same store
+
+---
 
 ### Success Criteria
 
@@ -320,6 +646,7 @@ After creating the plan, display a summary showing success criteria before phase
 - Files: src/routes/auth.ts, src/services/auth.ts
 - Dependencies: Phase 1
 - Addresses Criteria: functional-1, non-functional-1
+- Research: react-query (data fetching patterns)
 - Verification: POST /api/login works, tests pass
 
 ### Phase 3: Add protected routes (medium priority)
@@ -347,6 +674,54 @@ Ready to execute? Use `/tiki:execute 34`
 Want to adjust phases? Use `/tiki:discuss-phases 34`
 ```
 
+#### Research Context Display Rules
+
+**When research is found:**
+
+Display the Research Context section as shown above, including:
+1. List of matched research topics with:
+   - Topic name (bold)
+   - Age ("researched X days ago")
+   - Link to full research file
+   - Stale warning if >30 days old: `[STALE - consider refreshing with /tiki:research {topic} --refresh]`
+
+2. Key Recommendations section with:
+   - Executive summary highlights (1-2 lines)
+   - Suggested approach (1-2 lines)
+   - Top 3 pitfalls to avoid (prefixed with "Avoid:")
+
+**When research is stale (>30 days):**
+
+```markdown
+### Research Context
+
+Relevant research found:
+- **react-query** (researched 45 days ago) [STALE] - [View full research](.tiki/research/react-query/research.md)
+
+**Warning:** This research is over 30 days old. Consider refreshing before implementation:
+`/tiki:research react-query --refresh`
+
+#### Key Recommendations (may be outdated)
+...
+```
+
+**When no research is found:**
+
+Omit the Research Context section entirely, or optionally display:
+
+```markdown
+### Research Context
+
+No relevant research found for keywords: {keyword1}, {keyword2}, {keyword3}
+
+Consider researching before implementation if this involves unfamiliar technology:
+`/tiki:research {suggested-topic}`
+```
+
+**When --no-research flag is used:**
+
+Omit the Research Context section entirely. Do not display any research-related content.
+
 ## Phase Content Guidelines
 
 The `content` field for each phase should include:
@@ -357,6 +732,7 @@ The `content` field for each phase should include:
 4. **Code patterns to follow** - Reference existing code style
 5. **Edge cases to handle** - Anything tricky to watch for
 6. **Success criteria addressed** - Reference which criteria this phase helps satisfy via the `addressesCriteria` field
+7. **Research recommendations** (if applicable) - Include relevant insights from matched research
 
 Example phase content:
 ```
@@ -377,6 +753,28 @@ Edge cases:
 - Missing Authorization header → 401
 - Invalid token format → 401
 - Expired token → 401 with specific message
+```
+
+Example phase content with research reference:
+```
+Implement data fetching using React Query.
+
+**Research Reference:** react-query (researched 3 days ago)
+
+Tasks:
+1. Install @tanstack/react-query v5
+2. Set up QueryClient with recommended staleTime/cacheTime
+3. Create useUserQuery hook following documented patterns
+
+**From research - Key patterns:**
+- Use query keys as arrays for proper cache invalidation
+- Implement stale-while-revalidate for better UX
+
+**From research - Avoid:**
+- Mixing server state with local UI state
+- Over-fetching by creating too-granular queries
+
+See full research: .tiki/research/react-query/research.md
 ```
 
 ## Handling Simple vs Complex Issues
@@ -419,3 +817,6 @@ Break into logical chunks:
 - Status values: `planned`, `in_progress`, `completed`, `failed`
 - Phase status values: `pending`, `in_progress`, `completed`, `failed`, `skipped`
 - Always suggest `/tiki:execute` as the next step after planning
+- Research integration automatically matches issue keywords against `.tiki/research/index.json`
+- Use `--no-research` flag to skip research integration
+- Research older than 30 days is marked as stale with a refresh warning
