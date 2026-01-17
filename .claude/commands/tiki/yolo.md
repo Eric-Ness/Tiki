@@ -1,9 +1,9 @@
 ---
 type: prompt
 name: tiki:yolo
-description: Run the full Tiki workflow (get -> review -> plan -> audit -> execute -> review) with TDD enabled by default.
+description: Run the full Tiki workflow (get -> review -> plan -> audit -> execute -> review -> ship) with TDD enabled by default.
 allowed-tools: Bash, Read, Write, Glob, Grep, Task, Edit, Skill
-argument-hint: <issue-number> [--no-tdd] [--skip-review] [--force-review]
+argument-hint: <issue-number> [--no-tdd] [--skip-review] [--force-review] [--no-ship]
 ---
 
 # YOLO Mode
@@ -27,13 +27,15 @@ Execute the complete Tiki workflow pipeline for an issue in one command. This or
 Parse the issue number and flags from user input:
 
 ```javascript
-// Parse: /tiki:yolo 34 --no-tdd --skip-review --force-review
+// Parse: /tiki:yolo 34 --no-tdd --skip-review --force-review --no-ship
 const issueNumber = args[0];  // Required
 const noTdd = args.includes('--no-tdd');
 const skipReview = args.includes('--skip-review');
 const forceReview = args.includes('--force-review');
+const noShip = args.includes('--no-ship');
 const tddEnabled = !noTdd;
 const reviewEnabled = !skipReview;
+const shipEnabled = !noShip;
 ```
 
 If no issue number provided:
@@ -41,7 +43,7 @@ If no issue number provided:
 ```text
 YOLO mode requires an issue number.
 
-Usage: /tiki:yolo <issue-number> [--no-tdd] [--skip-review] [--force-review]
+Usage: /tiki:yolo <issue-number> [--no-tdd] [--skip-review] [--force-review] [--no-ship]
 
 Example: /tiki:yolo 34
 ```
@@ -53,12 +55,17 @@ Show the YOLO mode header with progress tracking:
 ```text
 ## YOLO Mode: Issue #<number>
 
-Mode: TDD <enabled|disabled>, Review <enabled|skipped>, Force review <if set>
+Mode: TDD <enabled|disabled>, Review <enabled|skipped>, Force review <if set>, Ship <enabled|disabled>
 
-[1/6] Fetching issue...
+[1/7] Fetching issue...
 ```
 
-Note: If `--skip-review` is used, show 5 steps instead of 6 and adjust step numbers accordingly.
+Note: Adjust total step count based on flags:
+
+- Default: 7 steps (fetch, review, plan, audit, execute, queue, ship)
+- With `--skip-review`: 6 steps
+- With `--no-ship`: 6 steps
+- With both: 5 steps
 
 ### Step 2: Fetch the Issue
 
@@ -80,12 +87,12 @@ Stop execution here.
 
 **If successful:**
 ```text
-[1/6] Fetching issue... OK
+[1/7] Fetching issue... OK
       Issue #<number>: <title>
       State: <open/closed>
       Labels: <labels or "None">
 
-[2/6] Reviewing issue...
+[2/7] Reviewing issue...
 ```
 
 Display the issue title and key details, then continue to review (or planning if review is skipped).
@@ -105,7 +112,7 @@ Display the issue title and key details, then continue to review (or planning if
 **If verdict is "blocked" AND `--force-review` is NOT set:**
 
 ```text
-[2/6] Reviewing issue... BLOCKED
+[2/7] Reviewing issue... BLOCKED
 
 ### Blocking Concerns Found
 
@@ -131,12 +138,12 @@ YOLO mode paused. Resolve blocking concerns or use override flag.
 **If verdict is "blocked" AND `--force-review` IS set:**
 
 ```text
-[2/6] Reviewing issue... BLOCKED (overridden with --force-review)
+[2/7] Reviewing issue... BLOCKED (overridden with --force-review)
       - Blocking: Issue should be split into auth + authz
 
       Proceeding despite blocking concerns (--force-review)
 
-[3/6] Creating plan...
+[3/7] Creating plan...
 ```
 
 Continue to planning despite blocking concerns.
@@ -144,13 +151,13 @@ Continue to planning despite blocking concerns.
 **If verdict is "warnings":**
 
 ```text
-[2/6] Reviewing issue... OK (with warnings)
+[2/7] Reviewing issue... OK (with warnings)
       - Warning: No rate limiting mentioned for login endpoint
       - Warning: Password policy not specified
 
       Proceeding despite warnings.
 
-[3/6] Creating plan...
+[3/7] Creating plan...
 ```
 
 Continue to planning.
@@ -158,10 +165,10 @@ Continue to planning.
 **If verdict is "clean":**
 
 ```text
-[2/6] Reviewing issue... OK (no concerns)
+[2/7] Reviewing issue... OK (no concerns)
       Issue is well-defined, ready to plan.
 
-[3/6] Creating plan...
+[3/7] Creating plan...
 ```
 
 Continue to planning.
@@ -188,7 +195,7 @@ Generate a phased execution plan (same as `/tiki:plan-issue`):
 **If planning fails:**
 
 ```text
-[3/6] Creating plan... FAILED
+[3/7] Creating plan... FAILED
 
 Could not generate a plan for this issue.
 Reason: <specific error>
@@ -200,13 +207,13 @@ Stop execution here.
 **If successful:**
 
 ```text
-[3/6] Creating plan... OK
+[3/7] Creating plan... OK
       Phases: <N>
       - Phase 1: <title>
       - Phase 2: <title>
       - ...
 
-[4/6] Auditing plan...
+[4/7] Auditing plan...
 ```
 
 ### Step 4: Audit the Plan
@@ -226,7 +233,7 @@ Collect errors and warnings.
 **If blocking errors found:**
 
 ```text
-[4/6] Auditing plan... BLOCKED
+[4/7] Auditing plan... BLOCKED
 
 Plan has blocking issues:
 - <error 1>
@@ -239,21 +246,21 @@ Stop execution here.
 **If warnings only:**
 
 ```text
-[4/6] Auditing plan... OK (with warnings)
+[4/7] Auditing plan... OK (with warnings)
       - <warning 1>
       - <warning 2>
 
       Proceeding despite warnings.
 
-[5/6] Executing phases (TDD: <enabled/disabled>)...
+[5/7] Executing phases (TDD: <enabled/disabled>)...
 ```
 
 **If clean:**
 
 ```text
-[4/6] Auditing plan... OK
+[4/7] Auditing plan... OK
 
-[5/6] Executing phases (TDD: <enabled/disabled>)...
+[5/7] Executing phases (TDD: <enabled/disabled>)...
 ```
 
 ### Step 5: Execute the Phases
@@ -279,7 +286,7 @@ Pass the TDD flag based on user input:
 **Progress display during execution:**
 
 ```text
-[5/6] Executing phases (TDD: enabled)...
+[5/7] Executing phases (TDD: enabled)...
       Phase 1/3: <title>... DONE
       Phase 2/3: <title>... DONE
       Phase 3/3: <title>... DONE
@@ -288,7 +295,7 @@ Pass the TDD flag based on user input:
 **If execution fails:**
 
 ```text
-[5/6] Executing phases... FAILED at Phase <N>
+[5/7] Executing phases... FAILED at Phase <N>
 
 Phase <N> failed: <title>
 Error: <error description>
@@ -303,15 +310,15 @@ Stop execution here (do not proceed to queue review).
 **If successful:**
 
 ```text
-[5/6] Executing phases... OK
+[5/7] Executing phases... OK
       All <N> phases completed.
 
-[6/6] Reviewing queue...
+[6/7] Reviewing queue...
 ```
 
 ### Step 6: Review Queue
 
-**Step number:** 6/6 (or 5/5 if review skipped)
+**Step number:** 6/7 (adjust based on flags)
 
 Check for items discovered during execution (same as `/tiki:review-queue`):
 
@@ -322,31 +329,15 @@ Check for items discovered during execution (same as `/tiki:review-queue`):
 **If queue is empty:**
 
 ```text
-[6/6] Reviewing queue... OK (0 items)
+[6/7] Reviewing queue... OK (0 items)
 
----
-
-## YOLO Complete!
-
-Issue #<number>: <title>
-All <N> phases completed successfully.
-TDD: <enabled/disabled>
-Queue: Empty
-
-### Phase Summaries
-- Phase 1: <summary>
-- Phase 2: <summary>
-- Phase 3: <summary>
-
-### Next Steps
-- Close the issue: `gh issue close <number>`
-- View state: `/tiki:state`
+[7/7] Shipping...
 ```
 
 **If queue has items:**
 
 ```text
-[6/6] Reviewing queue... <N> items found
+[6/7] Reviewing queue... <N> items found
 
 ### Queue Items Discovered
 
@@ -363,6 +354,18 @@ Actions:
 - Review individually: `/tiki:review-queue`
 - Dismiss all: `/tiki:review-queue --dismiss-all`
 
+[7/7] Shipping...
+```
+
+### Step 7: Ship
+
+**Step number:** 7/7 (adjust based on flags, skip if `--no-ship`)
+
+If `--no-ship` flag is present, skip this step and show the completion summary:
+
+```text
+[6/7] Reviewing queue... OK
+
 ---
 
 ## YOLO Complete!
@@ -370,7 +373,8 @@ Actions:
 Issue #<number>: <title>
 All <N> phases completed successfully.
 TDD: <enabled/disabled>
-Queue: <N> items pending review
+Queue: <N> items (or Empty)
+Ship: Skipped (--no-ship)
 
 ### Phase Summaries
 - Phase 1: <summary>
@@ -378,8 +382,90 @@ Queue: <N> items pending review
 - Phase 3: <summary>
 
 ### Next Steps
+- Ship when ready: `/tiki:ship`
 - Review queue items: `/tiki:review-queue`
-- Close the issue: `gh issue close <number>`
+```
+
+**If ship is enabled** (default), execute the ship workflow (same as `/tiki:ship`):
+
+1. Verify all phases are complete
+2. Check for uncommitted changes and commit if needed
+3. Push to remote
+4. Close the GitHub issue
+5. Bump version (if Tiki repo) - see details below
+6. Clean up Tiki state
+
+#### Version Bump (Tiki Repo Only)
+
+Check if this is the Tiki repo by looking for `version.json` in the project root. If it exists:
+
+1. Read `version.json`
+2. Parse the current version (e.g., "1.0.5")
+3. Increment the patch version (e.g., "1.0.6")
+4. Add a changelog entry for the issue:
+
+   ```json
+   {
+     "version": "1.0.6",
+     "date": "<current date YYYY-MM-DD>",
+     "changes": [
+       "Issue #<number>: <issue title summary>"
+     ]
+   }
+   ```
+
+5. Write the updated `version.json`
+6. Commit and push the version bump:
+
+   ```bash
+   git add version.json
+   git commit -m "chore: Bump version to <new version>"
+   git push origin main
+   ```
+
+**If ship succeeds:**
+
+```text
+[7/7] Shipping...
+      Committing changes... OK
+      Pushing to origin... OK
+      Closing issue #<number>... OK
+      Bumping version... OK (1.0.5 -> 1.0.6)
+      Cleaning up state... OK
+
+---
+
+## YOLO Complete! 🚀
+
+Issue #<number>: <title>
+All <N> phases completed successfully.
+TDD: <enabled/disabled>
+Queue: <N> items (or Empty)
+Shipped: Yes
+
+### Phase Summaries
+- Phase 1: <summary>
+- Phase 2: <summary>
+- Phase 3: <summary>
+
+### What Happened
+- Code committed and pushed to origin
+- GitHub issue #<number> closed
+- Tiki state cleared
+
+Ready for next issue? Run /tiki:whats-next
+```
+
+**If ship fails:**
+
+```text
+[7/7] Shipping... FAILED
+
+<error description>
+
+The issue was NOT closed. Options:
+- Fix the issue and run `/tiki:ship` manually
+- View state: `/tiki:state`
 ```
 
 ## Error Handling
@@ -389,7 +475,7 @@ Queue: <N> items pending review
 ```text
 ## YOLO Mode: Issue #<number>
 
-[1/6] Fetching issue... FAILED
+[1/7] Fetching issue... FAILED
 
 Issue #<number> not found.
 
@@ -404,8 +490,8 @@ Or check if you're in the correct repository.
 ```text
 ## YOLO Mode: Issue #<number>
 
-[1/6] Fetching issue... OK
-[2/6] Reviewing issue... BLOCKED
+[1/7] Fetching issue... OK
+[2/7] Reviewing issue... BLOCKED
 
 ### Blocking Concerns Found
 
@@ -428,9 +514,9 @@ This is NOT a failure - the review identified valid concerns that should be addr
 ```text
 ## YOLO Mode: Issue #<number>
 
-[1/6] Fetching issue... OK
-[2/6] Reviewing issue... OK
-[3/6] Creating plan... FAILED
+[1/7] Fetching issue... OK
+[2/7] Reviewing issue... OK
+[3/7] Creating plan... FAILED
 
 Failed to create execution plan.
 
@@ -448,10 +534,10 @@ Try:
 ```text
 ## YOLO Mode: Issue #<number>
 
-[1/6] Fetching issue... OK
-[2/6] Reviewing issue... OK
-[3/6] Creating plan... OK
-[4/6] Auditing plan... BLOCKED
+[1/7] Fetching issue... OK
+[2/7] Reviewing issue... OK
+[3/7] Creating plan... OK
+[4/7] Auditing plan... BLOCKED
 
 The plan has blocking issues that prevent execution:
 
@@ -467,11 +553,11 @@ Resolution required. Run `/tiki:plan-issue <number>` to revise.
 ```text
 ## YOLO Mode: Issue #<number>
 
-[1/6] Fetching issue... OK
-[2/6] Reviewing issue... OK
-[3/6] Creating plan... OK
-[4/6] Auditing plan... OK
-[5/6] Executing phases... FAILED at Phase 2
+[1/7] Fetching issue... OK
+[2/7] Reviewing issue... OK
+[3/7] Creating plan... OK
+[4/7] Auditing plan... OK
+[5/7] Executing phases... FAILED at Phase 2
 
 Phase 2 of 3 failed: Add login endpoint
 
@@ -492,11 +578,11 @@ Queue review skipped due to execution failure.
 ```text
 ## YOLO Mode: Issue #<number>
 
-[1/6] Fetching issue... OK
-[2/6] Reviewing issue... OK
-[3/6] Creating plan... OK
-[4/6] Auditing plan... OK
-[5/6] Executing phases... FAILED at Phase 2 (TDD verification)
+[1/7] Fetching issue... OK
+[2/7] Reviewing issue... OK
+[3/7] Creating plan... OK
+[4/7] Auditing plan... OK
+[5/7] Executing phases... FAILED at Phase 2 (TDD verification)
 
 Phase 2 implementation did not pass tests.
 
@@ -562,6 +648,22 @@ Default behavior (without flag): YOLO pauses on blocking concerns.
 
 **Warning:** Using `--force-review` may lead to suboptimal plans or wasted work if the blocking concerns are valid.
 
+### --no-ship
+
+Skip the automatic ship step at the end:
+
+```text
+/tiki:yolo 34 --no-ship
+```
+
+This completes execution and queue review but does NOT commit, push, or close the issue. Use when:
+
+- You want to review changes before committing
+- You need to make manual adjustments after execution
+- You want to run additional tests before shipping
+
+Default behavior (without flag): Ship is enabled - automatically commits, pushes, and closes the issue.
+
 ### Combining Flags
 
 You can combine flags to customize the workflow:
@@ -569,9 +671,13 @@ You can combine flags to customize the workflow:
 ```text
 /tiki:yolo 34 --no-tdd --skip-review
 /tiki:yolo 34 --force-review --no-tdd
+/tiki:yolo 34 --no-ship              # Review changes before shipping
+/tiki:yolo 34 --no-tdd --no-ship     # Fast execution without TDD or auto-ship
 ```
 
-This runs the minimal pipeline (5 steps): fetch → plan → audit → execute → review queue.
+Default pipeline (7 steps): fetch → review → plan → audit → execute → queue → ship
+
+With `--skip-review --no-ship` (5 steps): fetch → plan → audit → execute → queue
 
 ## Examples
 
@@ -583,26 +689,26 @@ User: /tiki:yolo 34
 Claude:
 ## YOLO Mode: Issue #34
 
-Mode: TDD enabled, Review enabled
+Mode: TDD enabled, Review enabled, Ship enabled
 
-[1/6] Fetching issue... OK
+[1/7] Fetching issue... OK
       Issue #34: Add user authentication
       State: open
       Labels: feature, high-priority
 
-[2/6] Reviewing issue... OK (2 recommendations added)
+[2/7] Reviewing issue... OK (2 recommendations added)
       - Alternative: Consider using existing auth middleware
       - Concern: No rate limiting mentioned
 
-[3/6] Creating plan... OK
+[3/7] Creating plan... OK
       Phases: 3
       - Phase 1: Setup auth middleware
       - Phase 2: Add login endpoint
       - Phase 3: Add protected routes
 
-[4/6] Auditing plan... OK
+[4/7] Auditing plan... OK
 
-[5/6] Executing phases (TDD: enabled)...
+[5/7] Executing phases (TDD: enabled)...
       Phase 1/3: Setup auth middleware... DONE
         Tests: 4 passing
       Phase 2/3: Add login endpoint... DONE
@@ -611,26 +717,23 @@ Mode: TDD enabled, Review enabled
       Phase 3/3: Add protected routes... DONE
         Tests: 3 passing
 
-[6/6] Reviewing queue... 1 item found
+[6/7] Reviewing queue... 1 item found
+      - Consider adding rate limiting (potential-issue)
 
-### Queue Items Discovered
-
-1. Consider adding rate limiting
-   Source: Phase 2
-   Type: potential-issue
-
-Actions:
-- Create issues from all: `/tiki:review-queue --create-all`
-- Review individually: `/tiki:review-queue`
+[7/7] Shipping...
+      Committing changes... OK
+      Pushing to origin... OK
+      Closing issue #34... OK
 
 ---
 
-## YOLO Complete!
+## YOLO Complete! 🚀
 
 Issue #34: Add user authentication
 All 3 phases completed successfully.
 TDD: enabled (12 tests passing)
 Queue: 1 item pending review
+Shipped: Yes
 
 ### Phase Summaries
 - Phase 1: Created JWT validation middleware with AuthRequest type
@@ -639,7 +742,7 @@ Queue: 1 item pending review
 
 ### Next Steps
 - Review queue items: `/tiki:review-queue`
-- Close the issue: `gh issue close 34`
+- Start next issue: `/tiki:whats-next`
 ```
 
 ### Example 2: YOLO with --no-tdd
@@ -650,44 +753,49 @@ User: /tiki:yolo 42 --no-tdd
 Claude:
 ## YOLO Mode: Issue #42
 
-Mode: TDD disabled, Review enabled
+Mode: TDD disabled, Review enabled, Ship enabled
 
-[1/6] Fetching issue... OK
+[1/7] Fetching issue... OK
       Issue #42: Update API documentation
       State: open
       Labels: docs
 
-[2/6] Reviewing issue... OK (no concerns)
+[2/7] Reviewing issue... OK (no concerns)
       Issue is well-defined, ready to plan.
 
-[3/6] Creating plan... OK
+[3/7] Creating plan... OK
       Phases: 2
       - Phase 1: Update endpoint documentation
       - Phase 2: Add code examples
 
-[4/6] Auditing plan... OK
+[4/7] Auditing plan... OK
 
-[5/6] Executing phases (TDD: disabled)...
+[5/7] Executing phases (TDD: disabled)...
       Phase 1/2: Update endpoint documentation... DONE
       Phase 2/2: Add code examples... DONE
 
-[6/6] Reviewing queue... OK (0 items)
+[6/7] Reviewing queue... OK (0 items)
+
+[7/7] Shipping...
+      Committing changes... OK
+      Pushing to origin... OK
+      Closing issue #42... OK
 
 ---
 
-## YOLO Complete!
+## YOLO Complete! 🚀
 
 Issue #42: Update API documentation
 All 2 phases completed successfully.
 TDD: disabled
 Queue: Empty
+Shipped: Yes
 
 ### Phase Summaries
 - Phase 1: Updated OpenAPI spec with new auth endpoints
 - Phase 2: Added curl examples for all endpoints
 
-### Next Steps
-- Close the issue: `gh issue close 42`
+Ready for next issue? Run /tiki:whats-next
 ```
 
 ### Example 3: YOLO with --skip-review
@@ -698,37 +806,42 @@ User: /tiki:yolo 42 --skip-review
 Claude:
 ## YOLO Mode: Issue #42
 
-Mode: TDD enabled, Review skipped
+Mode: TDD enabled, Review skipped, Ship enabled
 
-[1/5] Fetching issue... OK
+[1/6] Fetching issue... OK
       Issue #42: Update API documentation
       State: open
       Labels: docs
 
-[2/5] Creating plan... OK
+[2/6] Creating plan... OK
       Phases: 2
       - Phase 1: Update endpoint documentation
       - Phase 2: Add code examples
 
-[3/5] Auditing plan... OK
+[3/6] Auditing plan... OK
 
-[4/5] Executing phases (TDD: enabled)...
+[4/6] Executing phases (TDD: enabled)...
       Phase 1/2: Update endpoint documentation... DONE
       Phase 2/2: Add code examples... DONE
 
-[5/5] Reviewing queue... OK (0 items)
+[5/6] Reviewing queue... OK (0 items)
+
+[6/6] Shipping...
+      Committing changes... OK
+      Pushing to origin... OK
+      Closing issue #42... OK
 
 ---
 
-## YOLO Complete!
+## YOLO Complete! 🚀
 
 Issue #42: Update API documentation
 All 2 phases completed successfully.
 TDD: enabled
 Queue: Empty
+Shipped: Yes
 
-### Next Steps
-- Close the issue: `gh issue close 42`
+Ready for next issue? Run /tiki:whats-next
 ```
 
 ### Example 4: YOLO Blocked by Review
@@ -741,12 +854,12 @@ Claude:
 
 Mode: TDD enabled, Review enabled
 
-[1/6] Fetching issue... OK
+[1/7] Fetching issue... OK
       Issue #34: Add user authentication and authorization
       State: open
       Labels: feature
 
-[2/6] Reviewing issue... BLOCKED
+[2/7] Reviewing issue... BLOCKED
 
 ### Blocking Concerns Found
 
@@ -777,32 +890,32 @@ Claude:
 
 Mode: TDD enabled, Review enabled, Force review override
 
-[1/6] Fetching issue... OK
+[1/7] Fetching issue... OK
       Issue #34: Add user authentication and authorization
       State: open
       Labels: feature
 
-[2/6] Reviewing issue... BLOCKED (overridden with --force-review)
+[2/7] Reviewing issue... BLOCKED (overridden with --force-review)
       - Blocking: Issue should be split into auth + authz
 
       Proceeding despite blocking concerns (--force-review)
 
-[3/6] Creating plan... OK
+[3/7] Creating plan... OK
       Phases: 4
       - Phase 1: Setup auth middleware
       - Phase 2: Add login endpoint
       - Phase 3: Add role-based access control
       - Phase 4: Add protected routes
 
-[4/6] Auditing plan... OK
+[4/7] Auditing plan... OK
 
-[5/6] Executing phases (TDD: enabled)...
+[5/7] Executing phases (TDD: enabled)...
       Phase 1/4: Setup auth middleware... DONE
       Phase 2/4: Add login endpoint... DONE
       Phase 3/4: Add role-based access control... DONE
       Phase 4/4: Add protected routes... DONE
 
-[6/6] Reviewing queue... OK (0 items)
+[6/7] Reviewing queue... OK (0 items)
 
 ---
 
@@ -827,29 +940,29 @@ Claude:
 
 Mode: TDD enabled, Review enabled
 
-[1/6] Fetching issue... OK
+[1/7] Fetching issue... OK
       Issue #35: Add login endpoint
       State: open
       Labels: feature
 
-[2/6] Reviewing issue... OK (with warnings)
+[2/7] Reviewing issue... OK (with warnings)
       - Warning: No rate limiting mentioned for login endpoint
       - Warning: Password policy not specified
 
       Proceeding despite warnings.
 
-[3/6] Creating plan... OK
+[3/7] Creating plan... OK
       Phases: 2
       - Phase 1: Add login route handler
       - Phase 2: Add password validation
 
-[4/6] Auditing plan... OK
+[4/7] Auditing plan... OK
 
-[5/6] Executing phases (TDD: enabled)...
+[5/7] Executing phases (TDD: enabled)...
       Phase 1/2: Add login route handler... DONE
       Phase 2/2: Add password validation... DONE
 
-[6/6] Reviewing queue... OK (0 items)
+[6/7] Reviewing queue... OK (0 items)
 
 ---
 
@@ -874,15 +987,15 @@ Claude:
 
 Mode: TDD enabled, Review enabled
 
-[1/6] Fetching issue... OK
+[1/7] Fetching issue... OK
       Issue #15: Refactor database layer
       State: open
       Labels: refactor
 
-[2/6] Reviewing issue... OK (1 recommendation added)
+[2/7] Reviewing issue... OK (1 recommendation added)
       - Concern: Large refactor - consider splitting into smaller issues
 
-[3/6] Creating plan... OK
+[3/7] Creating plan... OK
       Phases: 5
       - Phase 1: Extract connection pool
       - Phase 2: Add query builder
@@ -890,7 +1003,7 @@ Mode: TDD enabled, Review enabled
       - Phase 4: Migrate order queries
       - Phase 5: Update integration tests
 
-[4/6] Auditing plan... BLOCKED
+[4/7] Auditing plan... BLOCKED
 
 The plan has blocking issues that prevent execution:
 
@@ -904,7 +1017,7 @@ Resolution required. Run `/tiki:plan-issue 15` to revise the plan.
 ## Workflow Overview
 
 ```text
-YOLO Mode Pipeline (6 steps, or 5 with --skip-review):
+YOLO Mode Pipeline (7 steps by default):
 
   [User Input]
        |
@@ -943,6 +1056,16 @@ YOLO Mode Pipeline (6 steps, or 5 with --skip-review):
                      +--------------+
                            |
                            v
+                     +------------+
+                     |    SHIP    |
+                     +------------+
+                           |
+                           v
+                      Commit,
+                      Push,
+                      Close Issue
+                           |
+                           v
                        [Complete]
 ```
 
@@ -968,8 +1091,9 @@ If artifacts persist, run `/tiki:cleanup` manually.
 - Each step validates before proceeding to the next
 - Progress is saved at each step, so partial failures don't lose work
 - TDD is enabled by default to ensure quality - use `--no-tdd` only when appropriate
+- Ship is enabled by default - automatically commits, pushes, and closes the issue
 - If any step fails, the pipeline stops with clear instructions for recovery
-- Queue review at the end ensures discovered items aren't forgotten
+- Queue review ensures discovered items aren't forgotten before shipping
 - State files are updated throughout, so `/tiki:state` shows accurate progress
 - For more control over individual steps, use the separate commands:
   - `/tiki:get-issue` - Just fetch and display
@@ -977,3 +1101,4 @@ If artifacts persist, run `/tiki:cleanup` manually.
   - `/tiki:audit-plan` - Audit with `--verbose` for details
   - `/tiki:execute` - Execute with `--from N` or `--dry-run`
   - `/tiki:review-queue` - Interactive queue management
+  - `/tiki:ship` - Manual shipping with `--no-push` or `--no-close` options
