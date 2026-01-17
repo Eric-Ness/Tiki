@@ -1,7 +1,14 @@
 {
-  "version": "1.0.5",
+  "version": "1.0.6",
   "releaseDate": "2026-01-16",
   "changelog": [
+    {
+      "version": "1.0.6",
+      "date": "2026-01-16",
+      "changes": [
+        "Issue #25: Add /tiki:add-todo and /tiki:list-todos for backlog management"
+      ]
+    },
     {
       "version": "1.0.5",
       "date": "2026-01-16",
