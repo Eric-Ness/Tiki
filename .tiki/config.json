@@ -24,5 +24,11 @@
   },
   "workflow": {
     "showNextStepMenu": true
+  },
+  "pickIssue": {
+    "maxIssues": 25,
+    "preferLabels": ["high-priority", "blocking"],
+    "deferLabels": ["nice-to-have", "low-priority", "wontfix"],
+    "excludeLabels": ["on-hold", "waiting-for-info"]
   }
 }
