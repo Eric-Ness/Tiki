@@ -800,9 +800,6 @@ Relevant research found:
 
 ---
 Plan saved to `.tiki/plans/issue-34.json`
-
-Ready to execute? Use `/tiki:execute 34`
-Want to adjust phases? Use `/tiki:discuss-phases 34`
 ```
 
 #### Project Context Display Rules
@@ -888,6 +885,36 @@ Consider researching before implementation if this involves unfamiliar technolog
 **When --no-research flag is used:**
 
 Omit the Research Context section entirely. Do not display any research-related content.
+
+### Step 7: Offer Next Steps (if enabled)
+
+Check if menus are enabled:
+
+1. Read `.tiki/config.json`
+2. If `workflow.showNextStepMenu` is `false`, skip this step
+3. If planning failed, skip this step (error case - do not show menu)
+
+After successfully creating the plan, use `AskUserQuestion` to present options:
+
+```text
+What would you like to do next?
+```
+
+Options:
+
+- "Audit plan (Recommended)" (description: "Validate before executing") → invoke Skill with `tiki:audit-plan` and issue number
+- "Discuss phases" (description: "Adjust the plan") → invoke Skill with `tiki:discuss-phases` and issue number
+- "Execute" (description: "Start implementation") → invoke Skill with `tiki:execute` and issue number
+- "Done for now" (description: "Exit without further action") → end without invoking any skill
+
+Based on user selection, invoke the appropriate Skill tool with the issue number as the argument.
+
+**Important:**
+
+- Only show this menu on SUCCESS (plan was created successfully)
+- Do not show menu if planning failed (e.g., issue not found, gh CLI errors)
+- The issue number should pass through automatically to the selected skill
+- If user selects "Done for now", simply end the command without further action
 
 ## Phase Content Guidelines
 

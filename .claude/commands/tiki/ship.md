@@ -2,7 +2,7 @@
 type: prompt
 name: tiki:ship
 description: Close out a completed issue by committing, pushing, and closing the GitHub issue. Use when you're done with an issue.
-allowed-tools: Read, Bash, Glob, Write
+allowed-tools: Read, Bash, Glob, Write, AskUserQuestion, Skill
 argument-hint: [--no-push] [--no-close]
 ---
 
@@ -209,9 +209,24 @@ Git log for this issue:
   def5678 feat(auth): Add login endpoint (#34)
   ghi9012 test(auth): Add authentication tests (#34)
   jkl3456 feat: Complete issue #34 - Add user authentication
-
-Ready for next issue? Run /tiki:whats-next
 ```
+
+#### Offer Next Steps (if enabled)
+
+After displaying the success report:
+
+1. Read `.tiki/config.json`
+2. If `workflow.showNextStepMenu` is `false`, skip this section entirely
+3. If ship failed at any point, skip this section (keep existing error handling)
+
+Use `AskUserQuestion` tool to present options:
+
+- "What's next (Recommended)" (description: "See suggested next actions") → invoke Skill tool with skill "tiki:whats-next"
+- "Get new issue" (description: "Start working on a specific issue") → invoke Skill tool with skill "tiki:get-issue"
+- "View state" (description: "Check current Tiki status") → invoke Skill tool with skill "tiki:state"
+- "Done for now" (description: "Exit without further action") → end without invoking any skill
+
+Based on user selection, invoke the appropriate Skill tool or end if "Done for now" is selected.
 
 ---
 
@@ -249,7 +264,7 @@ Summary:
 - 4 commits made
 - Issue closed on GitHub
 
-Ready for next issue? Run /tiki:whats-next
+[Next step menu appears if enabled in config]
 ```
 
 ### Example 2: Ship with Uncommitted Changes

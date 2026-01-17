@@ -21,5 +21,8 @@
     "enabled": "prompt",
     "maxAttempts": 3,
     "strategies": ["direct", "contextual-analysis", "approach-review"]
+  },
+  "workflow": {
+    "showNextStepMenu": true
   }
 }

@@ -253,6 +253,29 @@ Plan has blocking issues that must be resolved:
 Run `/tiki:plan-issue {issue}` to revise the plan.
 ```
 
+### Step 5: Offer Next Steps (if enabled)
+
+Check if menus are enabled:
+
+1. Read `.tiki/config.json`
+2. If `workflow.showNextStepMenu` is `false`, skip this step
+3. If audit has ERRORS, skip this step (keep existing text suggestions from Step 4)
+
+**For ALL PASS (no warnings, no errors)**, use `AskUserQuestion`:
+
+- "Execute (Recommended)" (description: "Start implementation") → invoke Skill tool with `skill: "tiki:execute"` and `args: "{issue-number}"`
+- "Discuss phases" (description: "Make adjustments first") → invoke Skill tool with `skill: "tiki:discuss-phases"` and `args: "{issue-number}"`
+- "Done for now" (description: "Exit without further action") → end
+
+**For WARNINGS ONLY (warnings but no errors)**, use `AskUserQuestion`:
+
+- "Execute (Recommended)" (description: "Proceed despite warnings") → invoke Skill tool with `skill: "tiki:execute"` and `args: "{issue-number}"`
+- "Discuss phases" (description: "Address warnings first") → invoke Skill tool with `skill: "tiki:discuss-phases"` and `args: "{issue-number}"`
+- "Re-plan" (description: "Create new plan from scratch") → invoke Skill tool with `skill: "tiki:plan-issue"` and `args: "{issue-number}"`
+- "Done for now" (description: "Exit without further action") → end
+
+Based on user selection, invoke the appropriate Skill tool with the issue number.
+
 ## Validation Details
 
 This section documents the validation rules including phase sizes, dependencies, file conflicts, and criteria coverage validation thresholds.

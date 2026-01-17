@@ -1241,6 +1241,25 @@ Review with `/tiki:review-queue`
 - View state: `/tiki:state`
 ```
 
+#### Offer Next Steps (if enabled)
+
+After displaying the completion summary for successful execution:
+
+Check if menus are enabled:
+
+1. Read `.tiki/config.json`
+2. If `workflow.showNextStepMenu` is `false`, skip this section
+3. If any phase failed, skip this section (keep existing recovery options text)
+
+Use `AskUserQuestion` to present options:
+
+- "Ship it (Recommended)" (description: "Commit, push, close issue") → invoke Skill with tiki:ship
+- "Review queue" (description: "Process discovered items") → invoke Skill with tiki:review-queue
+- "View state" (description: "Check current status") → invoke Skill with tiki:state
+- "Done for now" (description: "Exit without further action") → end
+
+Based on user selection, invoke the appropriate Skill tool.
+
 ## Sub-Agent Prompt Template
 
 ```text

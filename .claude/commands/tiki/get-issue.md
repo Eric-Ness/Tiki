@@ -2,7 +2,7 @@
 type: prompt
 name: tiki:get-issue
 description: Fetch and display GitHub issues with context. Use when the user wants to see a GitHub issue, review issues, or start working on an issue by number.
-allowed-tools: Bash, Read, Write
+allowed-tools: Bash, Read, Write, AskUserQuestion, Skill
 argument-hint: <issue-number> [additional-numbers...]
 ---
 
@@ -50,7 +50,29 @@ Retrieve one or more GitHub issues and display them with useful context.
 4. **Provide context** after displaying:
    - If issue has labels like `bug`, `feature`, `enhancement`, mention what type of work this is
    - If issue references other issues, note the dependencies
-   - Suggest next steps (e.g., "Ready to plan this issue? Use `/tiki:plan-issue <number>`")
+
+5. **Offer Next Steps (if enabled)**
+
+   Check if menus are enabled:
+   1. Read `.tiki/config.json`
+   2. If `workflow.showNextStepMenu` is `false`, skip this step and suggest: "Ready to plan? Use `/tiki:plan-issue <number>`"
+   3. If not set or `true`, proceed with interactive menu
+
+   **Only show menu on SUCCESS** (issue found and displayed). Do NOT show menu if issue was not found.
+
+   Use `AskUserQuestion` to present workflow options:
+
+   **Options:**
+   - "Review issue" (description: "Identify concerns before planning") → then invoke Skill tool with `tiki:review-issue {issue_number}`
+   - "Plan issue" (description: "Break into executable phases") → then invoke Skill tool with `tiki:plan-issue {issue_number}`
+   - "Research" (description: "Explore unfamiliar domain first") → then invoke Skill tool with `tiki:research {issue_number}`
+   - "Done for now" (description: "Exit without further action") → end session
+
+   Based on user selection:
+   - If user selects "Review issue" → invoke `Skill` tool with skill="tiki:review-issue" args="{issue_number}"
+   - If user selects "Plan issue" → invoke `Skill` tool with skill="tiki:plan-issue" args="{issue_number}"
+   - If user selects "Research" → invoke `Skill` tool with skill="tiki:research" args="{issue_number}"
+   - If user selects "Done for now" → end without further action
 
 ## Examples
 
@@ -81,7 +103,8 @@ We need to add user authentication to the API. Requirements:
 
 ---
 This is a **feature** request marked as **high-priority**.
-Ready to plan? Use `/tiki:plan-issue 34`
+
+[AskUserQuestion with options: Review issue, Plan issue, Research, Done for now]
 ```
 
 ### Multiple Issues
@@ -108,4 +131,5 @@ Which issue would you like to work on?
 
 - This skill uses the `gh` CLI which must be installed and authenticated
 - Works with the current repository context
-- For planning an issue after viewing, suggest `/tiki:plan-issue <number>`
+- After displaying issue(s), offers interactive next-step menu (if enabled in config)
+- Menu can be disabled by setting `workflow.showNextStepMenu: false` in `.tiki/config.json`

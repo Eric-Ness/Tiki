@@ -540,6 +540,56 @@ Note: Research suggestions in the `info` array include a `topic` field with the 
 
 This structured output allows YOLO mode to programmatically determine whether to continue or pause execution.
 
+### Step 9: Offer Next Steps (if enabled)
+
+Check if menus are enabled:
+
+1. Read `.tiki/config.json`
+2. If `workflow.showNextStepMenu` is `false`, skip this step
+3. If `--yolo` flag was set, skip this step (YOLO mode has its own flow)
+4. If verdict is BLOCKED, skip this step (keep existing text suggestions for resolving blocking concerns)
+
+**For CLEAN or WARNINGS verdict**, use `AskUserQuestion` to present options:
+
+```text
+Use AskUserQuestion tool with options:
+- "Plan issue (Recommended)" (description: "Create execution phases for issue #<number>")
+- "Research" (description: "Explore unfamiliar domains before planning")
+- "Done for now" (description: "Exit without further action")
+```
+
+Based on user selection:
+
+- **"Plan issue (Recommended)"** → Invoke Skill tool with `skill: "tiki:plan-issue"` and `args: "<issue-number>"`
+- **"Research"** → Invoke Skill tool with `skill: "tiki:research"` and `args: "<issue-number>"`
+- **"Done for now"** → End without further action
+
+Example flow:
+
+```text
+AskUserQuestion:
+  question: "What would you like to do next with issue #42?"
+  options:
+    - value: "plan"
+      label: "Plan issue (Recommended)"
+      description: "Create execution phases for issue #42"
+    - value: "research"
+      label: "Research"
+      description: "Explore unfamiliar domains before planning"
+    - value: "done"
+      label: "Done for now"
+      description: "Exit without further action"
+
+If user selects "plan":
+  → Skill tool: { skill: "tiki:plan-issue", args: "42" }
+
+If user selects "research":
+  → Skill tool: { skill: "tiki:research", args: "42" }
+
+If user selects "done":
+  → End (no action needed)
+```
+
 ## Design Decisions
 
 | Decision | Choice | Rationale |
