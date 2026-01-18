@@ -1,7 +1,14 @@
 {
-  "version": "1.0.7",
+  "version": "1.0.8",
   "releaseDate": "2026-01-18",
   "changelog": [
+    {
+      "version": "1.0.8",
+      "date": "2026-01-18",
+      "changes": [
+        "Issue #35: Fix auto-fix test expectations to match three-tier strategy"
+      ]
+    },
     {
       "version": "1.0.7",
       "date": "2026-01-18",
