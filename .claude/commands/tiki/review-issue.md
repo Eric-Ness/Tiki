@@ -97,6 +97,196 @@ When reviewing this issue, think critically about:
 
 **Important:** Focus on surfacing concerns and clarifications, NOT expanding scope. The goal is to validate the existing issue, not add features.
 
+### Step 3.5: Extract Assumptions
+
+Make implicit assumptions explicit and reviewable. This step surfaces what the issue takes for granted, helping prevent misunderstandings during planning and execution.
+
+#### Assumption Schema
+
+Each assumption follows this structure:
+```javascript
+{
+  id: "assumption-1",           // Unique identifier (assumption-N)
+  confidence: "high",           // high | medium | low
+  description: "Description",   // What is being assumed
+  source: "existing migrations",// Where the assumption comes from
+  affectsPhases: ["setup", "implementation"]  // Optional: which phases this might affect
+}
+```
+
+#### Confidence Levels
+
+| Level | Description | Treatment |
+|-------|-------------|-----------|
+| **high** | Following established patterns in the codebase | Proceed with confidence |
+| **medium** | Reasonable defaults, likely correct | Note but proceed |
+| **low** | Needs clarification, uncertain | Surface as info-level finding |
+
+#### 3.5a. Identify Assumptions from Issue Content
+
+Extract assumptions from the issue title and body:
+
+```javascript
+function extractAssumptionsFromIssue(issue) {
+  const assumptions = [];
+  const text = `${issue.title} ${issue.body}`;
+
+  // Look for implicit assumptions in language
+  const implicitPatterns = [
+    { pattern: /should (just|simply|easily)/, signal: 'Assumes straightforward implementation' },
+    { pattern: /like (we did|existing|current)/, signal: 'Assumes familiarity with prior work' },
+    { pattern: /use (the|our|existing)/, signal: 'Assumes specific tools/patterns exist' },
+    { pattern: /add to (the|existing)/, signal: 'Assumes infrastructure exists' },
+    { pattern: /extend (the|existing)/, signal: 'Assumes extensible architecture' },
+    { pattern: /similar to/, signal: 'Assumes prior art can be followed' },
+    { pattern: /as (usual|always|before)/, signal: 'Assumes established conventions' },
+  ];
+
+  implicitPatterns.forEach(({ pattern, signal }) => {
+    if (pattern.test(text)) {
+      assumptions.push({
+        confidence: 'medium',
+        description: signal,
+        source: 'issue body'
+      });
+    }
+  });
+
+  // Check for unspecified technical decisions
+  const technicalAssumptions = [
+    { pattern: /database|db|persist/, assumption: 'Database schema and access patterns are defined' },
+    { pattern: /api|endpoint/, assumption: 'API structure and conventions are established' },
+    { pattern: /test|spec/, assumption: 'Testing framework and patterns are in place' },
+    { pattern: /auth|permission|role/, assumption: 'Authentication/authorization infrastructure exists' },
+    { pattern: /migration/, assumption: 'Migration tooling and process are configured' },
+    { pattern: /deploy|release/, assumption: 'Deployment pipeline is established' },
+  ];
+
+  technicalAssumptions.forEach(({ pattern, assumption }) => {
+    if (pattern.test(text.toLowerCase())) {
+      assumptions.push({
+        confidence: 'medium',
+        description: assumption,
+        source: 'issue body'
+      });
+    }
+  });
+
+  return assumptions;
+}
+```
+
+#### 3.5b. Identify Assumptions from Codebase Context
+
+After exploring the codebase (Step 4), identify pattern-based assumptions:
+
+```javascript
+function extractAssumptionsFromCodebase(codebaseFindings) {
+  const assumptions = [];
+
+  // High confidence: Following existing patterns
+  if (codebaseFindings.similarPatterns.length > 0) {
+    assumptions.push({
+      confidence: 'high',
+      description: `Following existing pattern from ${codebaseFindings.similarPatterns[0]}`,
+      source: 'codebase patterns'
+    });
+  }
+
+  // High confidence: Existing infrastructure
+  if (codebaseFindings.existingInfrastructure) {
+    assumptions.push({
+      confidence: 'high',
+      description: `Using existing ${codebaseFindings.existingInfrastructure.type} infrastructure`,
+      source: 'existing codebase'
+    });
+  }
+
+  // Medium confidence: Inferred from conventions
+  if (codebaseFindings.conventions) {
+    assumptions.push({
+      confidence: 'medium',
+      description: `Following ${codebaseFindings.conventions} conventions`,
+      source: 'codebase conventions'
+    });
+  }
+
+  return assumptions;
+}
+```
+
+#### 3.5c. Categorize and Deduplicate Assumptions
+
+```javascript
+function processAssumptions(issueAssumptions, codebaseAssumptions) {
+  const allAssumptions = [...issueAssumptions, ...codebaseAssumptions];
+
+  // Deduplicate by description similarity
+  const unique = [];
+  const seen = new Set();
+
+  allAssumptions.forEach((assumption, index) => {
+    const key = assumption.description.toLowerCase().substring(0, 50);
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push({
+        id: `assumption-${unique.length + 1}`,
+        ...assumption
+      });
+    }
+  });
+
+  // Sort by confidence (low first - needs most attention)
+  const order = { low: 0, medium: 1, high: 2 };
+  unique.sort((a, b) => order[a.confidence] - order[b.confidence]);
+
+  return unique;
+}
+```
+
+#### 3.5d. Generate Assumption Findings
+
+Low-confidence assumptions become info-level findings:
+
+```javascript
+function generateAssumptionFindings(assumptions) {
+  const findings = [];
+
+  assumptions
+    .filter(a => a.confidence === 'low')
+    .forEach(assumption => {
+      findings.push({
+        severity: 'info',
+        category: 'assumption',
+        message: `Assumption needs clarification: ${assumption.description}`,
+        source: assumption.source
+      });
+    });
+
+  return findings;
+}
+```
+
+#### 3.5e. Assumption Extraction Workflow
+
+```text
+Extracting assumptions...
+
+Found 4 assumptions:
+
+LOW CONFIDENCE (needs clarification):
+- assumption-1: "Database migration tooling is configured" (source: issue body)
+
+MEDIUM CONFIDENCE (reasonable defaults):
+- assumption-2: "API follows REST conventions" (source: codebase conventions)
+- assumption-3: "Testing patterns match existing tests" (source: codebase patterns)
+
+HIGH CONFIDENCE (following patterns):
+- assumption-4: "Using existing auth middleware" (source: existing codebase)
+
+Low-confidence assumptions will be surfaced as info-level findings.
+```
+
 ### Step 4: Explore Codebase (if needed)
 
 If the issue references existing code or functionality:
@@ -419,6 +609,18 @@ Reviewed by Claude before planning. Here are some considerations:
 - **[Research]**: Unfamiliar topic detected: \"GraphQL\"
   Consider running \`/tiki:research graphql\` before planning.
 
+### Assumptions
+> The following assumptions were identified. Low-confidence assumptions may need clarification.
+
+**High Confidence** (following patterns):
+- <assumption description> _(source: <source>)_
+
+**Medium Confidence** (reasonable defaults):
+- <assumption description> _(source: <source>)_
+
+**Low Confidence** (needs clarification):
+- <assumption description> _(source: <source>)_
+
 ### Alternative Approaches
 - <alternative 1>
 - <alternative 2>
@@ -433,6 +635,8 @@ Reviewed by Claude before planning. Here are some considerations:
 ```
 
 Only include sections that have content. Skip empty sections.
+
+**Note on Assumptions section:** Only include the Assumptions section if assumptions were detected during Step 3.5. Within the section, only include confidence level subsections that have at least one assumption.
 
 **If using `--edit-body`** (not recommended):
 Instead of adding a comment, prepend the review to the issue body. This modifies the original issue, which may not be desired.
@@ -529,12 +733,39 @@ No comment added - issue looks ready to plan.
     { "category": "prior_art", "message": "Similar pattern exists..." },
     { "category": "research_suggestion", "message": "Unfamiliar topic: GraphQL", "topic": "graphql" }
   ],
+  "assumptions": [
+    { "id": "assumption-1", "confidence": "high", "description": "Following existing pattern from src/auth/middleware.ts", "source": "codebase patterns" },
+    { "id": "assumption-2", "confidence": "medium", "description": "API follows REST conventions", "source": "codebase conventions" },
+    { "id": "assumption-3", "confidence": "low", "description": "Database migration tooling is configured", "source": "issue body" }
+  ],
   "verdict": "blocked"
 }
 REVIEW_RESULT -->
 ```
 
 The verdict field will be one of: `"blocked"`, `"warnings"`, or `"clean"`.
+
+#### REVIEW_RESULT Schema
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `blocking` | array | Blocking concerns that prevent planning |
+| `warnings` | array | Warnings that should be addressed |
+| `info` | array | Informational items (includes research suggestions) |
+| `assumptions` | array | Extracted assumptions from Step 3.5 |
+| `verdict` | string | One of: `"blocked"`, `"warnings"`, `"clean"` |
+
+#### Assumption Object Schema
+
+Each assumption in the `assumptions` array follows this structure:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | Yes | Unique identifier (e.g., `"assumption-1"`) |
+| `confidence` | string | Yes | One of: `"high"`, `"medium"`, `"low"` |
+| `description` | string | Yes | What is being assumed |
+| `source` | string | Yes | Where the assumption comes from (e.g., `"issue body"`, `"codebase patterns"`) |
+| `affectsPhases` | array | No | Optional list of phase types this assumption might affect |
 
 Note: Research suggestions in the `info` array include a `topic` field with the kebab-case topic name for easy reference to `/tiki:research`.
 

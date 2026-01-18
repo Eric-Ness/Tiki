@@ -282,7 +282,29 @@ SUMMARY: Created N failing tests for <functionality>
 
 #### 4e. Build Sub-Agent Prompt
 
-Construct the prompt for the Task tool. If TDD is enabled, include test context:
+Construct the prompt for the Task tool. If TDD is enabled, include test context.
+
+**Filter Phase-Relevant Assumptions:**
+
+Before building the prompt, filter assumptions from the plan that affect the current phase:
+
+1. Read the `assumptions` array from the plan file
+2. For each assumption, check if `affectsPhases` includes the current phase number
+3. Group filtered assumptions by confidence level (high, medium, low)
+
+```javascript
+// Filter assumptions for current phase
+const phaseAssumptions = plan.assumptions.filter(a =>
+  a.affectsPhases.includes(currentPhaseNumber)
+);
+
+// Group by confidence
+const highConfidence = phaseAssumptions.filter(a => a.confidence === 'high');
+const mediumConfidence = phaseAssumptions.filter(a => a.confidence === 'medium');
+const lowConfidence = phaseAssumptions.filter(a => a.confidence === 'low');
+```
+
+**Build Prompt:**
 
 ```text
 You are executing Phase <N> of <total> for Issue #<number>: <title>
@@ -301,6 +323,28 @@ You are executing Phase <N> of <total> for Issue #<number>: <title>
 
 ## Files You May Need to Modify
 <files array from phase>
+
+## Relevant Assumptions
+
+The following assumptions were made during planning and affect this phase. If any assumption appears incorrect during implementation, flag it using the format:
+`ASSUMPTION_INVALID: {assumption_id} - {reason why it's incorrect}`
+
+### High Confidence
+<For each high-confidence assumption affecting this phase>
+- **[{id}]** {assumption} (source: {source})
+</For each>
+
+### Medium Confidence
+<For each medium-confidence assumption affecting this phase>
+- **[{id}]** {assumption} (source: {source})
+</For each>
+
+### Low Confidence
+<For each low-confidence assumption affecting this phase>
+- **[{id}]** {assumption} (source: {source})
+</For each>
+
+<!-- Omit empty confidence sections. If no assumptions affect this phase, omit entire section. -->
 
 ## Verification Checklist
 <verification array from phase>
@@ -324,8 +368,9 @@ All tests must pass before this phase is considered complete.
 1. Execute this phase completely - make actual code changes
 2. If TDD is enabled: implement code to make the failing tests pass
 3. Run tests to verify your changes pass
-4. If you discover issues needing future attention, clearly note them at the end with "DISCOVERED:" prefix
-5. When done, provide a summary starting with "SUMMARY:" that describes what you accomplished
+4. If any assumption appears incorrect, flag it with: `ASSUMPTION_INVALID: {id} - {reason}`
+5. If you discover issues needing future attention, clearly note them at the end with "DISCOVERED:" prefix
+6. When done, provide a summary starting with "SUMMARY:" that describes what you accomplished
 ```
 
 #### 4f. Spawn Sub-Agent
@@ -1252,16 +1297,39 @@ After the sub-agent completes:
 3. **Extract trigger markers** - Look for "ADR_TRIGGER:" and "CONVENTION_TRIGGER:" markers
    - Parse the JSON content following each trigger marker
    - Validate the JSON contains required fields (triggerType, decision/pattern, rationale, confidence)
-4. **Update phase in plan**:
+4. **Extract invalid assumption markers** - Look for "ASSUMPTION_INVALID:" markers
+   - Parse each marker: `ASSUMPTION_INVALID: {id} - {reason}`
+   - Extract the assumption ID and the reason for invalidity
+   - Create queue items for each invalid assumption (see step 8 below)
+5. **Update phase in plan**:
    - Set `status: "completed"`
    - Set `summary: <extracted summary>`
    - Set `completedAt: <current timestamp>`
-5. **Update state file**:
+6. **Update state file**:
    - Add to `completedPhases` array
    - Update `lastActivity`
-6. **Add discovered items to queue** (if any):
+7. **Add discovered items to queue** (if any):
    - Append to `.tiki/queue/pending.json`
-7. **Add triggers to pending triggers** (if any):
+8. **Add invalid assumptions to queue** (if any):
+   - For each ASSUMPTION_INVALID marker found, create a queue item:
+
+   ```json
+   {
+     "id": "q-NNN",
+     "type": "invalid-assumption",
+     "title": "Assumption {id} found to be incorrect",
+     "description": "{reason from ASSUMPTION_INVALID marker}",
+     "source": {
+       "issue": <issue_number>,
+       "phase": <phase_number>,
+       "assumptionId": "{id}"
+     },
+     "createdAt": "<ISO 8601 timestamp>"
+   }
+   ```
+
+   - Append to `.tiki/queue/pending.json`
+9. **Add triggers to pending triggers** (if any):
    - Create `.tiki/triggers/` directory if it doesn't exist
    - Append to `.tiki/triggers/pending.json` with enriched schema (see Trigger Items section below)
 
@@ -1366,6 +1434,25 @@ You are executing Phase {phase_number} of {total_phases} for Issue #{issue_numbe
 ## Files You May Need to Modify
 {files_list}
 
+## Relevant Assumptions
+{assumptions_section}
+<!-- Include this section only if there are assumptions affecting this phase.
+Filter assumptions where affectsPhases includes current phase number.
+Group by confidence level (high, medium, low). Omit empty groups.
+
+Format each assumption as:
+- **[{id}]** {assumption} (source: {source})
+
+Example:
+### High Confidence
+- **[A1]** The application uses Express.js for HTTP handling (source: inferred from package.json)
+
+### Medium Confidence
+- **[A3]** Authentication tokens expire after 24 hours (source: issue description)
+
+If no assumptions affect this phase, omit this entire section.
+-->
+
 ## Verification Checklist
 {verification_list}
 
@@ -1424,14 +1511,17 @@ Emit CONVENTION triggers when:
 1. Execute this phase completely - make actual code changes
 2. If TDD is enabled: implement code to make the failing tests pass
 3. Run tests to verify your changes pass
-4. If you discover issues needing future attention, clearly note them with "DISCOVERED:" prefix
-5. When done, provide a summary starting with "SUMMARY:" describing what you accomplished
+4. If any assumption in "Relevant Assumptions" appears incorrect, flag it with:
+   `ASSUMPTION_INVALID: {id} - {reason why it's incorrect}`
+5. If you discover issues needing future attention, clearly note them with "DISCOVERED:" prefix
+6. When done, provide a summary starting with "SUMMARY:" describing what you accomplished
 
 Important:
 - Focus ONLY on this phase - do not work ahead
 - If blocked, explain why and what would unblock you
 - Keep your summary concise but complete
 - If TDD enabled: tests must pass for phase completion
+- Flag incorrect assumptions immediately when discovered - this helps improve future planning
 ```
 
 ## State File Updates

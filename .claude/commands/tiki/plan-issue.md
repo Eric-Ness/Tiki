@@ -465,6 +465,170 @@ Display nothing (silent skip). The planning process continues normally without r
 
 Display nothing (silent skip). Continue with normal planning.
 
+### Step 2.4: Import Assumptions from Review
+
+Check if assumptions exist from a prior `/tiki:review-issue` and import them, or generate assumptions inline if no prior review was performed.
+
+#### 2.4a. Check for Existing Review Assumptions
+
+Check if the issue has an existing review with assumptions (from `/tiki:review-issue`):
+
+```javascript
+async function checkForReviewAssumptions(issueNumber) {
+  // Check for existing GitHub comment with review results
+  const comments = await bash(`gh issue view ${issueNumber} --json comments --jq '.comments[].body'`);
+
+  // Look for the REVIEW_RESULT marker with assumptions
+  for (const comment of comments.split('\n')) {
+    if (comment.includes('REVIEW_RESULT:')) {
+      try {
+        const jsonMatch = comment.match(/REVIEW_RESULT:\s*(\{[\s\S]*\})/);
+        if (jsonMatch) {
+          const reviewResult = JSON.parse(jsonMatch[1]);
+          if (reviewResult.assumptions && reviewResult.assumptions.length > 0) {
+            return reviewResult.assumptions;
+          }
+        }
+      } catch (error) {
+        // Invalid JSON, continue searching
+        continue;
+      }
+    }
+  }
+
+  return null; // No existing review assumptions found
+}
+```
+
+#### 2.4b. Generate Assumptions Inline (if no prior review)
+
+If no assumptions exist from a prior review, generate them during planning by analyzing:
+
+1. **Technical assumptions** - Inferred from issue content and codebase
+   - Database/framework choices based on existing code
+   - API patterns based on project structure
+   - Testing framework based on existing tests
+
+2. **Scope assumptions** - What's explicitly included vs excluded
+   - Features mentioned vs not mentioned
+   - Edge cases that need clarification
+
+3. **Integration assumptions** - How this relates to existing code
+   - Dependencies on existing modules
+   - Expected interfaces with other components
+
+```javascript
+function generateAssumptions(issue, codebaseContext) {
+  const assumptions = [];
+  let idCounter = 1;
+
+  // Analyze issue body for implicit assumptions
+  const issueText = `${issue.title} ${issue.body}`.toLowerCase();
+
+  // Technical assumptions from codebase analysis
+  if (codebaseContext.database) {
+    assumptions.push({
+      id: `A${idCounter++}`,
+      confidence: 'high',
+      description: `Database uses ${codebaseContext.database}`,
+      source: 'existing migrations/schema files',
+      affectsPhases: [] // Will be populated in Step 4.5
+    });
+  }
+
+  if (codebaseContext.testFramework) {
+    assumptions.push({
+      id: `A${idCounter++}`,
+      confidence: 'high',
+      description: `Tests use ${codebaseContext.testFramework}`,
+      source: 'existing test files',
+      affectsPhases: []
+    });
+  }
+
+  // Scope assumptions based on what's NOT mentioned
+  // (Add assumptions about edge cases, error handling, etc.)
+
+  return assumptions;
+}
+```
+
+#### 2.4c. Store Assumptions for Planning
+
+Store the assumptions (imported or generated) for use in phase planning:
+
+```javascript
+const assumptionsContext = {
+  assumptions: [], // Array of assumption objects
+  source: 'none', // 'review' | 'generated' | 'none'
+  imported: false
+};
+
+// Try to import from review first
+const reviewAssumptions = await checkForReviewAssumptions(issueNumber);
+
+if (reviewAssumptions && reviewAssumptions.length > 0) {
+  assumptionsContext.assumptions = reviewAssumptions.map((a, i) => ({
+    id: a.id || `A${i + 1}`,
+    confidence: a.confidence || 'medium',
+    description: a.description,
+    source: a.source || 'review',
+    affectsPhases: [] // Will be populated in Step 4.5
+  }));
+  assumptionsContext.source = 'review';
+  assumptionsContext.imported = true;
+} else {
+  // Generate assumptions inline
+  assumptionsContext.assumptions = generateAssumptions(issue, codebaseContext);
+  assumptionsContext.source = 'generated';
+  assumptionsContext.imported = false;
+}
+```
+
+#### 2.4d. Display Assumptions Discovery
+
+**If assumptions imported from review:**
+
+```text
+## Assumptions Imported from Review
+
+Found {N} assumptions from prior issue review:
+
+**High Confidence:**
+- {A1}: {description} (source: {source})
+
+**Medium Confidence:**
+- {A2}: {description} (source: {source})
+
+**Low Confidence:**
+- {A3}: {description} (source: {source})
+
+These assumptions will be mapped to phases during planning.
+```
+
+**If assumptions generated inline:**
+
+```text
+## Assumptions Generated
+
+Generated {N} assumptions based on issue and codebase analysis:
+
+**High Confidence:**
+- {A1}: {description} (source: {source})
+
+**Medium Confidence:**
+- {A2}: {description} (source: {source})
+
+**Low Confidence:**
+- {A3}: {description} (source: {source})
+
+These assumptions will be mapped to phases during planning.
+```
+
+**If no assumptions (skip silently):**
+
+If no assumptions can be imported or generated, continue without displaying anything.
+
 ### Step 2.5: Extract Success Criteria
 
 Extract and define success criteria that will guide the implementation and verify completion.
@@ -696,6 +860,115 @@ When project context is available from PROJECT.md, incorporate it into phase pla
    }
    ```
 
+### Step 4.5: Map Assumptions to Phases
+
+After generating phases, map each assumption to the phases it affects. This creates traceability between assumptions and implementation work.
+
+#### 4.5a. Analyze Assumption-Phase Relationships
+
+For each assumption from Step 2.4, identify which phases depend on or are affected by that assumption:
+
+```javascript
+function mapAssumptionsToPhases(assumptions, phases) {
+  for (const assumption of assumptions) {
+    assumption.affectsPhases = [];
+
+    for (const phase of phases) {
+      // Check if assumption relates to phase content
+      const phaseText = `${phase.title} ${phase.content}`.toLowerCase();
+      const assumptionText = assumption.description.toLowerCase();
+
+      // Match by keywords, file references, or technology mentions
+      const isRelated =
+        // Direct technology/framework match
+        phaseText.includes(assumptionText.split(' ')[0]) ||
+        // File overlap (if assumption mentions files)
+        (assumption.source && phase.files?.some(f =>
+          assumption.source.toLowerCase().includes(f.split('/').pop().toLowerCase())
+        )) ||
+        // Semantic relationship (database assumption affects DB phases, etc.)
+        matchesSemantically(assumption, phase);
+
+      if (isRelated) {
+        assumption.affectsPhases.push(phase.number);
+      }
+    }
+  }
+
+  return assumptions;
+}
+
+function matchesSemantically(assumption, phase) {
+  const assumptionLower = assumption.description.toLowerCase();
+  const phaseLower = `${phase.title} ${phase.content}`.toLowerCase();
+
+  // Database assumptions affect phases with DB operations
+  if (assumptionLower.includes('database') || assumptionLower.includes('sql')) {
+    if (phaseLower.includes('database') || phaseLower.includes('migration') ||
+        phaseLower.includes('schema') || phaseLower.includes('query')) {
+      return true;
+    }
+  }
+
+  // Test framework assumptions affect testing phases
+  if (assumptionLower.includes('test')) {
+    if (phaseLower.includes('test') || phaseLower.includes('spec')) {
+      return true;
+    }
+  }
+
+  // API assumptions affect API/endpoint phases
+  if (assumptionLower.includes('api') || assumptionLower.includes('endpoint')) {
+    if (phaseLower.includes('api') || phaseLower.includes('endpoint') ||
+        phaseLower.includes('route')) {
+      return true;
+    }
+  }
+
+  return false;
+}
+```
+
+#### 4.5b. Validate Assumption Coverage
+
+Ensure each assumption affects at least one phase (orphan detection):
+
+```javascript
+function validateAssumptionCoverage(assumptions) {
+  const orphanAssumptions = assumptions.filter(a => a.affectsPhases.length === 0);
+
+  if (orphanAssumptions.length > 0) {
+    console.warn('Warning: The following assumptions are not mapped to any phase:');
+    orphanAssumptions.forEach(a => {
+      console.warn(`  - ${a.id}: ${a.description}`);
+    });
+    console.warn('Consider reviewing if these assumptions are relevant to the implementation.');
+  }
+
+  return orphanAssumptions;
+}
+```
+
+#### 4.5c. Display Assumption Mapping
+
+After mapping, display the assumption-phase relationships:
+
+```text
+## Assumption-Phase Mapping
+
+| Assumption | Description | Affects Phases |
+|------------|-------------|----------------|
+| A1 | Database uses PostgreSQL | Phase 1, 2 |
+| A2 | Tests use Jest | Phase 3 |
+| A3 | API follows REST patterns | Phase 1, 2, 3 |
+
+{If orphan assumptions exist:}
+**Note:** The following assumptions are not directly mapped to any phase:
+- {A4}: {description}
+
+These may be global assumptions or require manual phase association.
+```
+
 ### Step 5: Create the Plan File
 
 Create `.tiki/plans/issue-<number>.json` with this structure:
@@ -729,6 +1002,29 @@ Create `.tiki/plans/issue-<number>.json` with this structure:
     {
       "category": "documentation",
       "description": "API documentation updated with auth endpoints"
+    }
+  ],
+  "assumptions": [
+    {
+      "id": "A1",
+      "confidence": "high",
+      "description": "Database uses PostgreSQL",
+      "source": "existing migrations in /migrations/",
+      "affectsPhases": [1, 2]
+    },
+    {
+      "id": "A2",
+      "confidence": "medium",
+      "description": "Authentication will use JWT tokens",
+      "source": "issue description mentions token-based auth",
+      "affectsPhases": [1, 2, 3]
+    },
+    {
+      "id": "A3",
+      "confidence": "low",
+      "description": "Rate limiting not required for initial implementation",
+      "source": "not mentioned in issue",
+      "affectsPhases": []
     }
   ],
   "phases": [
@@ -967,7 +1263,7 @@ const plan = {
 
 ### Step 6: Display the Plan
 
-After creating the plan, display a summary showing release context (if available), project context (if available), research context (if available), success criteria before phases, which criteria each phase addresses, and a criteria coverage table:
+After creating the plan, display a summary showing release context (if available), project context (if available), research context (if available), assumptions (if available), success criteria before phases, which criteria each phase addresses, and a criteria coverage table:
 
 ```markdown
 ## Plan for Issue #34: Add user authentication
@@ -1005,6 +1301,19 @@ Relevant research found:
 - Use React Query for server state, local state for UI state
 - Implement optimistic updates for better UX
 - Avoid: Mixing server and client state in the same store
+
+---
+
+### Assumptions
+
+**High Confidence:**
+- A1: Database uses PostgreSQL (source: existing migrations in /migrations/) - affects Phase 1, 2
+
+**Medium Confidence:**
+- A2: Authentication will use JWT tokens (source: issue description mentions token-based auth) - affects Phase 1, 2, 3
+
+**Low Confidence:**
+- A3: Rate limiting not required for initial implementation (source: not mentioned in issue) - global assumption
 
 ---
 
@@ -1171,6 +1480,64 @@ Consider researching before implementation if this involves unfamiliar technolog
 **When --no-research flag is used:**
 
 Omit the Research Context section entirely. Do not display any research-related content.
+
+#### Assumptions Display Rules
+
+**When assumptions exist:**
+
+Display the Assumptions section after Research Context and before Success Criteria, grouped by confidence level:
+
+```markdown
+### Assumptions
+
+**High Confidence:**
+- {A1}: {description} (source: {source}) - affects Phase {phases}
+
+**Medium Confidence:**
+- {A2}: {description} (source: {source}) - affects Phase {phases}
+
+**Low Confidence:**
+- {A3}: {description} (source: {source}) - {affects Phase {phases} or "global assumption" if affectsPhases is empty}
+
+---
+```
+
+Include:
+
+1. Confidence grouping (high, medium, low)
+2. Assumption ID and description
+3. Source of the assumption
+4. Which phases are affected (or "global assumption" if affectsPhases is empty)
+
+**When assumptions imported from review:**
+
+Add a note at the top:
+
+```markdown
+### Assumptions
+
+*Imported from prior issue review*
+
+**High Confidence:**
+...
+```
+
+**When assumptions generated inline:**
+
+Add a note at the top:
+
+```markdown
+### Assumptions
+
+*Generated during planning based on issue and codebase analysis*
+
+**High Confidence:**
+...
+```
+
+**When no assumptions exist:**
+
+Omit the Assumptions section entirely (silent skip). The planning process continues normally without displaying assumptions.
 
 ### Step 7: Offer Next Steps (if enabled)
 
