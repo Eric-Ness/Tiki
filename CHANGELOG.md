@@ -2,6 +2,13 @@
 
 All notable changes to Tiki are documented in this file.
 
+## [1.1.0] - 2026-01-18
+
+### Added
+
+- Issue #26: Expand /tiki:map-codebase to generate additional documentation
+- Issue #28: Add /tiki:changelog command to show recent updates
+
 ## [1.0.14] - 2026-01-18
 
 ### Added

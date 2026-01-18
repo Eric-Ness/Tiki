@@ -1,7 +1,15 @@
 {
-  "version": "1.0.14",
+  "version": "1.1.0",
   "releaseDate": "2026-01-18",
   "changelog": [
+    {
+      "version": "1.1.0",
+      "date": "2026-01-18",
+      "changes": [
+        "Issue #26: Expand /tiki:map-codebase to generate additional documentation",
+        "Issue #28: Add /tiki:changelog command to show recent updates"
+      ]
+    },
     {
       "version": "1.0.14",
       "date": "2026-01-18",
