@@ -1,7 +1,14 @@
 {
-  "version": "1.0.12",
+  "version": "1.0.13",
   "releaseDate": "2026-01-18",
   "changelog": [
+    {
+      "version": "1.0.13",
+      "date": "2026-01-18",
+      "changes": [
+        "Issue #42: Add release automation and command integration (/tiki:release yolo, sync, state/whats-next)"
+      ]
+    },
     {
       "version": "1.0.12",
       "date": "2026-01-18",
