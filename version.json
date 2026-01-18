@@ -1,7 +1,14 @@
 {
-  "version": "1.0.6",
-  "releaseDate": "2026-01-16",
+  "version": "1.0.7",
+  "releaseDate": "2026-01-18",
   "changelog": [
+    {
+      "version": "1.0.7",
+      "date": "2026-01-18",
+      "changes": [
+        "Issue #37: Move STACK.md and CONCERNS.md output to .tiki/ folder"
+      ]
+    },
     {
       "version": "1.0.6",
       "date": "2026-01-16",
