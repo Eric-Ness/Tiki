@@ -3,7 +3,7 @@ type: prompt
 name: tiki:map-codebase
 description: Analyze codebase and generate .tiki/STACK.md and .tiki/CONCERNS.md. Use when starting with a new codebase or refreshing documentation.
 allowed-tools: Read, Write, Bash, Glob, Grep, Task
-argument-hint: [--stack-only] [--concerns-only] [--update-claude]
+argument-hint: [--stack-only] [--concerns-only] [--update-claude] [--conventions] [--testing] [--integrations] [--all-docs]
 ---
 
 # Map Codebase
@@ -13,13 +13,71 @@ Analyze an existing codebase to generate documentation about the tech stack and 
 ## Usage
 
 ```
-/tiki:map-codebase
-/tiki:map-codebase --stack-only
-/tiki:map-codebase --concerns-only
-/tiki:map-codebase --update-claude
+/tiki:map-codebase                    # Generate STACK.md and CONCERNS.md (default)
+/tiki:map-codebase --stack-only       # Generate only STACK.md
+/tiki:map-codebase --concerns-only    # Generate only CONCERNS.md
+/tiki:map-codebase --update-claude    # Also update CLAUDE.md with discovered patterns
+
+# Additional documentation flags
+/tiki:map-codebase --conventions      # Also generate CONVENTIONS.md
+/tiki:map-codebase --testing          # Also generate TESTING.md
+/tiki:map-codebase --integrations     # Also generate INTEGRATIONS.md
+/tiki:map-codebase --all-docs         # Generate all optional docs (CONVENTIONS, TESTING, INTEGRATIONS)
+
+# Combine flags as needed
+/tiki:map-codebase --conventions --testing
+/tiki:map-codebase --all-docs --update-claude
 ```
 
 ## Instructions
+
+### Step 0: Parse Flags and Determine Documentation Scope
+
+Check the provided arguments for documentation flags:
+
+**Flag Parsing:**
+
+- `--stack-only` → Generate only STACK.md
+- `--concerns-only` → Generate only CONCERNS.md
+- `--conventions` → Include CONVENTIONS.md generation
+- `--testing` → Include TESTING.md generation
+- `--integrations` → Include INTEGRATIONS.md generation
+- `--all-docs` → Include all optional docs (CONVENTIONS, TESTING, INTEGRATIONS)
+- `--update-claude` → Also update CLAUDE.md with discovered patterns
+
+**Decision Logic:**
+
+1. If `--stack-only` or `--concerns-only` is present:
+   - Generate only the specified doc(s)
+   - Skip additional doc prompting
+
+2. If `--all-docs` is present:
+   - Set flags: conventions=true, testing=true, integrations=true
+   - Generate STACK.md, CONCERNS.md, and all optional docs
+
+3. If any of `--conventions`, `--testing`, `--integrations` is present:
+   - Generate STACK.md, CONCERNS.md plus the flagged optional docs
+
+4. If NO doc-type flags are provided (default invocation):
+   - Always generate STACK.md and CONCERNS.md
+   - Offer a multi-select prompt for optional documentation:
+
+```
+## Additional Documentation
+
+Would you like to generate any additional documentation?
+
+Select which docs to include (or press Enter for none):
+[ ] CONVENTIONS.md - Coding standards, naming patterns, file organization
+[ ] TESTING.md - Test frameworks, patterns, coverage requirements
+[ ] INTEGRATIONS.md - External services, APIs, third-party dependencies
+
+Options:
+- Enter numbers separated by commas (e.g., "1,2,3" or "all")
+- Press Enter to skip and generate only STACK.md and CONCERNS.md
+```
+
+Store the selected documentation types for use in later steps.
 
 ### Step 1: Analyze Project Structure
 
@@ -168,6 +226,830 @@ Create `.tiki/STACK.md`:
 - **State**: React Query for server state, Zustand for client state
 ```
 
+### Step 4.5: Generate CONVENTIONS.md (if selected)
+
+If CONVENTIONS.md was selected via `--conventions`, `--all-docs`, or user prompt, analyze and generate coding conventions documentation.
+
+#### Analyze Naming Patterns
+
+```
+# File naming patterns - check for kebab-case, camelCase, PascalCase
+Glob: **/*.ts, **/*.tsx, **/*.js, **/*.jsx
+
+# Analyze import styles
+Grep: "^import " --type ts
+
+# Analyze export patterns
+Grep: "^export (default |const |function |class |interface |type )" --type ts
+
+# Component naming (React/Vue)
+Grep: "^(export )?(default )?(function |const )\w+\s*[=:(\[]" --type tsx
+Grep: "<script.*>" --type vue
+```
+
+#### Detect Naming Conventions
+
+Examine file names to detect patterns:
+- `kebab-case`: `user-service.ts`, `api-client.ts`
+- `camelCase`: `userService.ts`, `apiClient.ts`
+- `PascalCase`: `UserService.ts`, `ApiClient.ts`
+- `snake_case`: `user_service.ts`, `api_client.ts`
+
+#### Analyze Code Patterns
+
+```
+# Variable declarations
+Grep: "^(const|let|var)\s+\w+" --type ts
+
+# Function definitions
+Grep: "^(export\s+)?(async\s+)?function\s+\w+" --type ts
+
+# Arrow functions
+Grep: "^(export\s+)?const\s+\w+\s*=\s*(async\s+)?\(" --type ts
+
+# Class definitions
+Grep: "^(export\s+)?(default\s+)?class\s+\w+" --type ts
+
+# Interface/Type definitions
+Grep: "^(export\s+)?(interface|type)\s+\w+" --type ts
+```
+
+#### Detect Comment Styles
+
+```
+# JSDoc style
+Grep: "^\s*/\*\*" --type ts
+
+# Single-line comments
+Grep: "^\s*//" --type ts
+
+# Block comments
+Grep: "^\s*/\*[^*]" --type ts
+```
+
+#### Analyze Folder Structure
+
+```bash
+# Get directory structure for organization patterns
+find . -type d -maxdepth 3 | grep -v node_modules | grep -v .git | grep -v dist
+```
+
+Look for common patterns:
+- Feature-based: `src/features/auth/`, `src/features/dashboard/`
+- Layer-based: `src/controllers/`, `src/services/`, `src/repositories/`
+- Domain-driven: `src/users/`, `src/products/`, `src/orders/`
+- Hybrid: Combination of above patterns
+
+#### Create `.tiki/CONVENTIONS.md`
+
+```markdown
+# Code Conventions
+
+> Auto-generated by Tiki on {date}. Last updated: {date}.
+
+## Naming Conventions
+
+| Element | Convention | Example |
+|---------|------------|---------|
+| Files (components) | PascalCase | UserProfile.tsx |
+| Files (utilities) | kebab-case | user-service.ts |
+| Variables | camelCase | userName |
+| Constants | SCREAMING_SNAKE_CASE | MAX_RETRIES |
+| Functions | camelCase | getUserById |
+| Classes | PascalCase | UserService |
+| Interfaces | PascalCase with I prefix | IUserRepository |
+| Types | PascalCase | UserResponse |
+| Enums | PascalCase | UserRole |
+| React Components | PascalCase | UserProfile |
+| React Hooks | camelCase with use prefix | useAuth |
+
+## File Organization
+
+### Directory Structure
+
+| Directory | Purpose | Example Files |
+|-----------|---------|---------------|
+| src/components/ | Reusable UI components | Button.tsx, Modal.tsx |
+| src/services/ | Business logic | user-service.ts |
+| src/utils/ | Helper functions | string-utils.ts |
+| src/types/ | TypeScript types | user.types.ts |
+| src/hooks/ | Custom React hooks | useAuth.ts |
+
+### File Naming Patterns
+
+| File Type | Pattern | Example |
+|-----------|---------|---------|
+| Components | PascalCase.tsx | UserProfile.tsx |
+| Services | kebab-case.ts | user-service.ts |
+| Tests | *.test.ts or *.spec.ts | user-service.test.ts |
+| Types | *.types.ts | user.types.ts |
+| Hooks | use*.ts | useAuth.ts |
+| Constants | *.constants.ts | api.constants.ts |
+
+## Import/Export Patterns
+
+### Import Organization
+
+```typescript
+// 1. External library imports
+import React from 'react';
+import { useState } from 'react';
+
+// 2. Internal absolute imports
+import { UserService } from '@/services/user-service';
+
+// 3. Relative imports
+import { Button } from './Button';
+
+// 4. Type imports
+import type { User } from '@/types';
+
+// 5. Style imports
+import './styles.css';
+```
+
+### Export Patterns
+
+| Pattern | Usage | Example |
+|---------|-------|---------|
+| Named exports | Utilities, services | export const getUserById = ... |
+| Default exports | Components, pages | export default UserProfile |
+| Barrel exports | Index files | export * from './Button' |
+
+## Code Style
+
+### Function Patterns
+
+| Style | Usage | Example |
+|-------|-------|---------|
+| Arrow functions | Callbacks, short functions | `const add = (a, b) => a + b` |
+| Function declarations | Named functions, hoisting needed | `function processUser(user) {}` |
+| Async/await | Preferred over .then() | `const data = await fetchUser()` |
+
+### Comment Conventions
+
+| Type | Usage | Example |
+|------|-------|---------|
+| JSDoc | Public APIs, exported functions | `/** @param {string} id */` |
+| Single-line | Brief explanations | `// Calculate tax` |
+| TODO | Planned work | `// TODO: Add validation` |
+| FIXME | Known issues | `// FIXME: Race condition` |
+
+## Component Patterns
+
+### React Components
+
+```typescript
+// Preferred: Functional components with TypeScript
+interface UserProfileProps {
+  userId: string;
+  showAvatar?: boolean;
+}
+
+export function UserProfile({ userId, showAvatar = true }: UserProfileProps) {
+  // hooks first
+  const [user, setUser] = useState<User | null>(null);
+
+  // effects
+  useEffect(() => {
+    // ...
+  }, [userId]);
+
+  // handlers
+  const handleClick = () => {
+    // ...
+  };
+
+  // render
+  return <div>...</div>;
+}
+```
+
+## Error Handling
+
+| Pattern | Usage |
+|---------|-------|
+| try/catch | Async operations |
+| Error boundaries | React component errors |
+| Custom error classes | Domain-specific errors |
+
+## Testing Conventions
+
+| Pattern | Example |
+|---------|---------|
+| Test file location | Adjacent to source (`*.test.ts`) |
+| Test naming | `describe('UserService', () => { it('should ...') })` |
+| Mocking | Prefer dependency injection |
+
+---
+
+*Update these conventions as the codebase evolves. Review periodically for accuracy.*
+```
+
+### Step 4.6: Generate TESTING.md (if selected)
+
+If TESTING.md was selected via `--testing`, `--all-docs`, or user prompt, analyze and generate testing documentation.
+
+#### Detect Test Framework
+
+```
+# Check package.json for test dependencies
+Read: package.json (look for jest, vitest, mocha, jasmine, ava, tap in devDependencies)
+
+# Check for Python test frameworks
+Read: requirements.txt, pyproject.toml (look for pytest, unittest, nose)
+
+# Check for test configuration files
+Glob: jest.config.*, vitest.config.*, pytest.ini, setup.cfg, tox.ini, .mocharc.*, karma.conf.*
+```
+
+#### Analyze Test File Patterns
+
+```
+# Find test files by common patterns
+Glob: **/*.test.ts, **/*.test.tsx, **/*.test.js, **/*.test.jsx
+Glob: **/*.spec.ts, **/*.spec.tsx, **/*.spec.js, **/*.spec.jsx
+Glob: **/test_*.py, **/*_test.py, **/tests/*.py
+Glob: **/__tests__/**/*
+
+# Check test organization
+# Co-located: tests next to source files
+# Separate: tests in dedicated test/ or __tests__/ directories
+```
+
+#### Detect Testing Patterns
+
+```
+# Test structure patterns
+Grep: "(describe|it|test|expect)\(" --type ts
+Grep: "(beforeEach|afterEach|beforeAll|afterAll)" --type ts
+
+# Assertion libraries
+Grep: "(expect|assert|should)\." --type ts
+
+# Mocking patterns
+Grep: "(jest\.mock|vi\.mock|sinon\.|mock\()" --type ts
+Grep: "(spyOn|createMock|mockImplementation)" --type ts
+
+# MSW (Mock Service Worker)
+Grep: "(setupServer|rest\.(get|post|put|delete)|http\.(get|post|put|delete))" --type ts
+
+# React Testing Library
+Grep: "(render|screen|fireEvent|userEvent|waitFor)" --type ts
+
+# Snapshot testing
+Grep: "(toMatchSnapshot|toMatchInlineSnapshot)" --type ts
+```
+
+#### Detect E2E Testing Tools
+
+```
+# Playwright
+Glob: playwright.config.*, **/e2e/**/*.ts
+Grep: "(test|expect).*from '@playwright/test'" --type ts
+
+# Cypress
+Glob: cypress.config.*, cypress/**/*.cy.ts
+Grep: "cy\.(visit|get|contains|click)" --type ts
+
+# Puppeteer
+Grep: "puppeteer" --type ts
+```
+
+#### Detect Coverage Tools
+
+```
+# Coverage configuration
+Glob: .nycrc*, .c8rc*, coverage/**
+Grep: "(coverage|collectCoverage|coverageThreshold)"
+
+# Check package.json scripts for coverage commands
+Read: package.json (check scripts for coverage commands)
+```
+
+#### Detect Test Utilities
+
+```
+# Custom test utilities
+Glob: **/test-utils.*, **/testing/**/*.ts, **/helpers/test*.ts, **/__mocks__/**
+
+# Fixtures and factories
+Glob: **/fixtures/**, **/factories/**, **/*.factory.ts
+Grep: "(createMockUser|buildUser|userFactory)" --type ts
+```
+
+#### Create `.tiki/TESTING.md`
+
+```markdown
+# Testing Patterns
+
+> Auto-generated by Tiki on {date}. Last updated: {date}.
+
+## Test Framework
+
+| Category | Tool | Version | Config File |
+|----------|------|---------|-------------|
+| Unit Testing | Vitest | 1.x | vitest.config.ts |
+| E2E Testing | Playwright | 1.x | playwright.config.ts |
+| Mocking | MSW | 2.x | src/mocks/handlers.ts |
+
+## Test Organization
+
+| Aspect | Pattern | Example |
+|--------|---------|---------|
+| Location | Co-located | `src/services/user.ts` → `src/services/user.test.ts` |
+| Naming | *.test.ts | `user-service.test.ts` |
+| E2E Location | Separate folder | `e2e/` |
+
+## Running Tests
+
+| Command | Purpose |
+|---------|---------|
+| `npm test` | Run all unit tests |
+| `npm run test:watch` | Run tests in watch mode |
+| `npm run test:coverage` | Run with coverage |
+| `npm run test:e2e` | Run E2E tests |
+
+## Test Structure
+
+### Unit Test Pattern
+
+```typescript
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { UserService } from './user-service';
+
+describe('UserService', () => {
+  let service: UserService;
+
+  beforeEach(() => {
+    service = new UserService();
+  });
+
+  describe('getUserById', () => {
+    it('should return user when found', async () => {
+      const user = await service.getUserById('123');
+      expect(user).toBeDefined();
+      expect(user.id).toBe('123');
+    });
+
+    it('should throw when user not found', async () => {
+      await expect(service.getUserById('invalid'))
+        .rejects.toThrow('User not found');
+    });
+  });
+});
+```
+
+## Mocking Patterns
+
+### API Mocking (MSW)
+
+```typescript
+import { rest } from 'msw';
+import { setupServer } from 'msw/node';
+
+const handlers = [
+  rest.get('/api/users/:id', (req, res, ctx) => {
+    return res(ctx.json({ id: req.params.id, name: 'Test User' }));
+  }),
+];
+
+export const server = setupServer(...handlers);
+```
+
+### Module Mocking
+
+```typescript
+// Vitest
+vi.mock('./database', () => ({
+  query: vi.fn().mockResolvedValue([]),
+}));
+
+// Jest
+jest.mock('./database', () => ({
+  query: jest.fn().mockResolvedValue([]),
+}));
+```
+
+### Spy Functions
+
+```typescript
+const spy = vi.spyOn(userService, 'save');
+await userService.createUser(userData);
+expect(spy).toHaveBeenCalledWith(expect.objectContaining({ name: 'Test' }));
+```
+
+## E2E Testing
+
+### Playwright Pattern
+
+```typescript
+import { test, expect } from '@playwright/test';
+
+test.describe('User Login', () => {
+  test('should login successfully', async ({ page }) => {
+    await page.goto('/login');
+    await page.fill('[name="email"]', 'user@example.com');
+    await page.fill('[name="password"]', 'password123');
+    await page.click('button[type="submit"]');
+    await expect(page).toHaveURL('/dashboard');
+  });
+});
+```
+
+## Test Utilities
+
+| Utility | Location | Purpose |
+|---------|----------|---------|
+| renderWithProviders | src/test-utils.tsx | Render with app providers |
+| createMockUser | src/factories/user.ts | Generate test user data |
+| setupTestDb | tests/helpers/db.ts | Initialize test database |
+
+## Coverage Requirements
+
+| Metric | Threshold | Current |
+|--------|-----------|---------|
+| Statements | 80% | 75% |
+| Branches | 75% | 70% |
+| Functions | 80% | 78% |
+| Lines | 80% | 76% |
+
+## Test Data
+
+### Fixtures
+
+Location: `tests/fixtures/`
+
+| Fixture | File | Usage |
+|---------|------|-------|
+| Users | users.json | Sample user data |
+| Products | products.json | Sample product data |
+
+### Factories
+
+Location: `src/factories/`
+
+```typescript
+import { faker } from '@faker-js/faker';
+
+export const createUser = (overrides = {}) => ({
+  id: faker.string.uuid(),
+  name: faker.person.fullName(),
+  email: faker.internet.email(),
+  ...overrides,
+});
+```
+
+## Best Practices
+
+1. **Test naming**: Use descriptive names (`should return user when found`)
+2. **Arrange-Act-Assert**: Follow AAA pattern in tests
+3. **Isolation**: Each test should be independent
+4. **No implementation details**: Test behavior, not implementation
+5. **Mock external services**: Use MSW for API calls
+6. **Clean up**: Reset mocks and state between tests
+
+---
+
+*Update this document as testing patterns evolve. Run `/tiki:map-codebase --testing` to regenerate.*
+```
+
+### Step 4.7: Generate INTEGRATIONS.md (if selected)
+
+If INTEGRATIONS.md was selected via `--integrations`, `--all-docs`, or user prompt, analyze and generate external integrations documentation.
+
+#### Detect External Service Dependencies
+
+```
+# Check package.json for common service SDKs
+Read: package.json (look for @aws-sdk, stripe, @sendgrid, @twilio, @auth0, firebase, @clerk, pusher, @supabase)
+
+# Check for Python service SDKs
+Read: requirements.txt, pyproject.toml (look for boto3, stripe, sendgrid, twilio, firebase-admin)
+```
+
+#### Detect Payment Services
+
+```
+# Stripe
+Grep: "(new Stripe|stripe\.)" --type ts
+Grep: "STRIPE_" --glob "**/.env*"
+
+# PayPal
+Grep: "(paypal|PAYPAL)" --type ts
+Grep: "PAYPAL_" --glob "**/.env*"
+
+# Square
+Grep: "(square|SQUARE)" --type ts
+```
+
+#### Detect Cloud Services
+
+```
+# AWS
+Grep: "(S3Client|DynamoDBClient|LambdaClient|SQSClient|SNSClient)" --type ts
+Grep: "AWS_" --glob "**/.env*"
+Glob: **/aws-config.*, **/.aws/**
+
+# Google Cloud
+Grep: "@google-cloud" --type ts
+Grep: "(GOOGLE_|GCP_|GCLOUD_)" --glob "**/.env*"
+Glob: **/gcloud*.json, **/service-account*.json
+
+# Azure
+Grep: "@azure" --type ts
+Grep: "AZURE_" --glob "**/.env*"
+
+# Vercel
+Glob: vercel.json
+Grep: "VERCEL_" --glob "**/.env*"
+
+# CloudFlare
+Grep: "(cloudflare|CLOUDFLARE)" --type ts
+Glob: wrangler.toml
+```
+
+#### Detect Authentication Providers
+
+```
+# Auth0
+Grep: "(@auth0|auth0)" --type ts
+Grep: "AUTH0_" --glob "**/.env*"
+
+# Clerk
+Grep: "@clerk" --type ts
+Grep: "CLERK_" --glob "**/.env*"
+
+# Firebase Auth
+Grep: "(firebase/auth|getAuth|signInWith)" --type ts
+Grep: "FIREBASE_" --glob "**/.env*"
+Glob: firebase.json, .firebaserc
+
+# NextAuth/Auth.js
+Grep: "(next-auth|@auth/)" --type ts
+Glob: **/auth.config.*, **/[...nextauth].ts
+
+# Supabase Auth
+Grep: "(@supabase/auth|supabase\.auth)" --type ts
+Grep: "SUPABASE_" --glob "**/.env*"
+```
+
+#### Detect Communication Services
+
+```
+# SendGrid
+Grep: "(@sendgrid|sendgrid)" --type ts
+Grep: "SENDGRID_" --glob "**/.env*"
+
+# Twilio
+Grep: "(twilio|Twilio)" --type ts
+Grep: "TWILIO_" --glob "**/.env*"
+
+# Resend
+Grep: "resend" --type ts
+Grep: "RESEND_" --glob "**/.env*"
+
+# Pusher/WebSockets
+Grep: "(pusher|Pusher)" --type ts
+Grep: "PUSHER_" --glob "**/.env*"
+```
+
+#### Detect Database Services
+
+```
+# MongoDB Atlas
+Grep: "(mongodb\+srv|MongoClient)" --type ts
+Grep: "MONGODB_" --glob "**/.env*"
+
+# Supabase
+Grep: "@supabase/supabase-js" --type ts
+Grep: "SUPABASE_" --glob "**/.env*"
+
+# PlanetScale
+Grep: "(@planetscale|planetscale)" --type ts
+Grep: "DATABASE_URL" --glob "**/.env*"
+
+# Redis
+Grep: "(redis|Redis|ioredis)" --type ts
+Grep: "REDIS_" --glob "**/.env*"
+```
+
+#### Detect External API Calls
+
+```
+# Generic fetch to external APIs
+Grep: "fetch\(['\"]https://" --type ts
+
+# Axios calls
+Grep: "axios\.(get|post|put|delete)\(['\"]https://" --type ts
+
+# Common API endpoints
+Grep: "(api\.github\.com|api\.openai\.com|api\.anthropic\.com)" --type ts
+```
+
+#### Detect Webhook Endpoints
+
+```
+# Webhook route handlers
+Grep: "(webhook|Webhook|/webhook)" --type ts
+Grep: "(stripe\.webhooks|webhook\.constructEvent)" --type ts
+```
+
+#### Detect Analytics & Monitoring
+
+```
+# Analytics
+Grep: "(segment|mixpanel|amplitude|posthog|plausible)" --type ts
+Grep: "(SEGMENT_|MIXPANEL_|AMPLITUDE_|POSTHOG_)" --glob "**/.env*"
+
+# Error tracking
+Grep: "(@sentry|sentry)" --type ts
+Grep: "SENTRY_" --glob "**/.env*"
+
+# Monitoring
+Grep: "(datadog|newrelic|DATADOG_|NEW_RELIC_)" --type ts
+```
+
+#### Create `.tiki/INTEGRATIONS.md`
+
+```markdown
+# External Integrations
+
+> Auto-generated by Tiki on {date}. Last updated: {date}.
+
+## Overview
+
+This document catalogs all external services, APIs, and third-party integrations used in this codebase.
+
+## Payment Services
+
+| Service | SDK | Version | Usage | Config |
+|---------|-----|---------|-------|--------|
+| Stripe | stripe | 14.x | Payment processing | STRIPE_SECRET_KEY |
+
+## Cloud Services
+
+| Service | SDK | Usage | Region |
+|---------|-----|-------|--------|
+| AWS S3 | @aws-sdk/client-s3 | File storage | us-east-1 |
+| Vercel | - | Deployment | - |
+
+## Authentication
+
+| Provider | SDK | Method | Config |
+|----------|-----|--------|--------|
+| Auth0 | @auth0/nextjs-auth0 | OAuth 2.0 | AUTH0_* |
+| Firebase | firebase | Email/OAuth | FIREBASE_* |
+
+## Communication Services
+
+| Service | SDK | Purpose | Config |
+|---------|-----|---------|--------|
+| SendGrid | @sendgrid/mail | Transactional email | SENDGRID_API_KEY |
+| Twilio | twilio | SMS notifications | TWILIO_* |
+
+## Database Services
+
+| Service | SDK | Purpose | Config |
+|---------|-----|---------|--------|
+| MongoDB Atlas | mongodb | Primary database | MONGODB_URI |
+| Redis Cloud | ioredis | Caching, sessions | REDIS_URL |
+
+## Analytics & Monitoring
+
+| Service | SDK | Purpose | Config |
+|---------|-----|---------|--------|
+| Sentry | @sentry/node | Error tracking | SENTRY_DSN |
+| Segment | analytics-node | User analytics | SEGMENT_WRITE_KEY |
+
+## External APIs
+
+| API | Purpose | Authentication | Rate Limits |
+|-----|---------|----------------|-------------|
+| OpenAI | AI completions | API Key | 10k req/min |
+| GitHub | Issue management | OAuth | 5k req/hr |
+
+## Webhook Endpoints
+
+| Endpoint | Service | Purpose | Verification |
+|----------|---------|---------|--------------|
+| /api/webhooks/stripe | Stripe | Payment events | Signature verification |
+| /api/webhooks/github | GitHub | Repository events | HMAC validation |
+
+## Environment Variables
+
+### Required for Production
+
+| Variable | Service | Description |
+|----------|---------|-------------|
+| STRIPE_SECRET_KEY | Stripe | API secret key |
+| DATABASE_URL | Database | Connection string |
+| AUTH0_SECRET | Auth0 | Session encryption |
+| SENDGRID_API_KEY | SendGrid | Email API key |
+
+### Required for Development
+
+| Variable | Service | Description |
+|----------|---------|-------------|
+| STRIPE_WEBHOOK_SECRET | Stripe | Webhook signature |
+| AUTH0_CLIENT_ID | Auth0 | OAuth client ID |
+
+### Optional
+
+| Variable | Service | Description | Default |
+|----------|---------|-------------|---------|
+| REDIS_URL | Redis | Cache connection | localhost:6379 |
+| SENTRY_DSN | Sentry | Error reporting | (disabled) |
+
+## Integration Patterns
+
+### API Client Pattern
+
+```typescript
+// Centralized client initialization
+// src/lib/stripe.ts
+import Stripe from 'stripe';
+
+export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: '2023-10-16',
+});
+```
+
+### Error Handling
+
+```typescript
+// Consistent error handling for external services
+try {
+  await stripe.charges.create(params);
+} catch (error) {
+  if (error instanceof Stripe.errors.StripeError) {
+    // Handle Stripe-specific errors
+  }
+  throw error;
+}
+```
+
+### Webhook Security
+
+```typescript
+// Verify webhook signatures
+const event = stripe.webhooks.constructEvent(
+  body,
+  signature,
+  process.env.STRIPE_WEBHOOK_SECRET!
+);
+```
+
+## Service Health Checks
+
+| Service | Health Endpoint | Timeout | Critical |
+|---------|-----------------|---------|----------|
+| Database | SELECT 1 | 5s | Yes |
+| Redis | PING | 2s | No |
+| Stripe | - | - | No |
+
+## Failover & Fallbacks
+
+| Service | Fallback Strategy |
+|---------|-------------------|
+| Redis | In-memory cache |
+| SendGrid | Queue for retry |
+| S3 | Local filesystem (dev) |
+
+## Rate Limiting Considerations
+
+| Service | Limit | Strategy |
+|---------|-------|----------|
+| OpenAI | 10k/min | Queue + backoff |
+| GitHub | 5k/hr | Cache responses |
+| Stripe | 100/sec | N/A |
+
+## Security Notes
+
+1. **API Keys**: All API keys stored in environment variables
+2. **Webhooks**: All webhook endpoints verify signatures
+3. **Secrets Rotation**: Consider rotating keys quarterly
+4. **Least Privilege**: Use scoped API keys where available
+
+## Local Development
+
+### Required Services
+
+```bash
+# Start local services
+docker-compose up -d redis postgres
+```
+
+### Service Mocking
+
+- Use Stripe CLI for webhook testing: `stripe listen --forward-to localhost:3000/api/webhooks/stripe`
+- Use MSW for API mocking in tests
+
+---
+
+*Update this document when adding new integrations. Run `/tiki:map-codebase --integrations` to regenerate.*
+```
+
 ### Step 5: Generate CONCERNS.md
 
 Analyze the codebase for potential issues:
@@ -283,12 +1165,17 @@ If `--update-claude` flag is present, append discovered patterns to CLAUDE.md:
 
 ### Step 7: Display Summary
 
+Display a summary of the generated documentation. Include only the files that were actually generated based on flags/user selection from Step 0.
+
 ```
 ## Codebase Mapping Complete
 
 ### Files Generated
 - .tiki/STACK.md - Technology overview
 - .tiki/CONCERNS.md - Known issues and tech debt
+{if conventions generated}- .tiki/CONVENTIONS.md - Code style and naming patterns
+{if testing generated}- .tiki/TESTING.md - Test framework and patterns
+{if integrations generated}- .tiki/INTEGRATIONS.md - External services and APIs
 
 ### Key Findings
 
@@ -304,6 +1191,22 @@ If `--update-claude` flag is present, append discovered patterns to CLAUDE.md:
 - 2 fragile areas identified
 - 15% overall test coverage
 
+{if conventions generated}**Conventions:**
+- File naming: kebab-case for utilities, PascalCase for components
+- Import organization: external → internal → relative → types → styles
+- Export pattern: named exports for utilities, default for components
+
+{if testing generated}**Testing:**
+- Framework: Vitest for unit tests, Playwright for E2E
+- Organization: co-located tests (*.test.ts)
+- Coverage: 75% statements, 70% branches
+
+{if integrations generated}**Integrations:**
+- Payment: Stripe
+- Auth: Auth0
+- Email: SendGrid
+- Database: MongoDB Atlas, Redis
+
 ### Recommendations
 1. Review high-severity security issue in upload.ts
 2. Consider splitting legacy.ts (847 lines)
@@ -313,9 +1216,23 @@ If `--update-claude` flag is present, append discovered patterns to CLAUDE.md:
 View full reports:
 - `cat .tiki/STACK.md`
 - `cat .tiki/CONCERNS.md`
+{if conventions generated}- `cat .tiki/CONVENTIONS.md`
+{if testing generated}- `cat .tiki/TESTING.md`
+{if integrations generated}- `cat .tiki/INTEGRATIONS.md`
 
 Create issues from concerns? Use `/tiki:create-issues --from-concerns`
 ```
+
+**Conditional Display Logic:**
+
+When building the summary output:
+
+1. Always list STACK.md and CONCERNS.md (unless `--stack-only` or `--concerns-only` was used)
+2. For each optional doc (CONVENTIONS, TESTING, INTEGRATIONS):
+   - Only include in "Files Generated" if it was generated
+   - Only include the corresponding "Key Findings" section if generated
+   - Only include in "View full reports" if generated
+3. The `{if X generated}` placeholders indicate conditional content - include the line only if that doc was generated
 
 ## Refresh Mode
 
@@ -336,8 +1253,10 @@ Which option? [1/2/3/4]
 ## Integration with Other Skills
 
 - `/tiki:assess-code` - Uses STACK.md for context, generates detailed scores
-- `/tiki:update-claude` - Uses discovered patterns to update CLAUDE.md
+- `/tiki:update-claude` - Uses discovered patterns to update CLAUDE.md; CONVENTIONS.md provides naming patterns, TESTING.md provides test conventions
 - `/tiki:create-issues` - Can create issues from CONCERNS.md findings
+- `/tiki:plan-issue` - References TESTING.md for TDD patterns and test framework context
+- `/tiki:execute` - Sub-agents can reference CONVENTIONS.md for code style, INTEGRATIONS.md for API patterns
 
 ## Notes
 
@@ -345,5 +1264,9 @@ Which option? [1/2/3/4]
 - Re-run periodically to catch new tech debt
 - STACK.md helps Claude understand the project quickly
 - CONCERNS.md helps prioritize work
+- CONVENTIONS.md ensures consistent code style across sub-agents
+- TESTING.md provides test framework context for TDD workflows
+- INTEGRATIONS.md documents external dependencies and API patterns
 - Files are placed in .tiki/ folder
 - Respects .gitignore patterns when scanning
+- Use `--all-docs` to generate comprehensive documentation in one command
