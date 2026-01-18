@@ -12,6 +12,7 @@ When working with Claude Code on complex tasks, context windows fill up. Tiki so
 - **Spawning sub-agents** - Each phase runs with fresh context, carrying only summaries forward
 - **Tracking state** - Progress is saved to `.tiki/` so you can pause, resume, and pick up where you left off
 - **Managing discoveries** - Items found during execution are queued for batch review
+- **Backward planning from criteria** - Plans are derived from success criteria, not forward from issue description
 
 ## Installation
 
@@ -53,7 +54,7 @@ Runs the complete workflow automatically: fetch → review → plan → audit �
 |---------|-------------|
 | `/tiki:yolo <number>` | Full automated workflow (recommended) |
 | `/tiki:get-issue <number>` | Fetch and display a GitHub issue |
-| `/tiki:plan-issue <number>` | Create a phased execution plan |
+| `/tiki:plan-issue <number>` | Create a phased execution plan with success criteria |
 | `/tiki:execute <number>` | Execute phases with sub-agents |
 | `/tiki:ship` | Commit, push, and close the issue |
 | `/tiki:whats-next` | Show status and suggested next action |
@@ -138,7 +139,8 @@ Runs the complete workflow automatically: fetch → review → plan → audit �
 /tiki:yolo 34                       # Do everything automatically
   → Fetches issue
   → Reviews for concerns
-  → Creates 3-phase plan
+  → Extracts success criteria from issue
+  → Creates 3-phase plan (backward from criteria)
   → Executes each phase with TDD
   → Reviews queue (0 items)
   → Commits, pushes, closes issue
@@ -197,6 +199,53 @@ All state lives in `.tiki/`:
 ├── adr/                 # Architecture Decision Records
 ├── debug/               # Debug session history
 └── research/            # Domain research documents
+```
+
+## Plan File Format
+
+Plans are stored in `.tiki/plans/issue-N.json`:
+
+```json
+{
+  "issue": {
+    "number": 34,
+    "title": "Add user authentication",
+    "body": "Issue description...",
+    "labels": ["feature"]
+  },
+  "successCriteria": [
+    {
+      "category": "functional",
+      "criteria": [
+        "User can log in with email and password",
+        "User can log out"
+      ]
+    },
+    {
+      "category": "testing",
+      "criteria": [
+        "Unit tests cover authentication logic"
+      ]
+    }
+  ],
+  "phases": [
+    {
+      "number": 1,
+      "title": "Setup auth middleware",
+      "status": "pending",
+      "dependencies": [],
+      "files": ["src/middleware/auth.ts"],
+      "content": "Phase instructions...",
+      "verification": "How to verify...",
+      "addressesCriteria": ["functional-1", "functional-2"]
+    }
+  ],
+  "coverageMatrix": {
+    "functional-1": { "phases": [1], "tasks": [1] },
+    "functional-2": { "phases": [1], "tasks": [2] },
+    "testing-1": { "phases": [2], "tasks": [1] }
+  }
+}
 ```
 
 ## Configuration
