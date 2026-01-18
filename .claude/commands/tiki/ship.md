@@ -165,6 +165,105 @@ If version.json doesn't exist, create it with version "0.0.1".
 
 **For other projects using Tiki:** This version bump step is skipped. Projects can add their own versioning logic if desired.
 
+### Step 6.5: Update Release Progress (Optional)
+
+This step updates release and requirements tracking when the shipped issue is part of a release. **This step is purely informational and should NEVER cause ship to fail.**
+
+#### Check if Issue is in a Release
+
+First, check if the plan file has a `release` field:
+
+```javascript
+// From plan file loaded in Step 1
+const planRelease = plan.release; // { version: "v1.1", milestone: "..." } or undefined
+```
+
+If no release field, also scan active release files:
+
+```bash
+# Find if issue is in any release
+for file in .tiki/releases/*.json; do
+  if grep -q "\"number\": $ISSUE_NUMBER" "$file" 2>/dev/null; then
+    echo "$file"
+    break
+  fi
+done
+```
+
+If the issue is not in any release, skip this step silently.
+
+#### Update Issue Status in Release File
+
+If issue is part of a release:
+
+1. Load the release file (`.tiki/releases/<version>.json`)
+2. Find the issue in the `issues` array
+3. Update the issue's status:
+
+```javascript
+// Find and update issue in release
+const issueEntry = release.issues.find(i => i.number === issueNumber);
+if (issueEntry) {
+  issueEntry.status = 'completed';
+  issueEntry.completedAt = new Date().toISOString();
+  issueEntry.currentPhase = null;  // Clear current phase since completed
+}
+
+// Recalculate totals (count completed vs total)
+const completed = release.issues.filter(i => i.status === 'completed').length;
+const total = release.issues.length;
+```
+
+4. Write the updated release file
+
+**Error handling:**
+- If release file doesn't exist: Log warning "Release file not found for {version}, skipping release update", continue
+- If release file is invalid JSON: Log warning "Could not parse release file for {version}, skipping release update", continue
+- If issue not found in release: Continue silently
+
+#### Update Requirements Status
+
+If the issue addresses requirements (from `plan.addressesRequirements` or release issue's `requirements` field):
+
+1. Load `.tiki/requirements.json`
+2. For each requirement ID the issue addresses:
+   - Find the requirement in the categories
+   - Update status to 'implemented' (if currently 'pending')
+   - Add issue number to `implementedBy` array if not already present
+   - Update `updatedAt` timestamp
+
+```javascript
+// For each requirement the issue addresses
+for (const reqId of addressedRequirements) {
+  for (const category of requirements.categories) {
+    const req = category.requirements.find(r => r.id === reqId);
+    if (req && req.status === 'pending') {
+      req.status = 'implemented';
+      if (!req.implementedBy.includes(issueNumber)) {
+        req.implementedBy.push(issueNumber);
+      }
+    }
+  }
+}
+requirements.updatedAt = new Date().toISOString();
+```
+
+3. Write the updated requirements.json
+
+**Error handling:**
+- If requirements.json doesn't exist: Skip silently
+- If requirements.json is invalid JSON: Log warning "Could not parse requirements.json, skipping requirement update", continue
+- If requirement not found: Continue silently
+
+#### Track Updates for Summary
+
+Store information for Step 8 summary:
+- `releaseUpdated`: boolean - whether release was updated
+- `releaseVersion`: string - the release version
+- `releaseProgress`: { completed: number, total: number }
+- `remainingIssues`: array of { number, title } for incomplete issues
+- `requirementsUpdated`: array of requirement IDs that were updated
+
 ### Step 7: Clean Up Tiki State
 
 Update `.tiki/state/current.json` to clear the active issue:
@@ -209,6 +308,41 @@ Git log for this issue:
   def5678 feat(auth): Add login endpoint (#34)
   ghi9012 test(auth): Add authentication tests (#34)
   jkl3456 feat: Complete issue #34 - Add user authentication
+```
+
+#### Release Progress (if applicable)
+
+If release progress was updated in Step 6.5, append to the summary:
+
+```
+Release Progress:
+- Requirement AUTH-01 marked as "implemented"
+- Release v1.1 progress: 3/5 issues (60%)
+
+Remaining issues in v1.1:
+  #37: Add password reset
+  #38: Add session management
+
+When all issues complete, run: /tiki:release ship v1.1
+```
+
+**Display rules:**
+
+- Only show this section if `releaseUpdated` is true from Step 6.5
+- Show requirement updates only if `requirementsUpdated` array is not empty
+- Calculate percentage as `Math.round((completed / total) * 100)`
+- List remaining issues (those with status not "completed")
+- When all issues are complete (completed === total), show:
+
+```text
+All issues in v1.1 complete!
+Ready to ship release: /tiki:release ship v1.1
+```
+
+**If release update failed with warnings:**
+```
+Note: Could not update release tracking (see warnings above).
+The issue was shipped successfully.
 ```
 
 #### Offer Next Steps (if enabled)

@@ -354,6 +354,117 @@ No relevant research found for this issue.
 Consider running /tiki:research before planning if this involves unfamiliar technology.
 ```
 
+### Step 2.3: Detect Release Association
+
+**This step is for release-aware integration. If release detection fails for any reason, skip silently and continue with normal planning.**
+
+Check if this issue is part of any active release to incorporate release context into planning.
+
+#### 2.3a. Check for Release Files
+
+Check if the releases directory exists and contains any active releases:
+
+```javascript
+async function checkReleaseAssociation(issueNumber) {
+  const releasesDir = '.tiki/releases';
+
+  // Skip silently if releases directory doesn't exist
+  try {
+    const files = glob(`${releasesDir}/*.json`);
+    if (!files || files.length === 0) {
+      return null; // No releases exist
+    }
+  } catch (error) {
+    return null; // Skip silently on error
+  }
+
+  // Search for this issue in active releases
+  for (const file of files) {
+    try {
+      const release = JSON.parse(readFile(file));
+      const issueEntry = release.issues?.find(i => i.number === issueNumber);
+
+      if (issueEntry) {
+        return {
+          version: release.version,
+          status: release.status,
+          requirementsEnabled: release.requirementsEnabled || false,
+          issueRequirements: issueEntry.requirements || [],
+          githubMilestone: release.githubMilestone
+        };
+      }
+    } catch (error) {
+      // Invalid JSON in release file - log warning and continue
+      console.warn(`Warning: Could not parse release file ${file}`);
+      continue;
+    }
+  }
+
+  return null; // Issue not found in any release
+}
+```
+
+#### 2.3b. Store Release Context
+
+If the issue is found in a release, store the context for later use:
+
+```javascript
+const releaseContext = {
+  hasRelease: false,
+  version: null,
+  requirementsEnabled: false,
+  issueRequirements: [],
+  availableRequirements: null,
+  githubMilestone: null
+};
+
+const releaseAssociation = await checkReleaseAssociation(issueNumber);
+
+if (releaseAssociation) {
+  releaseContext.hasRelease = true;
+  releaseContext.version = releaseAssociation.version;
+  releaseContext.requirementsEnabled = releaseAssociation.requirementsEnabled;
+  releaseContext.issueRequirements = releaseAssociation.issueRequirements;
+  releaseContext.githubMilestone = releaseAssociation.githubMilestone;
+
+  // If requirements enabled, try to load available requirements
+  if (releaseAssociation.requirementsEnabled) {
+    try {
+      const requirementsPath = '.tiki/requirements.json';
+      const reqContent = readFile(requirementsPath);
+      releaseContext.availableRequirements = JSON.parse(reqContent);
+    } catch (error) {
+      // Requirements file missing or invalid - continue without
+      releaseContext.requirementsEnabled = false;
+    }
+  }
+}
+```
+
+#### 2.3c. Display Release Detection
+
+**If issue is in a release:**
+
+```text
+## Release Context Detected
+
+**Release:** {version}
+**Status:** {status}
+**GitHub Milestone:** {milestone URL or "None"}
+
+This issue is part of release {version}.
+{If requirementsEnabled: "Requirements tracking is enabled for this release."}
+{If issueRequirements.length > 0: "Currently mapped to requirements: {requirements list}"}
+```
+
+**If issue is NOT in a release:**
+
+Display nothing (silent skip). The planning process continues normally without release context.
+
+**If release detection fails (error case):**
+
+Display nothing (silent skip). Continue with normal planning.
+
 ### Step 2.5: Extract Success Criteria
 
 Extract and define success criteria that will guide the implementation and verify completion.
@@ -659,6 +770,11 @@ Create `.tiki/plans/issue-<number>.json` with this structure:
     "testing-1": { "phases": [1], "tasks": [2] },
     "documentation-1": { "phases": [3], "tasks": [5] }
   },
+  "addressesRequirements": ["CORE-01", "SEC-01"],
+  "release": {
+    "version": "v1.1",
+    "milestone": "https://github.com/owner/repo/milestone/1"
+  },
   "queue": [],
   "metadata": {
     "estimatedPhases": 3,
@@ -717,15 +833,155 @@ Suggested actions when criteria are uncovered:
 - Create additional tasks in existing phases
 - Review whether the criteria are still relevant
 
+### Step 5.7: Requirements Mapping (Release Integration)
+
+**Skip this step if:**
+
+- Issue is not part of a release (releaseContext.hasRelease is false)
+- Requirements are not enabled for the release (releaseContext.requirementsEnabled is false)
+- Available requirements could not be loaded
+
+**This step should NEVER break the normal planning workflow. If any error occurs, skip silently and continue.**
+
+When an issue is part of a release with requirements tracking enabled, prompt the user to map the plan to project requirements.
+
+#### 5.7a. Display Available Requirements
+
+Present the available requirements from `.tiki/requirements.json` organized by category:
+
+```text
+## Requirements Mapping
+
+This issue is part of release {version} with requirements tracking enabled.
+
+**Available Requirements:**
+
+**CORE - Core Functionality:**
+- CORE-01: {requirement text}
+- CORE-02: {requirement text}
+
+**SEC - Security:**
+- SEC-01: {requirement text}
+
+**QUAL - Quality:**
+- QUAL-01: {requirement text}
+
+{If issueRequirements already set:}
+**Currently mapped requirements:** {issueRequirements list}
+```
+
+#### 5.7b. Suggest Requirement Mappings
+
+Analyze the success criteria and phase content to suggest requirement mappings:
+
+```javascript
+function suggestRequirementMappings(successCriteria, phases, availableRequirements) {
+  const suggestions = [];
+
+  // Flatten all requirements for matching
+  const allRequirements = [];
+  for (const category of availableRequirements.categories) {
+    for (const req of category.requirements) {
+      allRequirements.push({
+        id: req.id,
+        text: req.text,
+        category: category.name
+      });
+    }
+  }
+
+  // Match criteria and phase content against requirement text
+  for (const req of allRequirements) {
+    const reqLower = req.text.toLowerCase();
+
+    // Check if any success criteria mentions similar functionality
+    const criteriaMatch = successCriteria.some(c =>
+      c.description.toLowerCase().includes(reqLower.substring(0, 20)) ||
+      reqLower.includes(c.description.toLowerCase().substring(0, 20))
+    );
+
+    // Check if any phase content mentions similar functionality
+    const phaseMatch = phases.some(p =>
+      p.content.toLowerCase().includes(reqLower.substring(0, 20)) ||
+      p.title.toLowerCase().includes(reqLower.substring(0, 20))
+    );
+
+    if (criteriaMatch || phaseMatch) {
+      suggestions.push(req.id);
+    }
+  }
+
+  return suggestions;
+}
+```
+
+Display suggestions:
+
+```text
+**Suggested requirements based on plan analysis:**
+- CORE-01: {requirement text} (matches criteria: functional-1)
+- SEC-01: {requirement text} (matches phase: "Setup authentication")
+
+Would you like to map these requirements to this issue? [y/edit/skip]
+```
+
+#### 5.7c. Prompt for Confirmation
+
+Use AskUserQuestion to prompt the user to confirm or edit the mappings:
+
+**Options:**
+- **Yes (y)**: Accept suggested mappings
+- **Edit**: Allow user to add/remove specific requirement IDs
+- **Skip**: Skip requirements mapping (plan proceeds without)
+
+If user selects "Edit":
+
+```text
+Enter requirement IDs to map (comma-separated), or 'none' to clear:
+Current suggestions: CORE-01, SEC-01
+
+Example: CORE-01, CORE-02, SEC-01
+```
+
+#### 5.7d. Store Requirements Mapping
+
+Store the confirmed requirements mapping in the plan:
+
+```javascript
+// Add to plan file structure
+const plan = {
+  // ... existing fields ...
+  addressesRequirements: ["CORE-01", "SEC-01"], // Array of requirement IDs
+  release: {
+    version: releaseContext.version,
+    milestone: releaseContext.githubMilestone?.url || null
+  }
+};
+```
+
+**Error Handling:**
+
+- If requirements.json cannot be parsed: Skip this step silently
+- If user cancels prompt: Skip mapping, continue with plan
+- If AskUserQuestion fails: Skip mapping, continue with plan
+
 ### Step 6: Display the Plan
 
-After creating the plan, display a summary showing project context (if available), research context (if available), success criteria before phases, which criteria each phase addresses, and a criteria coverage table:
+After creating the plan, display a summary showing release context (if available), project context (if available), research context (if available), success criteria before phases, which criteria each phase addresses, and a criteria coverage table:
 
 ```markdown
 ## Plan for Issue #34: Add user authentication
 
 **Phases:** 3
 **Parallelizable:** No
+
+### Release Context
+
+**Release:** v1.1
+**Milestone:** [Milestone #1](https://github.com/owner/repo/milestone/1)
+**Requirements Addressed:** CORE-01, SEC-01
+
+---
 
 ### Project Context
 
@@ -801,6 +1057,36 @@ Relevant research found:
 ---
 Plan saved to `.tiki/plans/issue-34.json`
 ```
+
+#### Release Context Display Rules
+
+**When issue is in a release:**
+
+Display the Release Context section at the very top of the plan summary (before Project Context):
+
+```markdown
+### Release Context
+
+**Release:** {version}
+**Milestone:** [{Milestone title}]({milestone URL}) {or "None" if no milestone}
+**Requirements Addressed:** {comma-separated requirement IDs} {or "None mapped" if empty}
+
+---
+```
+
+Include:
+
+1. Release version (e.g., "v1.1")
+2. GitHub milestone link (if associated)
+3. List of requirement IDs this plan addresses
+
+**When issue is NOT in a release:**
+
+Omit the Release Context section entirely (silent skip). The planning process continues normally without release context.
+
+**When release detection fails:**
+
+Omit the Release Context section entirely (silent skip). Do not display errors. Continue with normal planning.
 
 #### Project Context Display Rules
 
