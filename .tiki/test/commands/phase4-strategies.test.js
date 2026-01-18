@@ -145,51 +145,51 @@ describe('Direct Fix Patterns for Test Errors', () => {
 // Test Suite 4: Strategy: Diagnostic Agent Section
 // ============================================================================
 
-describe('Strategy: Diagnostic Agent Section', () => {
-  test('execute.md should have "Strategy: Diagnostic Agent" section', () => {
-    const hasSection = /Strategy:\s*Diagnostic[-\s]?Agent|##### Step 4.*Diagnostic/i.test(executeContent);
+describe('Strategy: Contextual Analysis Section', () => {
+  test('execute.md should have "Strategy: Contextual Analysis" section', () => {
+    const hasSection = /Strategy:\s*Contextual[-\s]?Analysis|##### Step 4.*Contextual/i.test(executeContent);
     assert.ok(
       hasSection,
-      'execute.md is missing "Strategy: Diagnostic Agent" section'
+      'execute.md is missing "Strategy: Contextual Analysis" section'
     );
   });
 
-  test('Diagnostic Agent section should be within Auto-Fix Attempt section', () => {
+  test('Contextual Analysis section should be within Auto-Fix Attempt section', () => {
     const autoFixSection = executeContent.match(/4f-auto[\s\S]*?(?=####\s*4g|(?<![#])###\s*Step\s*5\s*:|$)/i);
     assert.ok(autoFixSection, 'Auto-Fix Attempt section not found');
 
-    const hasDiagnosticAgent = /Strategy:\s*Diagnostic[-\s]?Agent|diagnostic[-\s]?agent\s*strategy/i.test(autoFixSection[0]);
+    const hasContextualAnalysis = /Strategy:\s*Contextual[-\s]?Analysis|contextual[-\s]?analysis\s*strategy/i.test(autoFixSection[0]);
     assert.ok(
-      hasDiagnosticAgent,
-      'Diagnostic Agent strategy should be within Auto-Fix Attempt section'
+      hasContextualAnalysis,
+      'Contextual Analysis strategy should be within Auto-Fix Attempt section'
     );
   });
 });
 
 // ============================================================================
-// Test Suite 5: Task Tool Call Format for Diagnostic Agent
+// Test Suite 5: Task Tool Call Format for Contextual Analysis
 // ============================================================================
 
-describe('Task Tool Call Format for Diagnostic Agent', () => {
-  test('Diagnostic Agent section should show Task tool call format', () => {
-    const diagnosticSection = executeContent.match(/Strategy:\s*Diagnostic[-\s]?Agent[\s\S]*?(?=##### Step 5|##### Step 6|$)/i);
-    assert.ok(diagnosticSection, 'Strategy: Diagnostic Agent section not found');
+describe('Task Tool Call Format for Contextual Analysis', () => {
+  test('Contextual Analysis section should show Task tool call format', () => {
+    const contextualSection = executeContent.match(/\*\*Strategy:\s*Contextual\s*Analysis\*\*[\s\S]*?(?=\*\*Strategy:\s*Approach|##### Step 5|$)/i);
+    assert.ok(contextualSection, 'Strategy: Contextual Analysis section not found');
 
-    const hasTaskCall = /Task\s*tool|spawn.*sub[-\s]?agent/i.test(diagnosticSection[0]);
+    const hasTaskCall = /Task\s*tool|spawn.*sub[-\s]?agent/i.test(contextualSection[0]);
     assert.ok(
       hasTaskCall,
-      'Diagnostic Agent section should show Task tool call format'
+      'Contextual Analysis section should show Task tool call format'
     );
   });
 
-  test('Diagnostic Agent section should specify subagent_type', () => {
-    const diagnosticSection = executeContent.match(/Strategy:\s*Diagnostic[-\s]?Agent[\s\S]*?(?=##### Step 5|##### Step 6|$)/i);
-    assert.ok(diagnosticSection, 'Strategy: Diagnostic Agent section not found');
+  test('Contextual Analysis section should specify subagent_type', () => {
+    const contextualSection = executeContent.match(/\*\*Strategy:\s*Contextual\s*Analysis\*\*[\s\S]*?(?=\*\*Strategy:\s*Approach|##### Step 5|$)/i);
+    assert.ok(contextualSection, 'Strategy: Contextual Analysis section not found');
 
-    const hasSubagentType = /subagent_type|general[-\s]?purpose/i.test(diagnosticSection[0]);
+    const hasSubagentType = /subagent_type|general[-\s]?purpose/i.test(contextualSection[0]);
     assert.ok(
       hasSubagentType,
-      'Diagnostic Agent section should specify subagent_type for the Task tool call'
+      'Contextual Analysis section should specify subagent_type for the Task tool call'
     );
   });
 });
@@ -199,47 +199,47 @@ describe('Task Tool Call Format for Diagnostic Agent', () => {
 // ============================================================================
 
 describe('Fix Agent Prompt Template', () => {
-  test('Diagnostic Agent section should include a prompt template', () => {
-    const diagnosticSection = executeContent.match(/Strategy:\s*Diagnostic[-\s]?Agent[\s\S]*?(?=##### Step 5|##### Step 6|$)/i);
-    assert.ok(diagnosticSection, 'Strategy: Diagnostic Agent section not found');
+  test('Contextual Analysis section should include a prompt template', () => {
+    const contextualSection = executeContent.match(/\*\*Strategy:\s*Contextual\s*Analysis\*\*[\s\S]*?(?=\*\*Strategy:\s*Approach|##### Step 5|$)/i);
+    assert.ok(contextualSection, 'Strategy: Contextual Analysis section not found');
 
-    const hasPromptTemplate = /prompt[\s\S]*?error|You are.*fix|template/i.test(diagnosticSection[0]);
+    const hasPromptTemplate = /prompt[\s\S]*?error|You are.*fix|template/i.test(contextualSection[0]);
     assert.ok(
       hasPromptTemplate,
-      'Diagnostic Agent section should include a prompt template'
+      'Contextual Analysis section should include a prompt template'
     );
   });
 
-  test('Diagnostic Agent prompt template should include error context placeholder', () => {
-    const diagnosticSection = executeContent.match(/Strategy:\s*Diagnostic[-\s]?Agent[\s\S]*?(?=##### Step 5|##### Step 6|$)/i);
-    assert.ok(diagnosticSection, 'Strategy: Diagnostic Agent section not found');
+  test('Contextual Analysis prompt template should include error context placeholder', () => {
+    const contextualSection = executeContent.match(/\*\*Strategy:\s*Contextual\s*Analysis\*\*[\s\S]*?(?=\*\*Strategy:\s*Approach|##### Step 5|$)/i);
+    assert.ok(contextualSection, 'Strategy: Contextual Analysis section not found');
 
-    const hasErrorContext = /\{error_message\}|\{error_output\}|error.*context|<error/i.test(diagnosticSection[0]);
+    const hasErrorContext = /\{error_message\}|\{error_output\}|error.*context|<error/i.test(contextualSection[0]);
     assert.ok(
       hasErrorContext,
-      'Diagnostic Agent prompt template should include error context placeholder'
+      'Contextual Analysis prompt template should include error context placeholder'
     );
   });
 
-  test('Diagnostic Agent prompt template should include file context', () => {
-    const diagnosticSection = executeContent.match(/Strategy:\s*Diagnostic[-\s]?Agent[\s\S]*?(?=##### Step 5|##### Step 6|$)/i);
-    assert.ok(diagnosticSection, 'Strategy: Diagnostic Agent section not found');
+  test('Contextual Analysis prompt template should include file context', () => {
+    const contextualSection = executeContent.match(/\*\*Strategy:\s*Contextual\s*Analysis\*\*[\s\S]*?(?=\*\*Strategy:\s*Approach|##### Step 5|$)/i);
+    assert.ok(contextualSection, 'Strategy: Contextual Analysis section not found');
 
-    const hasFileContext = /\{error_file\}|affected.*file|<file|file.*path/i.test(diagnosticSection[0]);
+    const hasFileContext = /\{error_file\}|affected.*file|<file|file.*path/i.test(contextualSection[0]);
     assert.ok(
       hasFileContext,
-      'Diagnostic Agent prompt template should include file context'
+      'Contextual Analysis prompt template should include file context'
     );
   });
 
-  test('Diagnostic Agent prompt template should request fix actions', () => {
-    const diagnosticSection = executeContent.match(/Strategy:\s*Diagnostic[-\s]?Agent[\s\S]*?(?=##### Step 5|##### Step 6|$)/i);
-    assert.ok(diagnosticSection, 'Strategy: Diagnostic Agent section not found');
+  test('Contextual Analysis prompt template should request fix actions', () => {
+    const contextualSection = executeContent.match(/\*\*Strategy:\s*Contextual\s*Analysis\*\*[\s\S]*?(?=\*\*Strategy:\s*Approach|##### Step 5|$)/i);
+    assert.ok(contextualSection, 'Strategy: Contextual Analysis section not found');
 
-    const hasFixRequest = /fix.*error|apply.*fix|make.*pass|resolve/i.test(diagnosticSection[0]);
+    const hasFixRequest = /fix.*error|apply.*fix|make.*pass|resolve/i.test(contextualSection[0]);
     assert.ok(
       hasFixRequest,
-      'Diagnostic Agent prompt template should request specific fix actions'
+      'Contextual Analysis prompt template should request specific fix actions'
     );
   });
 });
@@ -520,14 +520,14 @@ describe('Strategy Escalation on Failure', () => {
     );
   });
 
-  test('Step 7 should escalate from direct to diagnostic-agent on failure', () => {
+  test('Step 7 should escalate from direct to contextual-analysis on failure', () => {
     const step7Section = executeContent.match(/Step\s*7[:\s].*Handle[\s\S]*?(?=##### Step 8|####\s*4g|$)/i);
     assert.ok(step7Section, 'Step 7: Handle Result section not found');
 
-    const hasDirectToDiagnostic = /direct.*diagnostic|escalate.*diagnostic|try.*diagnostic/i.test(step7Section[0]);
+    const hasDirectToContextual = /direct.*contextual|escalate.*contextual|try.*contextual/i.test(step7Section[0]);
     assert.ok(
-      hasDirectToDiagnostic,
-      'Step 7 should document escalation from direct to diagnostic-agent on failure'
+      hasDirectToContextual,
+      'Step 7 should document escalation from direct to contextual-analysis on failure'
     );
   });
 

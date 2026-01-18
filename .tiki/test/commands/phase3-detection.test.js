@@ -63,15 +63,16 @@ describe('Step 4f-auto: Auto-Fix Attempt Step Exists', () => {
   });
 
   test('4f-auto step should appear after TDD verification failed block', () => {
-    // Find the TDD Verification Failed section
-    const tddVerificationMatch = executeContent.search(/TDD\s*Verification\s*Failed|tests\s*fail.*Report.*failure.*pause/i);
-    const autoFixMatch = executeContent.search(/4f-auto/i);
+    // Find the TDD Verification Failed section and the 4f-auto SECTION HEADER
+    const tddVerificationMatch = executeContent.search(/##\s*TDD\s*Verification\s*Failed/i);
+    // Look for the section header #### 4f-auto, not just any mention of 4f-auto
+    const autoFixSectionMatch = executeContent.search(/####\s*4f-auto/i);
 
     assert.ok(tddVerificationMatch >= 0, 'TDD Verification Failed section not found');
-    assert.ok(autoFixMatch >= 0, '4f-auto step not found');
+    assert.ok(autoFixSectionMatch >= 0, '4f-auto section header not found');
     assert.ok(
-      tddVerificationMatch < autoFixMatch,
-      '4f-auto step should come after TDD Verification Failed section'
+      tddVerificationMatch < autoFixSectionMatch,
+      '4f-auto section should come after TDD Verification Failed section'
     );
   });
 
@@ -274,11 +275,12 @@ describe('Attempt Count vs maxAttempts Logic', () => {
 // ============================================================================
 
 describe('Strategy Escalation Logic', () => {
-  test('should document strategy escalation from direct to diagnostic-agent', () => {
-    const hasEscalation = /direct.*diagnostic[-\s]?agent|escalat.*strategy|strategy.*escalat/i.test(executeContent);
+  test('should document strategy escalation from direct to contextual-analysis', () => {
+    // The three-tier system: direct -> contextual-analysis -> approach-review
+    const hasEscalation = /direct.*contextual[-\s]?analysis|escalat.*strategy|strategy.*escalat/i.test(executeContent);
     assert.ok(
       hasEscalation,
-      'Should document strategy escalation from direct to diagnostic-agent'
+      'Should document strategy escalation from direct to contextual-analysis'
     );
   });
 
@@ -290,19 +292,21 @@ describe('Strategy Escalation Logic', () => {
     );
   });
 
-  test('should document when to escalate to diagnostic-agent', () => {
-    const hasEscalateCondition = /direct\s*fail.*diagnostic|escalate.*diagnostic|if\s*direct.*fail.*use\s*diagnostic/i.test(executeContent);
+  test('should document when to escalate to contextual-analysis', () => {
+    // Escalation happens when direct fix fails
+    const hasEscalateCondition = /direct\s*fail.*contextual|direct.*failed.*contextual|if\s*"?direct"?\s*strategy\s*failed/i.test(executeContent);
     assert.ok(
       hasEscalateCondition,
-      'Should document when to escalate to diagnostic-agent'
+      'Should document when to escalate to contextual-analysis'
     );
   });
 
-  test('should explain difference between direct and diagnostic-agent strategies', () => {
-    const hasStrategyDiff = /direct.*simple|diagnostic[-\s]?agent.*spawn|diagnostic[-\s]?agent.*Task\s*tool/i.test(executeContent);
+  test('should explain difference between direct and contextual-analysis strategies', () => {
+    // Contextual analysis spawns a diagnostic sub-agent via Task tool
+    const hasStrategyDiff = /direct.*simple|contextual[-\s]?analysis.*spawn|contextual[-\s]?analysis.*Task\s*tool|spawn.*diagnostic\s*sub[-\s]?agent/i.test(executeContent);
     assert.ok(
       hasStrategyDiff,
-      'Should explain difference between direct and diagnostic-agent strategies'
+      'Should explain difference between direct and contextual-analysis strategies'
     );
   });
 
