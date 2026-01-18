@@ -2,7 +2,7 @@
 
 A GitHub-issue-centric workflow framework for Claude Code. Break large issues into phases, execute them with fresh context windows, and track progress automatically.
 
-**Version:** 1.0.6
+**Version:** 1.0.14
 
 ## Why Tiki?
 
@@ -101,12 +101,20 @@ Runs the complete workflow automatically: fetch → review → plan → audit �
 | `/tiki:research <topic>` | Research unfamiliar domains before planning |
 | `/tiki:debug [issue]` | Start systematic debugging with hypothesis tracking |
 
+### Release Management
+
+| Command | Description |
+|---------|-------------|
+| `/tiki:release` | Create and manage releases (group issues into versions) |
+| `/tiki:roadmap` | Generate project visualization across releases |
+| `/tiki:define-requirements` | Interactively define and track project requirements |
+
 ### Code Quality
 
 | Command | Description |
 |---------|-------------|
 | `/tiki:assess-code` | Comprehensive codebase health assessment |
-| `/tiki:map-codebase` | Generate STACK.md and CONCERNS.md |
+| `/tiki:map-codebase` | Generate STACK.md, CONCERNS.md, and optional docs (CONVENTIONS, TESTING, INTEGRATIONS) |
 
 ### Documentation
 
@@ -184,6 +192,70 @@ Capture "back burner" items that aren't ready to be GitHub issues:
 /tiki:list-todos --delete 3         # Remove #3
 ```
 
+## Release System
+
+Group issues into releases and track progress across versions:
+
+```bash
+# Create a new release
+/tiki:release new v1.1
+
+# Add issues to a release
+/tiki:release add 42                # Add issue #42 to active release
+/tiki:release add 43 --to v1.2      # Add to specific release
+
+# View release status
+/tiki:release status                # Show current release
+/tiki:release status v1.1           # Show specific release
+
+# Ship a release
+/tiki:release ship v1.1             # Mark release as shipped
+
+# View project roadmap
+/tiki:roadmap                       # ASCII timeline view
+/tiki:roadmap --format table        # Table view
+/tiki:roadmap --output              # Generate ROADMAP.md file
+```
+
+## Requirements Tracking
+
+Define and track project requirements with traceability to issues:
+
+```bash
+# Define requirements interactively
+/tiki:define-requirements
+
+# Seed requirements from GitHub issues
+/tiki:define-requirements --from-issues
+
+# Refresh requirements status
+/tiki:define-requirements --refresh
+```
+
+Creates `REQUIREMENTS.md` (human-readable) and `.tiki/requirements.json` (machine-readable).
+
+## Codebase Documentation
+
+Generate comprehensive documentation about your codebase:
+
+```bash
+# Generate default docs (STACK.md + CONCERNS.md)
+/tiki:map-codebase
+
+# Generate all available documentation
+/tiki:map-codebase --all-docs
+
+# Generate specific docs
+/tiki:map-codebase --conventions      # Code style and naming patterns
+/tiki:map-codebase --testing          # Test framework and patterns
+/tiki:map-codebase --integrations     # External services and APIs
+
+# Also update CLAUDE.md with discovered patterns
+/tiki:map-codebase --update-claude
+```
+
+All generated docs are placed in `.tiki/` folder.
+
 ## State Storage
 
 All state lives in `.tiki/`:
@@ -192,10 +264,14 @@ All state lives in `.tiki/`:
 .tiki/
 ├── config.json          # Project settings
 ├── todos.json           # Todo items
+├── requirements.json    # Project requirements (from define-requirements)
 ├── plans/               # Phase plans (issue-N.json)
 ├── state/               # Execution state
 ├── queue/               # Discovered items
 ├── context/             # Saved context for resume
+├── releases/            # Release definitions (v1.0.json, etc.)
+│   └── archive/         # Shipped releases
+├── docs/                # Generated documentation
 ├── adr/                 # Architecture Decision Records
 ├── debug/               # Debug session history
 └── research/            # Domain research documents
