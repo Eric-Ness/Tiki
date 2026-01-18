@@ -1,7 +1,14 @@
 {
-  "version": "1.1.0",
+  "version": "1.1.1",
   "releaseDate": "2026-01-18",
   "changelog": [
+    {
+      "version": "1.1.1",
+      "date": "2026-01-18",
+      "changes": [
+        "Issue #27: Add phase assumptions listing to planning workflow"
+      ]
+    },
     {
       "version": "1.1.0",
       "date": "2026-01-18",
