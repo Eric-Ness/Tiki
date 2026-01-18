@@ -1,7 +1,7 @@
 ---
 type: prompt
 name: tiki:map-codebase
-description: Analyze codebase and generate STACK.md and CONCERNS.md. Use when starting with a new codebase or refreshing documentation.
+description: Analyze codebase and generate .tiki/STACK.md and .tiki/CONCERNS.md. Use when starting with a new codebase or refreshing documentation.
 allowed-tools: Read, Write, Bash, Glob, Grep, Task
 argument-hint: [--stack-only] [--concerns-only] [--update-claude]
 ---
@@ -100,7 +100,7 @@ Grep: "(useContext|useReducer|createStore|createSlice)" --type ts
 
 ### Step 4: Generate STACK.md
 
-Create `STACK.md` in the project root:
+Create `.tiki/STACK.md`:
 
 ```markdown
 # Tech Stack
@@ -204,7 +204,7 @@ Grep: "\.catch\(\s*\(\s*\)\s*=>" --type ts
 Grep: "componentWillMount|componentWillReceiveProps" --type tsx
 ```
 
-Create `CONCERNS.md`:
+Create `.tiki/CONCERNS.md`:
 
 ```markdown
 # Known Concerns
@@ -287,8 +287,8 @@ If `--update-claude` flag is present, append discovered patterns to CLAUDE.md:
 ## Codebase Mapping Complete
 
 ### Files Generated
-- STACK.md - Technology overview
-- CONCERNS.md - Known issues and tech debt
+- .tiki/STACK.md - Technology overview
+- .tiki/CONCERNS.md - Known issues and tech debt
 
 ### Key Findings
 
@@ -311,8 +311,8 @@ If `--update-claude` flag is present, append discovered patterns to CLAUDE.md:
 
 ---
 View full reports:
-- `cat STACK.md`
-- `cat CONCERNS.md`
+- `cat .tiki/STACK.md`
+- `cat .tiki/CONCERNS.md`
 
 Create issues from concerns? Use `/tiki:create-issues --from-concerns`
 ```
@@ -322,7 +322,7 @@ Create issues from concerns? Use `/tiki:create-issues --from-concerns`
 Running `/tiki:map-codebase` when files already exist:
 
 ```
-Existing STACK.md and CONCERNS.md found.
+Existing .tiki/STACK.md and .tiki/CONCERNS.md found.
 
 Options:
 1. Regenerate both (overwrites existing)
@@ -345,5 +345,5 @@ Which option? [1/2/3/4]
 - Re-run periodically to catch new tech debt
 - STACK.md helps Claude understand the project quickly
 - CONCERNS.md helps prioritize work
-- Files are placed in project root by default
+- Files are placed in .tiki/ folder
 - Respects .gitignore patterns when scanning

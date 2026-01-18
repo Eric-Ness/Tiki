@@ -155,14 +155,14 @@ function extractTechnologyMentions(issue) {
 
 #### 4.5b. Load Familiar Technologies from STACK.md
 
-If STACK.md exists (from `/tiki:map-codebase`), extract known technologies:
+If .tiki/STACK.md exists (from `/tiki:map-codebase`), extract known technologies:
 
 ```javascript
 async function loadFamiliarTechnologies() {
   const familiar = new Set();
 
   try {
-    const stackContent = await readFile('STACK.md');
+    const stackContent = await readFile('.tiki/STACK.md');
 
     // Extract technologies from markdown tables
     // Tables have format: | Technology | Version | Purpose |
@@ -210,7 +210,7 @@ async function loadFamiliarTechnologies() {
 
     return familiar;
   } catch (error) {
-    // STACK.md doesn't exist
+    // .tiki/STACK.md doesn't exist
     return new Set();
   }
 }

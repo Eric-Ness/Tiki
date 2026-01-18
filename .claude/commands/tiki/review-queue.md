@@ -199,7 +199,7 @@ Show all queue items grouped by type. When filters are active (from Step 1.5), s
 - **Source:** Issue #34, Phase 1
 - **Description:** The auth service is tightly coupled to the user service. Consider extracting to separate module in future.
 
-**Actions:** [Convert to Issue] [Add to CONCERNS.md] [Dismiss]
+**Actions:** [Convert to Issue] [Add to .tiki/CONCERNS.md] [Dismiss]
 
 ---
 
@@ -308,12 +308,12 @@ For notes that should become tracked work:
 gh issue create --title "Decouple auth service from user service" --body "..."
 ```
 
-#### Add to CONCERNS.md
+#### Add to .tiki/CONCERNS.md
 
 For architectural notes:
 
 ```
-Added to CONCERNS.md:
+Added to .tiki/CONCERNS.md:
 - Auth service is tightly coupled to user service (consider extracting)
 
 [Item removed from queue]
@@ -671,7 +671,7 @@ After processing:
 **Processed 8 items and triggers:**
 - 2 issues created (#37, #38)
 - 1 question answered
-- 1 note added to CONCERNS.md
+- 1 note added to .tiki/CONCERNS.md
 - 1 item dismissed
 - 2 ADR triggers processed (1 ADR created, 1 dismissed)
 - 1 convention trigger processed (added to CLAUDE.md)
@@ -687,7 +687,7 @@ After processing:
 | `question` | Needs user input | Answer, Convert to issue |
 | `note` | Observation or concern | Add to docs, Convert to issue |
 | `blocker` | Something blocking progress | Investigate, Create issue |
-| `tech-debt` | Code quality concern | Create issue, Add to CONCERNS.md |
+| `tech-debt` | Code quality concern | Create issue, Add to .tiki/CONCERNS.md |
 
 ## Queue Item Format
 
