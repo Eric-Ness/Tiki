@@ -63,7 +63,47 @@ If `.tiki/queue/pending.json` exists, count pending items.
 
 Look for context files in `.tiki/context/` that indicate paused work.
 
-### Step 5.5: Estimate Context Budget
+### Step 5.5: Check for Active Release Context
+
+If there's an active issue, check if it's part of any release:
+
+1. **Glob for release files**: `.tiki/releases/*.json`
+2. **Search each release for the active issue number**:
+
+```javascript
+for (const releaseFile of await glob('.tiki/releases/*.json')) {
+  const release = readJSON(releaseFile);
+  const issueInRelease = release.issues.find(i => i.number === activeIssue);
+  if (issueInRelease) {
+    releaseContext = {
+      version: release.version,
+      milestoneUrl: release.githubMilestone?.url || null,
+      requirementsEnabled: release.requirementsEnabled,
+      issues: release.issues,
+      requirements: release.requirements || null
+    };
+    break;
+  }
+}
+```
+
+3. **Calculate release progress**:
+
+```javascript
+if (releaseContext) {
+  const total = releaseContext.issues.length;
+  const completed = releaseContext.issues.filter(i => i.status === 'completed').length;
+  const inProgress = releaseContext.issues.filter(i => i.status === 'in_progress').length;
+  releaseContext.progress = {
+    total,
+    completed,
+    inProgress,
+    percent: total > 0 ? Math.round((completed / total) * 100) : 0
+  };
+}
+```
+
+### Step 5.6: Estimate Context Budget
 
 If there's an active issue with a plan, estimate the context budget for the current/next phase.
 
@@ -147,6 +187,27 @@ Format output like this:
 
 Usage: ████░░░░░░ Low (~4K of 100K)
 
+### Active Release
+**v1.1** - 2/5 issues complete (40%)
+| Issue | Title | Status | Phase |
+|-------|-------|--------|-------|
+| #34 | Add user authentication | in_progress | 2/3 |
+| #35 | Fix login redirect | completed | - |
+| #36 | Update docs | planned | 0/2 |
+| #37 | Add password reset | not_planned | - |
+| #38 | Security audit | not_planned | - |
+
+{If requirementsEnabled:}
+Requirements: 3/8 implemented (38%)
+
+{If milestoneUrl:}
+Milestone: https://github.com/owner/repo/milestone/1
+
+{If no active release:}
+### Active Release
+None - This issue is not part of any release.
+Tip: Use `/tiki:release add <issue-number>` to assign it to a release.
+
 ### Planned Issues
 | Issue | Title | Phases | Status |
 |-------|-------|--------|--------|
@@ -175,6 +236,9 @@ If no active work:
 
 ### Active Work
 No active execution.
+
+### Active Release
+None
 
 ### Planned Issues
 | Issue | Title | Phases | Status |
