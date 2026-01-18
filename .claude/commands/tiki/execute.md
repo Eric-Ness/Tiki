@@ -105,6 +105,50 @@ Your choice (1/2/3):
 
 Store the choice in execution state for consistency during this execution. If the user chooses "always", update `.tiki/config.json` to set `autoFix.enabled: true`.
 
+### Step 2.5: Display Context Budget Overview
+
+Before beginning execution, calculate and display a context budget overview for all phases.
+
+#### Context Estimation Formula
+
+For each phase, estimate token usage:
+
+```javascript
+// Per-phase estimation
+phaseContentTokens = phase.content.length / 4
+filesEstimate = phase.files.length * 500  // ~500 tokens per file read
+verificationTokens = phase.verification.join('\n').length / 4
+claudeMdTokens = claudeMdContent.length / 4
+
+// For phase N, cumulative summaries from phases 1 to N-1
+previousSummariesTokens = estimatedSummaryTokens * (phaseNumber - 1)
+// Use 400 tokens as default summary estimate
+
+totalPhaseEstimate = phaseContentTokens + filesEstimate + verificationTokens + claudeMdTokens + previousSummariesTokens
+```
+
+#### Display Format
+
+```text
+### Context Budget Overview
+| Phase | Est. Tokens | Cumulative |
+|-------|-------------|------------|
+| 1 | ~4,500 | ~4,500 |
+| 2 | ~8,200 | ~5,300* |
+| 3 | ~6,100 | ~6,100* |
+
+*Cumulative includes prior summaries, not full prior phases
+```
+
+#### Large Phase Warning
+
+If any phase exceeds 40K tokens, display a warning:
+
+```text
+⚠️ Large phase detected: Phase 2 (~45K tokens)
+   Consider: Sub-agent may need to break work into smaller steps
+```
+
 ### Step 3: Initialize Execution State
 
 Create or update `.tiki/state/current.json`:
@@ -127,18 +171,40 @@ Update the plan status to `in_progress`.
 
 For each phase in order (respecting dependencies):
 
-#### 4a. Check Dependencies
+#### 4a. Display Phase Context Estimate
+
+Before starting each phase, display a brief context estimate:
+
+```text
+## Phase 2/3: Add login endpoint
+Context estimate: ~8,500 tokens (Low)
+```
+
+Usage levels:
+- **Low**: < 30K tokens
+- **Medium**: 30K-60K tokens
+- **High**: 60K-80K tokens
+- **Critical**: > 80K tokens
+
+If the phase exceeds 40K tokens, add a warning:
+
+```text
+⚠️ Large phase context (~45K tokens)
+   Consider: Phase may need manual intervention if context runs low
+```
+
+#### 4b. Check Dependencies
 
 If phase has `dependencies: [1, 2]`, verify phases 1 and 2 are completed before starting.
 
-#### 4b. Update State
+#### 4c. Update State
 
 Set current phase to `in_progress` in both:
 
 - `.tiki/state/current.json` (activePhase)
 - `.tiki/plans/issue-N.json` (phase status)
 
-#### 4c. TDD Workflow (if enabled)
+#### 4d. TDD Workflow (if enabled)
 
 If `testing.createTests` is "before" (TDD mode):
 
@@ -214,7 +280,7 @@ After creating tests, run them and report:
 SUMMARY: Created N failing tests for <functionality>
 ```
 
-#### 4d. Build Sub-Agent Prompt
+#### 4e. Build Sub-Agent Prompt
 
 Construct the prompt for the Task tool. If TDD is enabled, include test context:
 
@@ -262,7 +328,7 @@ All tests must pass before this phase is considered complete.
 5. When done, provide a summary starting with "SUMMARY:" that describes what you accomplished
 ```
 
-#### 4e. Spawn Sub-Agent
+#### 4f. Spawn Sub-Agent
 
 Use the Task tool to spawn a sub-agent:
 
@@ -273,7 +339,7 @@ Task tool call:
 - description: "Execute phase N of issue #X"
 ```
 
-#### 4f. Verify Tests Pass (TDD Green Phase)
+#### 4g. Verify Tests Pass (TDD Green Phase)
 
 If `testing.createTests` is "before", verify the tests now pass:
 
@@ -309,7 +375,7 @@ Phase <N> implementation did not pass tests.
 - Get automatic fix suggestions: `/tiki:heal <N>`
 ```
 
-#### 4f-auto. Auto-Fix Attempt (if enabled)
+#### 4g-auto. Auto-Fix Attempt (if enabled)
 
 When verification fails and auto-fix is enabled (or user accepts when prompted), attempt automatic repair before pausing for manual intervention.
 
@@ -1169,7 +1235,7 @@ The following example shows the full notification output during an auto-fix cycl
 - 🔄 = retry/re-run verification
 - → = continue/proceed to next phase
 
-#### 4g. Create Tests After (if mode is "after")
+#### 4h. Create Tests After (if mode is "after")
 
 If `testing.createTests` is "after":
 
@@ -1177,7 +1243,7 @@ If `testing.createTests` is "after":
 2. Run tests to verify they pass
 3. If tests fail, implementation may have bugs - report to user
 
-#### 4h. Process Sub-Agent Response
+#### 4i. Process Sub-Agent Response
 
 After the sub-agent completes:
 
@@ -1199,16 +1265,32 @@ After the sub-agent completes:
    - Create `.tiki/triggers/` directory if it doesn't exist
    - Append to `.tiki/triggers/pending.json` with enriched schema (see Trigger Items section below)
 
-#### 4i. Report Progress
+#### 4j. Report Progress
 
-After each phase:
+After each phase, report progress with context tracking:
 
 ```text
 Phase <N>/<total> complete: <phase title>
 Summary: <summary>
+Context used: ~12K tokens (cumulative summaries: ~800 tokens)
 <TDD status if enabled: Tests passed/failed>
 <discovered items if any>
 ```
+
+#### 4k. Track Summary Growth
+
+After each phase completes, track summary growth:
+
+1. Calculate the summary token count for the just-completed phase: `summaryTokens = summary.length / 4`
+2. Compare to average of previous summaries
+3. If current summary > 2x average, flag it:
+
+```text
+📈 Summary length: 1,200 tokens (avg: 400)
+   Note: Consider condensing for future phases
+```
+
+This helps identify when summaries are getting too detailed, which can consume context in later phases.
 
 ### Step 5: Handle Completion
 
@@ -1230,6 +1312,12 @@ All <N> phases completed successfully.
 - Phase 1: <summary>
 - Phase 2: <summary>
 - Phase 3: <summary>
+
+### Context Usage Summary
+- Total phases: 3
+- Avg phase context: ~6,300 tokens
+- Total summary tokens: 1,200 (avg 400/phase)
+- Largest phase: Phase 2 (~8,200 tokens)
 
 ### Queue Items
 <N> items discovered during execution.
