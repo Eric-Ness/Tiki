@@ -1,7 +1,14 @@
 {
-  "version": "1.0.11",
+  "version": "1.0.12",
   "releaseDate": "2026-01-18",
   "changelog": [
+    {
+      "version": "1.0.12",
+      "date": "2026-01-18",
+      "changes": [
+        "Issue #41: Add core release management system (/tiki:release)"
+      ]
+    },
     {
       "version": "1.0.11",
       "date": "2026-01-18",
