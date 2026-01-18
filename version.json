@@ -1,7 +1,14 @@
 {
-  "version": "1.0.9",
+  "version": "1.0.10",
   "releaseDate": "2026-01-18",
   "changelog": [
+    {
+      "version": "1.0.10",
+      "date": "2026-01-18",
+      "changes": [
+        "Issue #29: Add context window status display with proxy metrics"
+      ]
+    },
     {
       "version": "1.0.9",
       "date": "2026-01-18",
