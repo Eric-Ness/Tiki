@@ -2,7 +2,7 @@
 
 A GitHub-issue-centric workflow framework for Claude Code. Break large issues into phases, execute them with fresh context windows, and track progress automatically.
 
-**Version:** 1.0.14
+**Version:** 1.3.0
 
 ## Why Tiki?
 
@@ -13,6 +13,8 @@ When working with Claude Code on complex tasks, context windows fill up. Tiki so
 - **Tracking state** - Progress is saved to `.tiki/` so you can pause, resume, and pick up where you left off
 - **Managing discoveries** - Items found during execution are queued for batch review
 - **Backward planning from criteria** - Plans are derived from success criteria, not forward from issue description
+- **Release management** - Group issues into versions and track progress across releases
+- **Requirements traceability** - Define requirements and trace them through issues to implementation
 
 ## Installation
 
@@ -83,6 +85,7 @@ Runs the complete workflow automatically: fetch → review → plan → audit �
 | `/tiki:skip-phase <number>` | Skip a phase and continue |
 | `/tiki:redo-phase <number>` | Re-execute a completed phase |
 | `/tiki:heal` | Auto-diagnose and fix a failed phase |
+| `/tiki:verify` | Run UAT verification for completed issue |
 
 ### Planning & Review
 
@@ -105,7 +108,14 @@ Runs the complete workflow automatically: fetch → review → plan → audit �
 
 | Command | Description |
 |---------|-------------|
-| `/tiki:release` | Create and manage releases (group issues into versions) |
+| `/tiki:release` | Show release management help |
+| `/tiki:release-new <version>` | Create a new release version |
+| `/tiki:release-add <issue>` | Add issue to release (with `--to <version>` option) |
+| `/tiki:release-remove <issue>` | Remove issue from its release |
+| `/tiki:release-status [version]` | Display release progress and status |
+| `/tiki:release-ship <version>` | Ship a release (tag, close issues, archive) |
+| `/tiki:release-sync [version]` | Sync release with GitHub milestone |
+| `/tiki:release-yolo <version>` | Automated release execution (plan, execute, ship all issues) |
 | `/tiki:roadmap` | Generate project visualization across releases |
 | `/tiki:define-requirements` | Interactively define and track project requirements |
 
@@ -114,7 +124,7 @@ Runs the complete workflow automatically: fetch → review → plan → audit �
 | Command | Description |
 |---------|-------------|
 | `/tiki:assess-code` | Comprehensive codebase health assessment |
-| `/tiki:map-codebase` | Generate STACK.md, CONCERNS.md, and optional docs (CONVENTIONS, TESTING, INTEGRATIONS) |
+| `/tiki:map-codebase` | Generate STACK.md, CONCERNS.md, and optional docs |
 
 ### Documentation
 
@@ -123,6 +133,7 @@ Runs the complete workflow automatically: fetch → review → plan → audit �
 | `/tiki:adr "title"` | Create an Architecture Decision Record |
 | `/tiki:update-claude` | Update CLAUDE.md with learned patterns |
 | `/tiki:commit` | Create a Tiki-aware git commit |
+| `/tiki:changelog` | Show recent Tiki updates |
 
 ### Project Setup
 
@@ -198,24 +209,32 @@ Group issues into releases and track progress across versions:
 
 ```bash
 # Create a new release
-/tiki:release new v1.1
+/tiki:release-new v1.1
 
 # Add issues to a release
-/tiki:release add 42                # Add issue #42 to active release
-/tiki:release add 43 --to v1.2      # Add to specific release
+/tiki:release-add 42                # Add issue #42 to active release
+/tiki:release-add 43 --to v1.2      # Add to specific release
 
 # View release status
-/tiki:release status                # Show current release
-/tiki:release status v1.1           # Show specific release
+/tiki:release-status                # Show current release
+/tiki:release-status v1.1           # Show specific release
+
+# Sync with GitHub milestones
+/tiki:release-sync v1.1             # Two-way sync with milestone
 
 # Ship a release
-/tiki:release ship v1.1             # Mark release as shipped
+/tiki:release-ship v1.1             # Tag, close issues, archive
+
+# Automated release execution
+/tiki:release-yolo v1.1             # Plan, execute, and ship all issues
 
 # View project roadmap
 /tiki:roadmap                       # ASCII timeline view
 /tiki:roadmap --format table        # Table view
 /tiki:roadmap --output              # Generate ROADMAP.md file
 ```
+
+Release files are stored in `.tiki/releases/` with shipped releases archived to `.tiki/releases/archive/`.
 
 ## Requirements Tracking
 
@@ -233,6 +252,8 @@ Define and track project requirements with traceability to issues:
 ```
 
 Creates `.tiki/REQUIREMENTS.md` (human-readable) and `.tiki/requirements.json` (machine-readable).
+
+Requirements are linked to releases and traced through issues to implementation.
 
 ## Codebase Documentation
 
@@ -254,7 +275,7 @@ Generate comprehensive documentation about your codebase:
 /tiki:map-codebase --update-claude
 ```
 
-All generated docs are placed in `.tiki/` folder.
+All generated docs are placed in `.tiki/docs/` folder.
 
 ## State Storage
 
@@ -264,19 +285,35 @@ All state lives in `.tiki/`:
 .tiki/
 ├── config.json          # Project settings
 ├── todos.json           # Todo items
-├── REQUIREMENTS.md      # Human-readable requirements (from define-requirements)
-├── requirements.json    # Machine-readable requirements (from define-requirements)
+├── REQUIREMENTS.md      # Human-readable requirements
+├── requirements.json    # Machine-readable requirements
 ├── plans/               # Phase plans (issue-N.json)
-├── state/               # Execution state
-├── queue/               # Discovered items
+├── state/               # Execution state (current.json)
+├── queue/               # Discovered items (pending.json)
 ├── context/             # Saved context for resume
 ├── releases/            # Release definitions (v1.0.json, etc.)
 │   └── archive/         # Shipped releases
 ├── docs/                # Generated documentation
 ├── adr/                 # Architecture Decision Records
 ├── debug/               # Debug session history
-└── research/            # Domain research documents
+├── research/            # Domain research documents
+│   └── index.json       # Research index for keyword matching
+└── schemas/             # JSON Schema files for validation
 ```
+
+## Schema Validation
+
+JSON Schema files in `.tiki/schemas/` document the expected structure of state files:
+
+| Schema | Validates | Purpose |
+|---------|-----------|---------|
+| `config.schema.json` | `.tiki/config.json` | Project settings |
+| `plan.schema.json` | `.tiki/plans/issue-N.json` | Phased execution plans |
+| `state.schema.json` | `.tiki/state/current.json` | Active execution state |
+| `queue.schema.json` | `.tiki/queue/pending.json` | Discovered items |
+| `todos.schema.json` | `.tiki/todos.json` | Backlog items |
+
+Schemas can be used for IDE autocomplete via JSON `$schema` references.
 
 ## Plan File Format
 
@@ -312,6 +349,7 @@ Plans are stored in `.tiki/plans/issue-N.json`:
       "status": "pending",
       "dependencies": [],
       "files": ["src/middleware/auth.ts"],
+      "assumptions": ["Express.js middleware pattern"],
       "content": "Phase instructions...",
       "verification": "How to verify...",
       "addressesCriteria": ["functional-1", "functional-2"]
@@ -321,7 +359,9 @@ Plans are stored in `.tiki/plans/issue-N.json`:
     "functional-1": { "phases": [1], "tasks": [1] },
     "functional-2": { "phases": [1], "tasks": [2] },
     "testing-1": { "phases": [2], "tasks": [1] }
-  }
+  },
+  "release": "v1.1",
+  "researchContext": []
 }
 ```
 
@@ -337,11 +377,49 @@ Optional `.tiki/config.json`:
   },
   "workflow": {
     "showNextStepMenu": true
+  },
+  "hooks": {
+    "codeSimplifier": {
+      "enabled": true,
+      "mode": "silent"
+    },
+    "testValidator": {
+      "enabled": true,
+      "runOn": ["phase-complete", "commit"]
+    }
+  },
+  "adr": {
+    "autoGenerate": true,
+    "directory": ".tiki/adr"
+  },
+  "autoFix": {
+    "enabled": true,
+    "maxAttempts": 3,
+    "strategies": ["direct", "contextual-analysis", "approach-review"]
+  },
+  "pickIssue": {
+    "maxIssues": 10,
+    "preferLabels": ["priority:high", "good-first-issue"],
+    "deferLabels": ["blocked", "needs-info"],
+    "excludeLabels": ["wontfix"]
   }
 }
 ```
 
+### Configuration Options
+
 **Testing modes:** `"before"` (TDD), `"after"`, `"ask"`, `"never"`
+
+**Hook modes:**
+
+- `codeSimplifier`: Runs after phases to simplify generated code
+- `testValidator`: Validates tests at specified lifecycle points
+
+**Auto-fix strategies:**
+
+- `direct`: Attempt immediate fix based on error
+- `contextual-analysis`: Analyze surrounding context before fixing
+- `approach-review`: Review entire approach if simpler fixes fail
 
 ## Requirements
 

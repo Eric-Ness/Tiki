@@ -8,3 +8,8 @@
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Temporary artifacts from sub-agents
+tmpclaude-*
+nul
+NUL
