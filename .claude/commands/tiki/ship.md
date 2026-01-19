@@ -323,7 +323,7 @@ Remaining issues in v1.1:
   #37: Add password reset
   #38: Add session management
 
-When all issues complete, run: /tiki:release ship v1.1
+When all issues complete, run: /tiki:release-ship v1.1
 ```
 
 **Display rules:**
@@ -336,7 +336,7 @@ When all issues complete, run: /tiki:release ship v1.1
 
 ```text
 All issues in v1.1 complete!
-Ready to ship release: /tiki:release ship v1.1
+Ready to ship release: /tiki:release-ship v1.1
 ```
 
 **If release update failed with warnings:**

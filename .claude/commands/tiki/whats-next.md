@@ -332,7 +332,7 @@ Continue with the next release issue:
 
 Or check release status:
 ```
-/tiki:release status v1.2
+/tiki:release-status v1.2
 ```
 ```
 
@@ -359,7 +359,7 @@ Plan and execute the final issue:
 
 After completion, ship the release:
 ```
-/tiki:release ship v1.2
+/tiki:release-ship v1.2
 ```
 ```
 

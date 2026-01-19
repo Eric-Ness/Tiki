@@ -206,7 +206,7 @@ Milestone: https://github.com/owner/repo/milestone/1
 {If no active release:}
 ### Active Release
 None - This issue is not part of any release.
-Tip: Use `/tiki:release add <issue-number>` to assign it to a release.
+Tip: Use `/tiki:release-add <issue-number>` to assign it to a release.
 
 ### Planned Issues
 | Issue | Title | Phases | Status |

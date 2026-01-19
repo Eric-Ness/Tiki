@@ -1,0 +1,140 @@
+{
+  "topic": "command-file-organization",
+  "createdAt": "2026-01-18T12:00:00Z",
+  "updatedAt": "2026-01-18T12:30:00Z",
+  "totalSources": 38,
+  "sourcesByConfidence": {
+    "high": 7,
+    "medium-high": 5,
+    "medium": 3
+  },
+  "sourcesByAgent": {
+    "internal-organization": 10,
+    "bash-helpers": 10,
+    "claude-architecture": 9,
+    "monolithic-management": 10,
+    "documentation-modularity": 10
+  },
+  "sources": [
+    {
+      "id": 1,
+      "url": "https://code.claude.com/docs/en/slash-commands",
+      "title": "Slash commands - Claude Code Docs",
+      "confidence": "High",
+      "relevance": "Command architecture",
+      "citedBy": ["claude-architecture"]
+    },
+    {
+      "id": 2,
+      "url": "https://code.claude.com/docs/en/skills",
+      "title": "Agent Skills - Claude Code Docs",
+      "confidence": "High",
+      "relevance": "Skills alternative",
+      "citedBy": ["claude-architecture"]
+    },
+    {
+      "id": 3,
+      "url": "https://www.anthropic.com/engineering/claude-code-best-practices",
+      "title": "Claude Code: Best practices for agentic coding",
+      "confidence": "High",
+      "relevance": "Official guidance",
+      "citedBy": ["claude-architecture", "documentation-modularity"]
+    },
+    {
+      "id": 4,
+      "url": "https://google.github.io/styleguide/shellguide.html",
+      "title": "Google Shell Style Guide",
+      "confidence": "High",
+      "relevance": "Bash patterns",
+      "citedBy": ["bash-helpers"]
+    },
+    {
+      "id": 5,
+      "url": "https://learn.microsoft.com/en-us/style-guide/scannable-content/",
+      "title": "Scannable content - Microsoft Style Guide",
+      "confidence": "High",
+      "relevance": "F-pattern reading",
+      "citedBy": ["internal-organization"]
+    },
+    {
+      "id": 6,
+      "url": "https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/organizing-information-with-collapsed-sections",
+      "title": "Organizing information with collapsed sections",
+      "confidence": "High",
+      "relevance": "Collapsible patterns",
+      "citedBy": ["internal-organization"]
+    },
+    {
+      "id": 7,
+      "url": "https://www.humanlayer.dev/blog/writing-a-good-claude-md",
+      "title": "Writing a good CLAUDE.md",
+      "confidence": "High",
+      "relevance": "AI instruction files",
+      "citedBy": ["documentation-modularity", "internal-organization"]
+    },
+    {
+      "id": 8,
+      "url": "https://github.com/gruntwork-io/bash-commons",
+      "title": "bash-commons",
+      "confidence": "Medium-High",
+      "relevance": "Production helper patterns",
+      "citedBy": ["bash-helpers"]
+    },
+    {
+      "id": 9,
+      "url": "https://eslint.org/docs/latest/rules/max-lines",
+      "title": "ESLint max-lines Rule",
+      "confidence": "Medium-High",
+      "relevance": "Size thresholds",
+      "citedBy": ["monolithic-management"]
+    },
+    {
+      "id": 10,
+      "url": "https://www.javacodegeeks.com/2012/12/rule-of-30-when-is-a-method-class-or-subsystem-too-big.html",
+      "title": "Rule of 30 - When is a method, class or subsystem too big?",
+      "confidence": "Medium-High",
+      "relevance": "Size metrics",
+      "citedBy": ["monolithic-management"]
+    },
+    {
+      "id": 11,
+      "url": "https://www.fluidtopics.com/blog/industry-insights/technical-documentation-trends-2026/",
+      "title": "Technical Documentation Trends 2026",
+      "confidence": "Medium-High",
+      "relevance": "Modular architecture",
+      "citedBy": ["documentation-modularity"]
+    },
+    {
+      "id": 12,
+      "url": "https://dev.to/superorange0707/prompt-length-vs-context-window-the-real-limits-behind-llm-performance-3h20",
+      "title": "Prompt Length vs Context Window",
+      "confidence": "Medium-High",
+      "relevance": "LLM performance",
+      "citedBy": ["documentation-modularity"]
+    },
+    {
+      "id": 13,
+      "url": "https://effective-shell.com/part-4-shell-scripting/useful-patterns-for-shell-scripts/",
+      "title": "Useful Patterns for Shell Scripts",
+      "confidence": "Medium",
+      "relevance": "Shell patterns",
+      "citedBy": ["bash-helpers"]
+    },
+    {
+      "id": 14,
+      "url": "https://github.com/hesreallyhim/awesome-claude-code",
+      "title": "awesome-claude-code",
+      "confidence": "Medium",
+      "relevance": "Organization patterns",
+      "citedBy": ["claude-architecture"]
+    },
+    {
+      "id": 15,
+      "url": "https://addyosmani.com/blog/good-spec/",
+      "title": "How to Write a Good Spec for AI Agents",
+      "confidence": "Medium",
+      "relevance": "Modular prompts",
+      "citedBy": ["documentation-modularity"]
+    }
+  ]
+}

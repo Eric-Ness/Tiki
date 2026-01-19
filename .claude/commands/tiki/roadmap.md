@@ -160,8 +160,8 @@ If no release files are found, display:
 No releases have been created yet.
 
 **Getting Started:**
-1. Create a release: `/tiki:release new v1.0`
-2. Add issues to it: `/tiki:release add <issue-number>`
+1. Create a release: `/tiki:release-new v1.0`
+2. Add issues to it: `/tiki:release-add <issue-number>`
 3. View roadmap: `/tiki:roadmap`
 
 ---
@@ -519,7 +519,7 @@ Requirements tracking is not configured for this project.
 
 To enable requirements tracking:
 1. Run `/tiki:define-requirements` to create requirements
-2. Link issues to requirements via `/tiki:release add <issue> --requirements REQ-01,REQ-02`
+2. Link issues to requirements via `/tiki:release-add <issue> --requirements REQ-01,REQ-02`
 
 ---
 *Requirements coverage will appear here once configured.*
@@ -535,7 +535,7 @@ Requirements tracking is not configured for this project.
 
 To enable requirements tracking:
 1. Run \`/tiki:define-requirements\` to create requirements
-2. Link issues to requirements via \`/tiki:release add <issue> --requirements REQ-01,REQ-02\`
+2. Link issues to requirements via \`/tiki:release-add <issue> --requirements REQ-01,REQ-02\`
 
 ---
 *Requirements coverage will appear here once configured.*
