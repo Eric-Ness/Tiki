@@ -52,6 +52,20 @@ All state lives in `.tiki/`:
 └── adr/                # Architecture Decision Records
 ```
 
+### Schema Validation
+
+JSON Schema files in `.tiki/schemas/` document the expected structure of state files:
+
+| Schema | Validates | Purpose |
+|--------|-----------|---------|
+| `config.schema.json` | `.tiki/config.json` | Project settings |
+| `plan.schema.json` | `.tiki/plans/issue-N.json` | Phased execution plans |
+| `state.schema.json` | `.tiki/state/current.json` | Active execution state |
+| `queue.schema.json` | `.tiki/queue/pending.json` | Discovered items |
+| `todos.schema.json` | `.tiki/todos.json` | Backlog items |
+
+Schemas can be used for IDE autocomplete via JSON `$schema` references. Run schema validation tests: `node .tiki/test/commands/schema-validation.test.js`
+
 ### Plan File Format
 
 Plans (`.tiki/plans/issue-N.json`) contain:
