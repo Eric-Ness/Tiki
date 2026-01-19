@@ -88,6 +88,18 @@ Plans (`.tiki/plans/issue-N.json`) contain:
 
 **TDD Integration:** Configurable via `.tiki/config.json` (`testing.createTests`: "before"/"after"/"ask"/"never"). TDD mode writes failing tests first, then implements to make them pass.
 
+### Conditional Prompt Loading
+
+Large commands use conditional prompt files to reduce context usage:
+
+| Command | Condition | Prompt File |
+|---------|-----------|-------------|
+| execute.md | TDD enabled | .tiki/prompts/execute/tdd-workflow.md |
+| execute.md | Verification fails | .tiki/prompts/execute/autofix-strategies.md |
+| execute.md | Phase has subtasks | .tiki/prompts/execute/subtask-execution.md |
+
+Prompts are read by the orchestrator and passed to sub-agents via Task tool only when needed. This pattern reduced execute.md from ~20,000 tokens to ~1,700 tokens (91% reduction for happy-path execution).
+
 ## Testing
 
 Tests are in `.tiki/test/commands/` as JavaScript files using Node's assert:
@@ -106,3 +118,24 @@ Tests verify that command markdown files contain required sections and patterns 
 - GitHub CLI (`gh`) is required for issue operations
 - Research integration matches keywords against `.tiki/research/index.json`
 - Debug history is indexed in `.tiki/debug/index.json` for session lookup
+
+### Conditional Loading Guidelines
+
+When to apply conditional loading:
+
+- Commands exceeding ~5,000 tokens should be refactored
+- Features used in <50% of executions are candidates for extraction
+- Error handling, specialized workflows, and optional features load on-demand
+
+Structuring prompt files:
+
+- Store in `.tiki/prompts/<command>/` directory
+- Each file should be self-contained (~500-1,500 tokens)
+- Include clear section headers and step-by-step instructions
+- Orchestrator reads files and passes content to sub-agents via Task tool
+
+Token budget guidelines:
+
+- Orchestrator/main command: ~1,500-2,000 tokens
+- Conditional prompt files: ~500-1,500 tokens each
+- Total loaded context should stay under ~5,000 tokens for typical execution
