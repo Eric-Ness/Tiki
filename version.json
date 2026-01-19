@@ -1,7 +1,14 @@
 {
-  "version": "1.3.0",
+  "version": "1.3.1",
   "releaseDate": "2026-01-18",
   "changelog": [
+    {
+      "version": "1.3.1",
+      "date": "2026-01-18",
+      "changes": [
+        "Issue #38: Split release.md into 7 focused command files (release-new, release-status, release-add, release-remove, release-ship, release-yolo, release-sync)"
+      ]
+    },
     {
       "version": "1.3.0",
       "date": "2026-01-18",
