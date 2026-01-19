@@ -1,7 +1,15 @@
 {
-  "version": "1.1.1",
+  "version": "1.2.0",
   "releaseDate": "2026-01-18",
   "changelog": [
+    {
+      "version": "1.2.0",
+      "date": "2026-01-18",
+      "changes": [
+        "Issue #24: Add parallel task execution within phases",
+        "Issue #23: Add /tiki:verify for structured user acceptance testing"
+      ]
+    },
     {
       "version": "1.1.1",
       "date": "2026-01-18",
