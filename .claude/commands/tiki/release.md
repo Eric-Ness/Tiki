@@ -5385,6 +5385,42 @@ Move release file to archive with shipping metadata (same as ship subcommand Ste
 rm .tiki/state/yolo.json
 ```
 
+**Bump Version:**
+
+Update `version.json` with the new release version and changelog entry:
+
+```javascript
+// Read current version.json
+const versionFile = JSON.parse(readFile('version.json'));
+
+// Update version to match release
+versionFile.version = version.replace('v', '') + '.0'; // v1.2 -> 1.2.0
+versionFile.releaseDate = new Date().toISOString().split('T')[0];
+
+// Build changelog entry from completed issues
+const changelogEntry = {
+  version: versionFile.version,
+  date: versionFile.releaseDate,
+  changes: completedIssues.map(issue => `Issue #${issue.number}: ${issue.title}`)
+};
+
+// Prepend to changelog array
+versionFile.changelog.unshift(changelogEntry);
+
+// Write updated version.json
+writeFile('version.json', JSON.stringify(versionFile, null, 2));
+```
+
+Commit the version bump:
+
+```bash
+git add version.json
+git commit -m "chore: Bump version to {newVersion}
+
+Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+git push
+```
+
 #### Step 10: Display Completion Summary
 
 ```text
@@ -5424,10 +5460,12 @@ rm .tiki/state/yolo.json
 | Requirements verified | {verifiedCount} |
 {If milestone:}| Milestone closed | #{milestoneNumber} |
 {If tag created:}| Git tag created | {version} |
+| Version bumped | {newVersion} |
 | Release archived | .tiki/releases/archive/{version}.json |
 
 ### Files Updated
 
+- Updated: `version.json` (bumped to {newVersion})
 - Archived: `.tiki/releases/archive/{version}.json`
 - Removed: `.tiki/releases/{version}.json`
 - Removed: `.tiki/state/yolo.json`
