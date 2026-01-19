@@ -1001,7 +1001,7 @@ For direct fix:
 3. Apply the appropriate fix pattern inline
 4. Document the fix applied for recording in Step 5
 
-**Strategy: Contextual Analysis** (attempt 2 - enhanced diagnostic)
+**Strategy: Diagnostic Agent** / Contextual Analysis (attempt 2 - enhanced diagnostic)
 
 When the direct fix has failed (attempt 1), spawn a diagnostic sub-agent via the Task tool to perform deeper analysis with additional context about related files, git history, and test patterns.
 
@@ -1058,7 +1058,7 @@ Task tool call:
 - description: "Auto-fix: Contextual analysis of {error_type} in phase N of issue #X"
 ```
 
-**Contextual Analysis Prompt Template:**
+**Diagnostic Agent Prompt Template** (Contextual Analysis):
 
 ```text
 You are a diagnostic agent fixing a verification failure for Phase {phase_number} of Issue #{issue_number}.
