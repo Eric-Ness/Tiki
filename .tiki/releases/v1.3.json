@@ -1,7 +1,8 @@
 {
   "version": "v1.3",
   "createdAt": "2026-01-18T17:00:00Z",
-  "status": "active",
+  "completedAt": "2026-01-18T18:30:00Z",
+  "status": "shipped",
   "requirementsEnabled": true,
   "githubMilestone": {
     "number": 2,
@@ -11,20 +12,20 @@
     {
       "number": 34,
       "title": "Add Diagnostic Agent documentation to execute.md",
-      "status": "not_planned",
+      "status": "completed",
       "requirements": ["DOC-01"],
       "currentPhase": null,
-      "totalPhases": null,
-      "completedAt": null
+      "totalPhases": 1,
+      "completedAt": "2026-01-18T17:40:00Z"
     },
     {
       "number": 36,
       "title": "Add JSON schema validation for .tiki/ state files",
-      "status": "not_planned",
+      "status": "completed",
       "requirements": ["QUAL-01"],
       "currentPhase": null,
-      "totalPhases": null,
-      "completedAt": null
+      "totalPhases": 3,
+      "completedAt": "2026-01-18T18:00:00Z"
     },
     {
       "number": 30,
@@ -38,7 +39,7 @@
   ],
   "requirements": {
     "total": 3,
-    "implemented": 0,
-    "verified": 0
+    "implemented": 2,
+    "verified": 2
   }
 }
