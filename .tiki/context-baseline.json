@@ -1,0 +1,58 @@
+{
+  "timestamp": "2026-01-19T16:41:07.231780",
+  "commands": {
+    "execute.md": {
+      "path": ".claude/commands/tiki/execute.md",
+      "tokens": 20634,
+      "lines": 2691,
+      "pct_of_200k": 10.32
+    },
+    "plan-issue.md": {
+      "path": ".claude/commands/tiki/plan-issue.md",
+      "tokens": 12823,
+      "lines": 1779,
+      "pct_of_200k": 6.41
+    },
+    "define-requirements.md": {
+      "path": ".claude/commands/tiki/define-requirements.md",
+      "tokens": 13048,
+      "lines": 1987,
+      "pct_of_200k": 6.52
+    },
+    "research.md": {
+      "path": ".claude/commands/tiki/research.md",
+      "tokens": 11770,
+      "lines": 1855,
+      "pct_of_200k": 5.88
+    },
+    "debug.md": {
+      "path": ".claude/commands/tiki/debug.md",
+      "tokens": 10714,
+      "lines": 1696,
+      "pct_of_200k": 5.36
+    },
+    "release-yolo.md": {
+      "path": ".claude/commands/tiki/release-yolo.md",
+      "tokens": 9190,
+      "lines": 1618,
+      "pct_of_200k": 4.59
+    }
+  },
+  "execute_invocation": {
+    "components": {
+      "claude_code_system_prompt": 3000,
+      "execute_md": 20634,
+      "claude_md": 1115,
+      "plan_file": 1500,
+      "prev_summaries": 500
+    },
+    "total_tokens": 26749,
+    "remaining": 173251,
+    "pct_used": 13.37
+  },
+  "prompt_files": {},
+  "totals": {
+    "all_large_commands_tokens": 78179,
+    "all_large_commands_lines": 11626
+  }
+}
