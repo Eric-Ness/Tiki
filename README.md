@@ -232,7 +232,7 @@ Define and track project requirements with traceability to issues:
 /tiki:define-requirements --refresh
 ```
 
-Creates `REQUIREMENTS.md` (human-readable) and `.tiki/requirements.json` (machine-readable).
+Creates `.tiki/REQUIREMENTS.md` (human-readable) and `.tiki/requirements.json` (machine-readable).
 
 ## Codebase Documentation
 
@@ -264,7 +264,8 @@ All state lives in `.tiki/`:
 .tiki/
 ├── config.json          # Project settings
 ├── todos.json           # Todo items
-├── requirements.json    # Project requirements (from define-requirements)
+├── REQUIREMENTS.md      # Human-readable requirements (from define-requirements)
+├── requirements.json    # Machine-readable requirements (from define-requirements)
 ├── plans/               # Phase plans (issue-N.json)
 ├── state/               # Execution state
 ├── queue/               # Discovered items

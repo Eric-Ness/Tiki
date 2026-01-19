@@ -8,7 +8,7 @@ argument-hint: [--from-issues] [--refresh] [--category <name>]
 
 # Define Requirements
 
-Interactively define or update project requirements through guided analysis. This command analyzes the codebase, existing project context, and open GitHub issues to help create a structured `REQUIREMENTS.md` document with a machine-readable `.tiki/requirements.json` backing file.
+Interactively define or update project requirements through guided analysis. This command analyzes the codebase, existing project context, and open GitHub issues to help create a structured `.tiki/REQUIREMENTS.md` document with a machine-readable `.tiki/requirements.json` backing file.
 
 ## Usage
 
@@ -38,7 +38,7 @@ Parse the following flags:
   If present, fetch GitHub issues to seed requirements
 
 - --refresh: boolean (default: false)
-  If present, force re-analysis even if REQUIREMENTS.md exists
+  If present, force re-analysis even if .tiki/REQUIREMENTS.md exists
 
 - --category: string (default: null)
   If provided, focus on the specified category only
@@ -54,20 +54,20 @@ Store parsed values:
 Check if requirements files already exist in the project:
 
 ```bash
-# Check for REQUIREMENTS.md
-if [ -f "REQUIREMENTS.md" ]; then echo "REQUIREMENTS_MD_EXISTS"; else echo "REQUIREMENTS_MD_NOT_FOUND"; fi
+# Check for .tiki/REQUIREMENTS.md
+if [ -f ".tiki/REQUIREMENTS.md" ]; then echo "REQUIREMENTS_MD_EXISTS"; else echo "REQUIREMENTS_MD_NOT_FOUND"; fi
 
 # Check for .tiki/requirements.json
 if [ -f ".tiki/requirements.json" ]; then echo "REQUIREMENTS_JSON_EXISTS"; else echo "REQUIREMENTS_JSON_NOT_FOUND"; fi
 ```
 
-**If REQUIREMENTS.md exists AND --refresh is NOT set:**
+**If .tiki/REQUIREMENTS.md exists AND --refresh is NOT set:**
 
 Use AskUserQuestion to prompt the user:
 
 ```
 Existing requirements found in this project:
-- REQUIREMENTS.md: [EXISTS/NOT FOUND]
+- .tiki/REQUIREMENTS.md: [EXISTS/NOT FOUND]
 - .tiki/requirements.json: [EXISTS/NOT FOUND]
 
 What would you like to do?
@@ -80,11 +80,11 @@ What would you like to do?
 
 Handle each option:
 - **Update existing**: Continue to Step 2, but load existing requirements first
-- **View existing**: Display the contents of REQUIREMENTS.md and exit
+- **View existing**: Display the contents of .tiki/REQUIREMENTS.md and exit
 - **Overwrite**: Backup existing files and continue to Step 2
   ```bash
   # Backup existing files
-  cp REQUIREMENTS.md REQUIREMENTS.md.backup.$(date +%Y%m%d%H%M%S) 2>/dev/null
+  cp .tiki/REQUIREMENTS.md .tiki/REQUIREMENTS.md.backup.$(date +%Y%m%d%H%M%S) 2>/dev/null
   cp .tiki/requirements.json .tiki/requirements.json.backup.$(date +%Y%m%d%H%M%S) 2>/dev/null
   ```
 - **Cancel**: Exit with message "No changes made."
@@ -95,7 +95,7 @@ Skip the prompt and proceed to backup and regenerate:
 
 ```bash
 # Backup existing files before refresh
-cp REQUIREMENTS.md REQUIREMENTS.md.backup.$(date +%Y%m%d%H%M%S) 2>/dev/null
+cp .tiki/REQUIREMENTS.md .tiki/REQUIREMENTS.md.backup.$(date +%Y%m%d%H%M%S) 2>/dev/null
 cp .tiki/requirements.json .tiki/requirements.json.backup.$(date +%Y%m%d%H%M%S) 2>/dev/null
 ```
 
@@ -1079,14 +1079,14 @@ If user confirms:
 
 ```
 Writing requirements...
-- Created: REQUIREMENTS.md
+- Created: .tiki/REQUIREMENTS.md
 - Created: .tiki/requirements.json
 
 Requirements saved successfully.
 
 ### Next Steps
 
-1. **Review REQUIREMENTS.md** - Human-readable format
+1. **Review .tiki/REQUIREMENTS.md** - Human-readable format
 2. **Use in planning** - `/tiki:plan-issue` will reference requirements
 3. **Track implementation** - Requirements linked to issues via `implementedBy`
 4. **Update later** - `/tiki:define-requirements` to add/modify requirements
@@ -1098,9 +1098,9 @@ Requirements saved successfully.
 
 After the user accepts the finalized requirements, generate both output files to persist the requirements data.
 
-#### 7a: Generate REQUIREMENTS.md
+#### 7a: Generate .tiki/REQUIREMENTS.md
 
-Create a human-readable markdown file in the project root:
+Create a human-readable markdown file in the .tiki folder:
 
 ```markdown
 # Requirements
@@ -1136,7 +1136,7 @@ The current requirements cover [summary of what's covered based on categories].
 - Features deferred to future versions
 ```
 
-**Format Rules for REQUIREMENTS.md:**
+**Format Rules for .tiki/REQUIREMENTS.md:**
 
 1. **Coverage Summary**: Brief overview of what the requirements address
 2. **Version Sections**: Group by version (v1, v2, etc.) if versioning is used
@@ -1151,7 +1151,7 @@ The current requirements cover [summary of what's covered based on categories].
 Generate the file using the Write tool:
 
 ```
-Write REQUIREMENTS.md with the formatted content based on finalizedRequirements from Step 6.
+Write .tiki/REQUIREMENTS.md with the formatted content based on finalizedRequirements from Step 6.
 
 For each category in finalizedRequirements:
   1. Add category header: ### {categoryName}
@@ -1300,15 +1300,15 @@ After writing both files, verify sync:
 
 1. Parse requirements.json
 2. For each requirement in JSON:
-   - Verify corresponding entry exists in REQUIREMENTS.md
+   - Verify corresponding entry exists in .tiki/REQUIREMENTS.md
    - Check ID, text, and status match
-3. For each requirement in REQUIREMENTS.md:
+3. For each requirement in .tiki/REQUIREMENTS.md:
    - Verify corresponding entry exists in JSON
 4. If mismatch detected:
    - Log warning: "Sync mismatch detected for {ID}"
    - Regenerate both files from the authoritative source (requirements.json)
 
-The JSON file is the authoritative source. REQUIREMENTS.md is a human-readable view.
+The JSON file is the authoritative source. .tiki/REQUIREMENTS.md is a human-readable view.
 ```
 
 **Update Flow:**
@@ -1336,7 +1336,7 @@ After successfully writing both files, display a comprehensive summary of what w
 
 | File | Path | Size |
 |------|------|------|
-| Human-readable | REQUIREMENTS.md | 2.4 KB |
+| Human-readable | .tiki/REQUIREMENTS.md | 2.4 KB |
 | Machine-readable | .tiki/requirements.json | 3.1 KB |
 ```
 
@@ -1391,7 +1391,7 @@ Provide actionable guidance for using the requirements:
 ### Next Steps
 
 1. **Review Requirements**
-   - Open `REQUIREMENTS.md` to review the human-readable format
+   - Open `.tiki/REQUIREMENTS.md` to review the human-readable format
    - Verify all requirements accurately reflect project needs
 
 2. **Link to Planning**
@@ -1420,7 +1420,7 @@ Provide actionable guidance for using the requirements:
 
 ```bash
 # View requirements
-cat REQUIREMENTS.md
+cat .tiki/REQUIREMENTS.md
 
 # Check requirement status programmatically
 cat .tiki/requirements.json | jq '.categories[].requirements[] | select(.status == "pending")'
@@ -1441,7 +1441,7 @@ Combine all sections into the final output:
 
 ## Files Created
 
-✓ REQUIREMENTS.md (human-readable)
+✓ .tiki/REQUIREMENTS.md (human-readable)
 ✓ .tiki/requirements.json (machine-readable)
 
 ## Summary
@@ -1468,7 +1468,7 @@ Category Breakdown:
 
 ## Next Steps
 
-1. Review REQUIREMENTS.md for accuracy
+1. Review .tiki/REQUIREMENTS.md for accuracy
 2. Use /tiki:plan-issue to plan work against requirements
 3. Run /tiki:define-requirements to update later
 
@@ -1504,19 +1504,18 @@ Enter choice:
 If unable to write to project directory:
 
 ```
-Error: Cannot write to project directory.
+Error: Cannot write to .tiki directory.
 
-Reason: Permission denied for REQUIREMENTS.md
+Reason: Permission denied for .tiki/REQUIREMENTS.md
 
 Troubleshooting:
-1. Check file permissions: ls -la REQUIREMENTS.md
-2. Check directory permissions: ls -la .
+1. Check file permissions: ls -la .tiki/REQUIREMENTS.md
+2. Check directory permissions: ls -la .tiki/
 3. Ensure no file locks exist
 
 Options:
-1. Attempt to save to alternate location (.tiki/REQUIREMENTS.md)
-2. Display requirements to copy manually
-3. Cancel
+1. Display requirements to copy manually
+2. Cancel
 
 Enter choice:
 ```
@@ -1611,16 +1610,12 @@ Enter choice:
 
 ### File Write Errors
 
-If writing REQUIREMENTS.md fails:
+If writing .tiki/REQUIREMENTS.md fails:
 ```
-Error: Could not write REQUIREMENTS.md
+Error: Could not write .tiki/REQUIREMENTS.md
 Reason: [error message]
 
-Attempting to save to alternate location: .tiki/REQUIREMENTS.md
-
-[If successful]
-Requirements saved to .tiki/REQUIREMENTS.md
-Note: Move to project root when possible: mv .tiki/REQUIREMENTS.md REQUIREMENTS.md
+Requirements could not be saved. Check directory permissions for .tiki/
 ```
 
 ### No Existing Requirements for Refresh
@@ -1632,7 +1627,7 @@ Error: No existing requirements to refresh.
 
 The --refresh flag requires existing requirements files:
 - .tiki/requirements.json (not found)
-- REQUIREMENTS.md (not found)
+- .tiki/REQUIREMENTS.md (not found)
 
 To create new requirements, run:
   /tiki:define-requirements
@@ -1672,7 +1667,7 @@ Claude:
 ## Requirements Definition
 
 Checking for existing requirements...
-- REQUIREMENTS.md: Not found
+- .tiki/REQUIREMENTS.md: Not found
 - .tiki/requirements.json: Not found
 
 No existing requirements found. Starting fresh.
@@ -1699,7 +1694,7 @@ Found 8 open issues:
 ## Requirements Definition Complete
 
 Files Created:
-✓ REQUIREMENTS.md (human-readable)
+✓ .tiki/REQUIREMENTS.md (human-readable)
 ✓ .tiki/requirements.json (machine-readable)
 
 Total Requirements: 12
@@ -1718,7 +1713,7 @@ Claude:
 ## Requirements Definition
 
 Checking for existing requirements...
-- REQUIREMENTS.md: Not found
+- .tiki/REQUIREMENTS.md: Not found
 - .tiki/requirements.json: Not found
 
 ## Context Loaded
@@ -1836,7 +1831,7 @@ Scanning for implemented features...
 - 3 issues synced
 
 Updated files:
-✓ REQUIREMENTS.md
+✓ .tiki/REQUIREMENTS.md
 ✓ .tiki/requirements.json
 ```
 
@@ -1952,7 +1947,7 @@ Claude:
 
 ### File Purposes
 
-- **REQUIREMENTS.md** is designed to be human-readable and editable. It can be reviewed in GitHub, included in documentation, and manually updated if needed.
+- **.tiki/REQUIREMENTS.md** is designed to be human-readable and editable. It can be reviewed in GitHub, included in documentation, and manually updated if needed.
 
 - **requirements.json** is for tooling integration. It provides structured data for automated workflows, reporting, and integration with other Tiki commands.
 
@@ -1986,6 +1981,6 @@ The `requirements.json` file includes a `version` field for forward compatibilit
 
 Both files can be manually edited:
 
-- Edit `REQUIREMENTS.md` for quick text changes
+- Edit `.tiki/REQUIREMENTS.md` for quick text changes
 - Edit `requirements.json` for structural changes (adding fields, bulk updates)
 - Run `/tiki:define-requirements` afterward to validate and sync both files
