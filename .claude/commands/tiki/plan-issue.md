@@ -1038,6 +1038,22 @@ Create `.tiki/plans/issue-<number>.json` with this structure:
       "dependencies": [],
       "files": ["src/file1.ts", "src/file2.ts"],
       "content": "Detailed instructions for what to do in this phase...",
+      "subtasks": [
+        {
+          "id": "1a",
+          "title": "Task title",
+          "content": "Task instructions with specific details",
+          "dependencies": [],
+          "files": ["src/file1.ts"]
+        },
+        {
+          "id": "1b",
+          "title": "Another task title",
+          "content": "Task instructions that depend on 1a",
+          "dependencies": ["1a"],
+          "files": ["src/file2.ts"]
+        }
+      ],
       "verification": [
         "File exists and exports correct types",
         "No TypeScript errors",
@@ -1079,6 +1095,55 @@ Create `.tiki/plans/issue-<number>.json` with this structure:
   }
 }
 ```
+
+#### Subtasks Schema (Optional)
+
+The `subtasks` field within a phase is **optional**. Phases without a `subtasks` array execute as a single unit, maintaining full backward compatibility with existing plans.
+
+**When to use subtasks:**
+
+- When a phase contains multiple independent units of work that can run in parallel
+- When you want finer-grained progress tracking within a phase
+- When different parts of a phase touch different files with no dependencies
+
+**When NOT to use subtasks:**
+
+- For simple phases that are naturally sequential
+- When all tasks within the phase depend on each other
+- When the phase is already small enough to complete quickly
+
+**Subtask Schema:**
+
+```json
+{
+  "id": "1a",           // Unique ID within the phase (e.g., "1a", "1b", "1c")
+  "title": "Task title", // Short descriptive title
+  "content": "...",     // Detailed instructions for this subtask
+  "dependencies": [],   // Array of subtask IDs this task depends on (within same phase)
+  "files": []           // Files this subtask will modify
+}
+```
+
+**Subtask Dependencies:**
+
+- Dependencies reference other subtask IDs **within the same phase** (e.g., `["1a", "1b"]`)
+- Subtasks with empty `dependencies` arrays have no dependencies on other subtasks
+- **Subtasks with no dependencies can run in parallel** - the executor may spawn concurrent sub-agents for independent subtasks
+- Dependencies create a DAG (directed acyclic graph) within the phase
+
+**Parallel Execution Example:**
+
+```json
+{
+  "subtasks": [
+    { "id": "2a", "title": "Add user service", "dependencies": [], "files": ["src/services/user.ts"] },
+    { "id": "2b", "title": "Add auth service", "dependencies": [], "files": ["src/services/auth.ts"] },
+    { "id": "2c", "title": "Integrate services", "dependencies": ["2a", "2b"], "files": ["src/index.ts"] }
+  ]
+}
+```
+
+In this example, subtasks `2a` and `2b` can run in parallel since they have no dependencies and modify different files. Subtask `2c` waits for both to complete before starting.
 
 ### Step 5.5: Verify Criteria Coverage
 
@@ -1623,6 +1688,50 @@ Tasks:
 
 See full research: .tiki/research/react-query/research.md
 ```
+
+### When to Use Subtasks vs Single Phase Content
+
+**Use single phase content (no subtasks) when:**
+
+- Tasks are naturally sequential and each step depends on the previous
+- The phase is simple enough to complete in one focused session
+- All tasks modify the same file or tightly coupled files
+- There's no benefit to parallel execution
+
+Example: A simple auth middleware phase where you create a file, add functions, then export them - these steps are inherently sequential.
+
+**Use subtasks when:**
+
+- Multiple independent pieces of work can be done in parallel
+- Tasks touch completely separate files with no interdependencies
+- You want granular progress tracking for complex phases
+- Different team members (or sub-agents) could work on different parts simultaneously
+
+Example: Building a feature with separate service, controller, and test files where the service and controller can be written independently before integration.
+
+**Subtasks vs Breaking into Separate Phases:**
+
+| Subtasks within a phase | Separate phases |
+|------------------------|-----------------|
+| Logically grouped work | Distinct stages of implementation |
+| Share the same phase-level verification | Each has own verification criteria |
+| Can run in parallel within the phase | Sequential by default (unless no dependencies) |
+| Finer-grained than phases | Coarser-grained units of work |
+
+**Example: When to use subtasks**
+
+A "Setup API endpoints" phase might have subtasks:
+```json
+{
+  "subtasks": [
+    { "id": "3a", "title": "Create user endpoints", "dependencies": [], "files": ["src/routes/user.ts"] },
+    { "id": "3b", "title": "Create product endpoints", "dependencies": [], "files": ["src/routes/product.ts"] },
+    { "id": "3c", "title": "Add route registration", "dependencies": ["3a", "3b"], "files": ["src/app.ts"] }
+  ]
+}
+```
+
+Here, user and product endpoints can be developed in parallel (3a and 3b), with route registration (3c) waiting for both.
 
 ## Handling Simple vs Complex Issues
 

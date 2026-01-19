@@ -1,0 +1,95 @@
+{
+  "version": "1.0",
+  "createdAt": "2026-01-18T00:00:00Z",
+  "updatedAt": "2026-01-18T00:00:00Z",
+  "categories": [
+    {
+      "id": "core",
+      "name": "Core Functionality",
+      "requirements": [
+        {
+          "id": "CORE-01",
+          "text": "System shall support parallel execution of independent tasks within phases",
+          "verification": {
+            "type": "automated_test",
+            "description": "Independent tasks spawn concurrently and dependencies are respected"
+          },
+          "status": "verified",
+          "implementedBy": [24],
+          "verifiedAt": "2026-01-18T16:00:00Z"
+        },
+        {
+          "id": "CORE-02",
+          "text": "System shall provide structured user acceptance testing via /tiki:verify command",
+          "verification": {
+            "type": "manual_test",
+            "description": "UAT reports are generated with manual testing checklists"
+          },
+          "status": "verified",
+          "implementedBy": [23],
+          "verifiedAt": "2026-01-18T16:00:00Z"
+        }
+      ]
+    },
+    {
+      "id": "qual",
+      "name": "Quality",
+      "requirements": [
+        {
+          "id": "QUAL-01",
+          "text": "System shall validate JSON state files against schemas to prevent corruption",
+          "verification": {
+            "type": "automated_test",
+            "description": "JSON Schema files exist and tests validate plan files against schemas"
+          },
+          "status": "pending",
+          "implementedBy": [36],
+          "verifiedAt": null
+        },
+        {
+          "id": "QUAL-02",
+          "text": "Large command files shall be reviewed for potential modularization",
+          "verification": {
+            "type": "code_review",
+            "description": "Files over 500 lines analyzed and splitting decisions documented"
+          },
+          "status": "pending",
+          "implementedBy": [38],
+          "verifiedAt": null
+        },
+        {
+          "id": "QUAL-03",
+          "text": "Command naming shall follow standardized verb-noun conventions",
+          "verification": {
+            "type": "code_review",
+            "description": "All commands follow naming pattern with deprecated aliases for old names"
+          },
+          "status": "pending",
+          "implementedBy": [30],
+          "verifiedAt": null
+        }
+      ]
+    },
+    {
+      "id": "doc",
+      "name": "Documentation",
+      "requirements": [
+        {
+          "id": "DOC-01",
+          "text": "execute.md shall document Diagnostic Agent strategy and prompt template",
+          "verification": {
+            "type": "automated_test",
+            "description": "execute-autofix.test.js passes for Diagnostic Agent documentation"
+          },
+          "status": "pending",
+          "implementedBy": [34],
+          "verifiedAt": null
+        }
+      ]
+    }
+  ],
+  "versions": {
+    "v1": ["CORE-01", "CORE-02", "QUAL-01", "QUAL-02", "QUAL-03", "DOC-01"]
+  },
+  "outOfScope": []
+}

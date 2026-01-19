@@ -1,0 +1,33 @@
+{
+  "version": "v1.2",
+  "createdAt": "2026-01-18T00:00:00Z",
+  "status": "shipped",
+  "shippedAt": "2026-01-18T16:00:00Z",
+  "requirementsEnabled": true,
+  "githubMilestone": null,
+  "issues": [
+    {
+      "number": 24,
+      "title": "Add parallel task execution within phases",
+      "status": "completed",
+      "requirements": ["CORE-01"],
+      "currentPhase": null,
+      "totalPhases": 4,
+      "completedAt": "2026-01-18T15:30:00Z"
+    },
+    {
+      "number": 23,
+      "title": "Add /tiki:verify for structured user acceptance testing",
+      "status": "completed",
+      "requirements": ["CORE-02"],
+      "currentPhase": null,
+      "totalPhases": 3,
+      "completedAt": "2026-01-18T15:55:00Z"
+    }
+  ],
+  "requirements": {
+    "total": 2,
+    "implemented": 2,
+    "verified": 2
+  }
+}

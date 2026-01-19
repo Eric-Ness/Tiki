@@ -2,8 +2,8 @@
 type: prompt
 name: tiki:execute
 description: Execute a planned issue by spawning sub-agents for each phase. Use when ready to implement an issue that has been planned with /plan-issue.
-allowed-tools: Bash, Read, Write, Glob, Grep, Task, Edit
-argument-hint: <issue-number> [--from <phase>] [--dry-run] [--tdd|--no-tdd]
+allowed-tools: Bash, Read, Write, Glob, Grep, Task, Edit, TaskOutput
+argument-hint: <issue-number> [--from <phase>] [--dry-run] [--tdd|--no-tdd] [--subtask <id>]
 ---
 
 # Execute
@@ -18,6 +18,7 @@ Execute a planned issue by spawning sub-agents for each phase. Each phase runs i
 /tiki:execute 34 --dry-run   # Preview what would run without executing
 /tiki:execute 34 --tdd       # Force TDD mode (tests before implementation)
 /tiki:execute 34 --no-tdd    # Skip TDD for this execution
+/tiki:execute 34 --from 2 --subtask 2b  # Retry specific subtask within phase
 ```
 
 ## Instructions
@@ -170,6 +171,73 @@ Update the plan status to `in_progress`.
 ### Step 4: Execute Each Phase
 
 For each phase in order (respecting dependencies):
+
+#### 4a-sub. Check for Subtasks (Parallel Execution)
+
+Before executing a phase, check if it contains subtasks that can be parallelized:
+
+```javascript
+// Check if phase has subtasks array
+if (phase.subtasks && phase.subtasks.length > 0) {
+  // Use parallel execution flow
+  const executionWaves = groupTasksByDependency(phase.subtasks);
+  // Execute each wave in parallel (see Parallel Task Grouping section)
+} else {
+  // No subtasks - continue with standard single-agent execution (backward compatible)
+}
+```
+
+**Backward Compatibility:**
+- If no `subtasks` array exists, continue with existing single-agent execution
+- Empty `subtasks` array (`[]`) also falls back to normal execution
+- Single subtask executes normally without parallelization overhead
+
+**Subtask State Tracking:**
+
+During parallel execution, track subtask status in the phase object:
+
+```json
+{
+  "number": 2,
+  "title": "Implement authentication module",
+  "subtasks": [
+    {
+      "id": "2a",
+      "title": "Create JWT utility functions",
+      "status": "pending",
+      "dependencies": [],
+      "startedAt": null,
+      "completedAt": null,
+      "summary": null
+    },
+    {
+      "id": "2b",
+      "title": "Implement token validation",
+      "status": "in_progress",
+      "dependencies": ["2a"],
+      "startedAt": "2026-01-18T10:30:00Z",
+      "completedAt": null,
+      "summary": null
+    }
+  ],
+  "subtaskExecution": {
+    "currentWave": 1,
+    "totalWaves": 2,
+    "waveProgress": {
+      "wave1": ["2a", "2c"],
+      "wave2": ["2b", "2d"]
+    }
+  }
+}
+```
+
+**Subtask Status Values:**
+- `pending`: Not yet started
+- `in_progress`: Currently executing
+- `completed`: Successfully finished
+- `failed`: Execution failed
+
+When all subtasks complete successfully, the phase is marked as completed and execution continues to the next phase.
 
 #### 4a. Display Phase Context Estimate
 
@@ -383,6 +451,305 @@ Task tool call:
 - prompt: <constructed prompt from 4d>
 - description: "Execute phase N of issue #X"
 ```
+
+#### 4f-parallel. Spawn Parallel Subtasks
+
+When a phase has subtasks (detected in Step 4a-sub), use parallel execution instead of the standard single-agent approach.
+
+**Step 1: Group Subtasks into Waves**
+
+Use the `groupTasksByDependency` algorithm (see Parallel Task Grouping section) to organize subtasks:
+
+```javascript
+const { waves, error } = groupTasksByDependency(phase.subtasks);
+
+if (error) {
+  // Handle circular dependency - see error handling section
+  reportCircularDependency(error);
+  return;
+}
+```
+
+**Step 2: Execute Each Wave**
+
+For each wave, spawn multiple sub-agents in parallel:
+
+```text
+Wave 1 with 3 tasks:
+- Task 2a: run_in_background: true
+- Task 2b: run_in_background: true
+- Task 2c: (last task - no run_in_background, blocks until complete)
+
+Wave 2 with 2 tasks (after wave 1 completes):
+- Task 2d: run_in_background: true
+- Task 2e: (last task - no run_in_background)
+```
+
+**Parallel Spawning Pattern:**
+
+For each task in the wave except the last:
+```text
+Task tool call:
+- subagent_type: "general-purpose"
+- run_in_background: true
+- prompt: <subtask-specific prompt - see template below>
+- description: "Execute subtask {id} of phase {N} for issue #{X}"
+```
+
+For the last task in the wave (synchronous, ensures wave completion):
+```text
+Task tool call:
+- subagent_type: "general-purpose"
+- prompt: <subtask-specific prompt>
+- description: "Execute subtask {id} of phase {N} for issue #{X}"
+```
+
+**Step 3: Update Subtask State**
+
+Before spawning each subtask, update its status:
+```json
+{
+  "id": "2a",
+  "status": "in_progress",
+  "startedAt": "<ISO 8601 timestamp>"
+}
+```
+
+**Single Subtask Optimization:**
+
+If only one subtask exists, skip parallelization overhead:
+```text
+if (subtasks.length === 1) {
+  // Execute single subtask directly without run_in_background
+  // Use standard sub-agent execution flow
+}
+```
+
+##### Subtask-Specific Prompt Template
+
+Build a focused prompt for each subtask:
+
+```text
+You are executing Subtask {subtask_id} of Phase {phase_number} for Issue #{issue_number}: {issue_title}
+
+## Project Context
+{claude_md_contents}
+
+## Phase Context
+This subtask is part of Phase {phase_number}: {phase_title}
+
+## Previous Phase Summaries
+{previous_phase_summaries}
+
+## Your Subtask: {subtask_title}
+
+{subtask_content}
+
+## Files You May Modify
+{subtask_files}
+<!-- Use subtask.files if specified, otherwise limit to files relevant to this subtask -->
+
+## Dependencies Completed
+{completed_dependencies_summaries}
+<!-- Include summaries from subtasks this one depends on, if any -->
+
+## Relevant Assumptions
+{filtered_assumptions}
+<!-- Filter assumptions to those relevant to this subtask's files/content -->
+
+## Instructions
+1. Execute ONLY this subtask - do not work on other parts of the phase
+2. Focus on the specific files listed above
+3. If blocked by missing work from dependencies, explain what's missing
+4. If any assumption appears incorrect, flag it with: `ASSUMPTION_INVALID: {id} - {reason}`
+5. If you discover issues needing future attention, note them with "DISCOVERED:" prefix
+6. When done, provide a summary starting with "TASK_SUMMARY:" describing what you accomplished
+
+Important:
+- Your output MUST start with "TASK_SUMMARY:" for result collection
+- Keep your summary concise (1-3 sentences)
+- Report any blockers immediately
+```
+
+#### 4g-parallel. Collect and Merge Results
+
+After all tasks in a wave complete, collect and merge their results.
+
+**Step 1: Collect Results from Background Tasks**
+
+Use TaskOutput to retrieve results from background tasks:
+
+```text
+For each background task in the wave:
+  TaskOutput tool call:
+  - task_id: <id from run_in_background task>
+  - timeout: 300000  (5 minutes max wait per task)
+```
+
+The last task in the wave (executed synchronously) already has its result available.
+
+**Step 2: Extract TASK_SUMMARY from Each Result**
+
+Parse each task's output to extract the summary:
+
+```javascript
+function extractTaskSummary(taskOutput) {
+  const match = taskOutput.match(/TASK_SUMMARY:\s*(.+?)(?=\n\n|DISCOVERED:|ASSUMPTION_INVALID:|$)/s);
+  return match ? match[1].trim() : "No summary provided";
+}
+```
+
+**Step 3: Collect DISCOVERED and ASSUMPTION_INVALID Items**
+
+For each task output, also collect:
+- `DISCOVERED:` items - Add to queue
+- `ASSUMPTION_INVALID:` markers - Add to queue with type "invalid-assumption"
+
+```javascript
+function extractDiscoveredItems(taskOutput) {
+  const items = [];
+  const regex = /DISCOVERED:\s*(.+?)(?=\n|$)/g;
+  let match;
+  while ((match = regex.exec(taskOutput)) !== null) {
+    items.push(match[1].trim());
+  }
+  return items;
+}
+
+function extractInvalidAssumptions(taskOutput) {
+  const items = [];
+  const regex = /ASSUMPTION_INVALID:\s*(\w+)\s*-\s*(.+?)(?=\n|$)/g;
+  let match;
+  while ((match = regex.exec(taskOutput)) !== null) {
+    items.push({ id: match[1], reason: match[2].trim() });
+  }
+  return items;
+}
+```
+
+**Step 4: Update Subtask State**
+
+After collecting each task's result:
+
+```json
+{
+  "id": "2a",
+  "status": "completed",  // or "failed"
+  "completedAt": "<ISO 8601 timestamp>",
+  "summary": "<extracted TASK_SUMMARY>"
+}
+```
+
+**Step 5: Merge into Phase Summary**
+
+Combine all subtask summaries into a single phase summary:
+
+```text
+SUMMARY: Phase {N} completed with parallel execution:
+- Task {id_1}: {summary_1}
+- Task {id_2}: {summary_2}
+- Task {id_3}: {summary_3}
+```
+
+This merged summary is stored in the phase's `summary` field and passed to subsequent phases.
+
+**Step 6: Proceed to Next Wave or Complete Phase**
+
+- If more waves remain: Continue to next wave execution
+- If all waves complete successfully: Mark phase as completed, continue to next phase
+- If any task failed: Handle partial failure (see below)
+
+##### Partial Failure Handling
+
+When one or more subtasks fail in a wave:
+
+**Recording Partial Success:**
+
+Track which tasks succeeded and which failed:
+
+```json
+{
+  "subtasks": [
+    { "id": "2a", "status": "completed", "summary": "..." },
+    { "id": "2b", "status": "failed", "error": "..." },
+    { "id": "2c", "status": "completed", "summary": "..." }
+  ]
+}
+```
+
+**All Tasks Fail:**
+
+If all tasks in a wave fail:
+
+```text
+## Wave Execution Failed
+
+All subtasks in wave {N} failed:
+- Subtask {id_1}: {error_message_1}
+- Subtask {id_2}: {error_message_2}
+
+No progress could be made on this phase.
+
+Options:
+- Review errors and retry: `/tiki:execute {number} --from {phase}`
+- Get diagnostic help: `/tiki:heal {phase}`
+- Skip this phase: `/tiki:skip-phase {phase}`
+```
+
+**Some Tasks Fail (Partial Success):**
+
+If some tasks succeed and some fail:
+
+```text
+## Partial Wave Completion
+
+Wave {N} completed with failures:
+- ✓ Subtask {id_1}: {summary}
+- ✗ Subtask {id_2}: {error_message}
+- ✓ Subtask {id_3}: {summary}
+
+### Successful Tasks
+{count} subtasks completed successfully.
+
+### Failed Tasks
+{count} subtasks failed and need attention.
+
+### Blocked Tasks
+The following tasks in subsequent waves are blocked:
+- Subtask {id_4} (depends on: {failed_task_id})
+
+Options:
+- Fix and retry failed task: `/tiki:execute {number} --from {phase} --subtask {failed_id}`
+- Skip failed subtask: `/tiki:skip-phase {phase} --subtask {failed_id}`
+- Get diagnostic help: `/tiki:heal {phase}`
+```
+
+**Task Timeout:**
+
+If a background task doesn't complete within the timeout:
+
+```text
+## Subtask Timeout
+
+Subtask {id} did not complete within the timeout period ({timeout}ms).
+
+The task may still be running or may have encountered an issue.
+
+Options:
+- Wait longer: increase timeout and retry collection
+- Check task status manually
+- Retry the subtask: `/tiki:execute {number} --from {phase} --subtask {id}`
+```
+
+**Retry Individual Subtask:**
+
+The `--subtask` flag can target a specific failed subtask for retry:
+
+```text
+/tiki:execute 34 --from 2 --subtask 2b
+```
+
+This re-executes only subtask 2b within phase 2, preserving the completed subtasks.
 
 #### 4g. Verify Tests Pass (TDD Green Phase)
 
@@ -1416,6 +1783,169 @@ Use `AskUserQuestion` to present options:
 
 Based on user selection, invoke the appropriate Skill tool.
 
+## Parallel Task Grouping
+
+When a phase contains subtasks with dependencies, the dependency grouping algorithm organizes them into "execution waves" that can run in parallel.
+
+### Algorithm: groupTasksByDependency
+
+```javascript
+function groupTasksByDependency(subtasks) {
+  // Step 1: Build dependency graph
+  const graph = new Map();
+  const inDegree = new Map();
+
+  subtasks.forEach(task => {
+    graph.set(task.id, []);
+    inDegree.set(task.id, 0);
+  });
+
+  // Map dependencies
+  subtasks.forEach(task => {
+    task.dependencies.forEach(depId => {
+      graph.get(depId).push(task.id);
+      inDegree.set(task.id, inDegree.get(task.id) + 1);
+    });
+  });
+
+  // Step 2: Detect circular dependencies (Kahn's algorithm)
+  const visited = new Set();
+  const waves = [];
+
+  while (visited.size < subtasks.length) {
+    // Find all tasks with no unmet dependencies (in-degree 0)
+    const currentWave = subtasks
+      .filter(t => !visited.has(t.id) && inDegree.get(t.id) === 0)
+      .map(t => t.id);
+
+    // Circular dependency detected if no tasks can be executed
+    if (currentWave.length === 0) {
+      const remaining = subtasks.filter(t => !visited.has(t.id));
+      return {
+        error: "circular_dependency",
+        cycle: remaining.map(t => t.id),
+        message: `Circular dependency detected among: ${remaining.map(t => t.id).join(', ')}`
+      };
+    }
+
+    // Add wave and update dependencies
+    waves.push(currentWave);
+    currentWave.forEach(taskId => {
+      visited.add(taskId);
+      graph.get(taskId).forEach(dependentId => {
+        inDegree.set(dependentId, inDegree.get(dependentId) - 1);
+      });
+    });
+  }
+
+  return { waves, error: null };
+}
+```
+
+### Execution Waves
+
+The algorithm returns an array of execution waves:
+
+```javascript
+// Example input subtasks
+[
+  { id: "2a", dependencies: [] },           // No deps - wave 1
+  { id: "2b", dependencies: ["2a"] },       // Depends on 2a - wave 2
+  { id: "2c", dependencies: [] },           // No deps - wave 1
+  { id: "2d", dependencies: ["2a", "2c"] }  // Depends on 2a,2c - wave 2
+]
+
+// Returns:
+{
+  waves: [
+    ["2a", "2c"],  // Wave 1: Independent tasks (run in parallel)
+    ["2b", "2d"]   // Wave 2: Depends on wave 1 (run in parallel after wave 1)
+  ],
+  error: null
+}
+```
+
+### Wave Execution Flow
+
+For each execution wave:
+
+1. **Spawn all tasks in the wave simultaneously** using multiple Task tool calls
+2. **Wait for all tasks in the wave to complete**
+3. **Collect summaries** from all completed tasks
+4. **Update subtask status** (completed/failed)
+5. **Proceed to next wave** if all tasks succeeded
+
+```text
+Wave 1: [2a, 2c]
+  ├── Task 2a → spawned → completed
+  └── Task 2c → spawned → completed
+       ↓ (wait for all)
+Wave 2: [2b, 2d]
+  ├── Task 2b → spawned → completed
+  └── Task 2d → spawned → completed
+       ↓ (wait for all)
+Phase complete
+```
+
+### Error Handling
+
+**Circular Dependency Detection:**
+
+If circular dependencies are detected, report the error and halt phase execution:
+
+```text
+## Circular Dependency Detected
+
+Phase 2 contains circular dependencies that prevent execution:
+- Subtasks involved: 2a → 2b → 2c → 2a
+
+This indicates a planning issue. Please review the subtask dependencies.
+
+Options:
+- Review and fix dependencies: `/tiki:discuss-phases <number>`
+- Skip this phase: `/tiki:skip-phase 2`
+```
+
+**Subtask Failure Handling:**
+
+If any subtask in a wave fails:
+
+1. Mark the failed subtask as `failed`
+2. Continue executing other tasks in the current wave (they may succeed)
+3. After wave completes, check for failures
+4. If any task failed, pause and report which tasks failed
+5. Tasks in subsequent waves that depend on failed tasks cannot proceed
+
+```text
+## Subtask Execution Failed
+
+Wave 1 completed with failures:
+- ✓ Subtask 2a: Create JWT utility functions - completed
+- ✗ Subtask 2c: Implement rate limiter - failed
+
+Error: <error message from failed subtask>
+
+Tasks blocked by this failure:
+- Subtask 2d (depends on: 2c)
+
+Options:
+- Fix and retry: `/tiki:execute <number> --from <phase>`
+- Skip failed subtask: `/tiki:skip-phase <phase> --subtask 2c`
+```
+
+### Single Subtask Optimization
+
+When a phase has exactly one subtask, skip the wave grouping overhead:
+
+```javascript
+if (subtasks.length === 1) {
+  // Execute single subtask directly without parallelization
+  executeSubtask(subtasks[0]);
+}
+```
+
+This avoids unnecessary complexity for phases that were structured with subtasks but only have one task.
+
 ## Sub-Agent Prompt Template
 
 ```text
@@ -1874,6 +2404,28 @@ Override the TDD setting from config for this execution:
 
 This overrides the `testing.createTests` setting in `.tiki/config.json` for the current execution only.
 
+### --subtask ID
+
+Retry a specific subtask within a phase (used with `--from`):
+
+```text
+/tiki:execute 34 --from 2 --subtask 2b
+```
+
+This is useful for:
+
+- Retrying a failed subtask without re-running successful ones
+- Recovering from partial failures in parallel execution
+- Testing fixes for a specific subtask
+
+When `--subtask` is specified:
+1. Skip to the specified phase (via `--from`)
+2. Re-run only the specified subtask
+3. Preserve completed subtasks in the same phase
+4. Update subtask state and resume normal execution
+
+If the subtask has dependencies that haven't completed, an error is displayed.
+
 ## Example Execution Flow
 
 ### Standard Execution
@@ -1973,6 +2525,101 @@ Claude: Starting execution of Issue #34: Add user authentication
         Review with `/tiki:review-queue`
 ```
 
+### Parallel Execution (with subtasks)
+
+```text
+User: /tiki:execute 42
+
+Claude: Starting execution of Issue #42: Add authentication module
+        Plan has 2 phases.
+
+        ## Phase 1/2: Create base authentication utilities
+
+        ### Parallel Execution - Wave 1
+        Subtasks with no dependencies: 1a, 1c
+        [Spawns 2 sub-agents in parallel via Task tool]
+
+        - Task 1a (run_in_background): Create JWT utility functions
+        - Task 1c: Implement password hashing helpers
+
+        Waiting for wave 1 to complete...
+
+        ### Wave 1 Complete
+        - ✓ Subtask 1a: Created sign/verify JWT functions with RS256 support
+        - ✓ Subtask 1c: Added bcrypt password hashing with configurable rounds
+
+        ### Parallel Execution - Wave 2
+        Subtasks depending on wave 1: 1b, 1d
+        [Spawns 2 sub-agents in parallel via Task tool]
+
+        - Task 1b (run_in_background): Implement token validation middleware
+        - Task 1d: Create user session management
+
+        Waiting for wave 2 to complete...
+
+        ### Wave 2 Complete
+        - ✓ Subtask 1b: Added JWT validation middleware with refresh support
+        - ✓ Subtask 1d: Implemented session store with Redis backing
+
+        Phase 1/2 complete: Create base authentication utilities
+        Summary: Phase 1 completed with parallel execution:
+        - Task 1a: Created sign/verify JWT functions with RS256 support
+        - Task 1c: Added bcrypt password hashing with configurable rounds
+        - Task 1b: Added JWT validation middleware with refresh support
+        - Task 1d: Implemented session store with Redis backing
+
+        ## Phase 2/2: Integrate authentication with routes
+        [Standard single-agent execution continues...]
+
+        Phase 2/2 complete: Integrate authentication with routes
+        Summary: Applied auth middleware to protected routes, added login/logout endpoints
+
+        ---
+        ## Execution Complete
+
+        Issue #42: Add authentication module
+        All 2 phases completed successfully.
+```
+
+### Parallel Execution with Partial Failure
+
+```text
+User: /tiki:execute 42
+
+Claude: Starting execution of Issue #42: Add authentication module
+        Plan has 2 phases.
+
+        ## Phase 1/2: Create base authentication utilities
+
+        ### Parallel Execution - Wave 1
+        [Spawns 2 sub-agents in parallel]
+
+        ### Wave 1 Complete (Partial Failure)
+        - ✓ Subtask 1a: Created sign/verify JWT functions
+        - ✗ Subtask 1c: TypeError - bcrypt module not found
+
+        ## Partial Wave Completion
+
+        Wave 1 completed with failures:
+        - ✓ Subtask 1a: Created sign/verify JWT functions
+        - ✗ Subtask 1c: TypeError - bcrypt module not found
+
+        ### Successful Tasks
+        1 subtask completed successfully.
+
+        ### Failed Tasks
+        1 subtask failed and needs attention.
+
+        ### Blocked Tasks
+        The following tasks in subsequent waves are blocked:
+        - Subtask 1d (depends on: 1c)
+
+        Options:
+        - Fix and retry failed task: `/tiki:execute 42 --from 1 --subtask 1c`
+        - Skip failed subtask: `/tiki:skip-phase 1 --subtask 1c`
+        - Get diagnostic help: `/tiki:heal 1`
+```
+
 ## Cleanup
 
 After execution completes (success or failure), clean up any temporary artifacts that may have been created:
@@ -2013,3 +2660,31 @@ If artifacts persist, run `/tiki:cleanup` manually.
 - Supported frameworks: jest, vitest, mocha, pytest, go test, cargo test
 - Use `testing.createTests: "ask"` to be prompted for each execution
 - The "after" mode creates tests after implementation and verifies they pass
+
+### Parallel Execution Notes
+
+- Phases with subtasks execute in parallel using `run_in_background: true`
+- Subtasks are grouped into waves based on dependencies (Kahn's topological sort)
+- All tasks in a wave run concurrently; waves execute sequentially
+- Task results are collected via TaskOutput tool after spawning
+- Each subtask must output `TASK_SUMMARY:` for result collection
+- Partial failures preserve successful subtask work
+- Use `--subtask` flag to retry individual failed subtasks
+- Single subtask phases skip parallelization overhead
+- Circular dependencies are detected and reported before execution starts
+
+**When to Use Parallel Execution:**
+
+- Independent file changes that don't share state (e.g., creating separate utility files)
+- Test file creation alongside implementation files
+- Multiple configuration files or schemas
+- Setting up independent components (e.g., database schema + auth config)
+- Any tasks that operate on completely separate files
+
+**Limitations:**
+
+- Shared file conflicts: Subtasks that modify the same file will cause merge conflicts
+- Dependency complexity: Deep dependency chains reduce parallelism benefits
+- Context isolation: Subtasks cannot share runtime state or communicate
+- Resource contention: Many parallel tasks may hit API rate limits or memory constraints
+- Error propagation: A failed dependency blocks all downstream subtasks in later waves
