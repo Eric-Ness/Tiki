@@ -1,7 +1,20 @@
 {
-  "version": "1.7.0",
+  "version": "1.8.0",
   "releaseDate": "2026-01-20",
   "changelog": [
+    {
+      "version": "1.8.0",
+      "date": "2026-01-20",
+      "changes": [
+        "Enhanced /tiki:new-project with full greenfield workflow",
+        "Deep questioning phase for conversational project discovery",
+        "4-agent parallel research for domain ecosystem analysis",
+        "Interactive requirements scoping by feature category",
+        "GitHub issue generation from requirements",
+        "New conditional prompts: deep-questioning.md, research-agents.md, feature-scoping.md, issue-generation.md",
+        "Added docs/Starting-a-New-Project.md wiki page"
+      ]
+    },
     {
       "version": "1.7.0",
       "date": "2026-01-20",

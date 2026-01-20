@@ -1,100 +1,219 @@
 ---
 type: prompt
 name: tiki:new-project
-description: Initialize a new project with vision, goals, and technical context. Creates PROJECT.md for greenfield projects.
-allowed-tools: Bash, Read, Write, Glob, Grep, AskUserQuestion
-argument-hint: [--name "Project Name"]
+description: Initialize a new project through deep questioning, optional research, requirements scoping, and GitHub issue generation.
+allowed-tools: Bash, Read, Write, Glob, Grep, Task, WebSearch, WebFetch, AskUserQuestion
+argument-hint: [--skip-research] [--skip-issues]
 ---
 
 # New Project
 
-Initialize a project by gathering vision, goals, and technical context through an interactive questionnaire. Creates `PROJECT.md` for subsequent planning.
+Initialize a project through: questioning → research (optional) → requirements → GitHub issues.
 
 ## Usage
 
-```
+```text
 /tiki:new-project
-/tiki:new-project --name "My App"
+/tiki:new-project --skip-research    # Skip domain research
+/tiki:new-project --skip-issues      # Skip GitHub issue creation
 ```
 
 ## Instructions
 
-### Step 1: Check for Existing PROJECT.md
+### Phase 1: Setup
+
+**Run these checks first:**
 
 ```bash
-cat PROJECT.md 2>/dev/null && echo "EXISTS" || echo "NOT_FOUND"
+# Check for existing PROJECT.md
+[ -f PROJECT.md ] && echo "PROJECT_EXISTS" || echo "NO_PROJECT"
+
+# Check for existing code (brownfield detection)
+find . -maxdepth 2 -name "*.ts" -o -name "*.js" -o -name "*.py" -o -name "*.go" 2>/dev/null | grep -v node_modules | head -5
+[ -f package.json ] || [ -f requirements.txt ] || [ -f go.mod ] && echo "HAS_MANIFEST"
+
+# Check for .tiki/STACK.md (already mapped)
+[ -f .tiki/STACK.md ] && echo "CODEBASE_MAPPED"
 ```
 
-If exists, use AskUserQuestion with options: View existing, Overwrite (backup first), Cancel.
+**If PROJECT_EXISTS:** Ask user - View existing, Overwrite (backup first), or Cancel.
 
-### Step 2: Project Vision and Goals
+**If code detected AND not mapped:** Offer `/tiki:map-codebase` first. If declined, continue.
 
-Ask via AskUserQuestion:
+**Ensure git repo:**
 
-- **Project Name** - What should this project be called?
-- **Vision Statement** - In 1-2 sentences, what is this project trying to achieve?
-- **Core Goals** - What are the 3-5 main goals?
+```bash
+[ -d .git ] || git init
+```
 
-### Step 3: Target Users
+### Phase 2: Deep Questioning
 
-Ask:
+Read `.tiki/prompts/new-project/deep-questioning.md` for techniques.
 
-- **Primary Users** - Who are the main users? Describe their roles.
-- **User Needs** - What specific problems does this project address?
+**Start open:** "What do you want to build?"
 
-### Step 4: Technical Constraints
+Follow threads from their response. Challenge vagueness, make abstract concrete, surface assumptions. Cover:
 
-Ask about hard constraints:
+- Vision (the big picture)
+- Core problem being solved
+- Target users
+- Key constraints
+- What's explicitly NOT in scope
 
-- Platforms (web, mobile, desktop)
-- Performance requirements
-- Security/compliance requirements
-- Deployment constraints
+**Decision gate:** When you could write a clear PROJECT.md, use AskUserQuestion:
 
-### Step 5: Tech Preferences
+- "Ready to create PROJECT.md?" → Create / Keep exploring
 
-Ask:
+### Phase 3: Generate PROJECT.md
 
-- **Language/Framework** - Programming language, framework, database preferences
-- **Patterns** - Architectural patterns, monorepo vs separate repos, REST vs GraphQL, testing approach
+Read `.tiki/prompts/new-project/project-templates.md` for template.
 
-If user says "No preference - recommend based on goals" AND existing files present, read `.tiki/prompts/new-project/tech-stack-analysis.md` to detect and suggest.
+Write `PROJECT.md` with gathered context. Include Requirements section as hypotheses:
 
-### Step 6: Success Criteria
+```markdown
+## Requirements
 
-Ask for 3-5 measurable criteria. Guide user toward specific, verifiable items like:
+### Validated
+(None yet — ship to validate)
 
-- "Users can complete core workflow in under 2 minutes"
-- "Page load under 3 seconds on 3G"
+### Active
+- [ ] [Requirement 1]
+- [ ] [Requirement 2]
 
-### Step 7: Non-Goals / Out of Scope
+### Out of Scope
+- [Exclusion 1] — [why]
+```
 
-Ask what is explicitly NOT in scope to prevent scope creep.
+Store raw responses in `.tiki/project-config.json`.
 
-### Step 8: Generate PROJECT.md
+Commit:
 
-Read `.tiki/prompts/new-project/project-templates.md` for template structure.
+```bash
+mkdir -p .tiki
+git add PROJECT.md .tiki/project-config.json
+git commit -m "docs: initialize project - [project name]"
+```
 
-Create PROJECT.md using the gathered responses. Use the minimal template for experiments/learning projects.
+### Phase 4: Research Decision
 
-### Step 9: Store Raw Responses
+**Skip if `--skip-research` flag.**
 
-Ensure `.tiki/` directory exists, then write responses to `.tiki/project-config.json`.
+Use AskUserQuestion:
 
-See `.tiki/prompts/new-project/project-templates.md` for JSON structure.
+- header: "Research"
+- question: "Research the domain ecosystem before defining requirements?"
+- options:
+  - "Research first (Recommended)" — Discover standard stacks, expected features, architecture patterns
+  - "Skip research" — I know this domain well
 
-### Step 10: Display Completion Summary
+**If research selected:**
 
-Show:
+Read `.tiki/prompts/new-project/research-agents.md` for agent configuration.
 
-- Project name
-- Files created: `PROJECT.md`, `.tiki/project-config.json`
-- Quick summary: Vision (1 line), goals count, criteria count, tech stack
-- Next steps: Review PROJECT.md, create issues with `/tiki:add-issue`, start planning
+Create directory and spawn 4 parallel agents via Task tool:
+
+```bash
+mkdir -p .tiki/research/project
+```
+
+| Agent | Focus | Output |
+| ----- | ----- | ------ |
+| Stack | Technologies, libraries, versions | STACK.md |
+| Features | Table stakes, differentiators, anti-features | FEATURES.md |
+| Architecture | Patterns, components, data flow | ARCHITECTURE.md |
+| Pitfalls | Common mistakes, prevention strategies | PITFALLS.md |
+
+After agents complete, synthesize into SUMMARY.md.
+
+Commit research:
+
+```bash
+git add .tiki/research/project/
+git commit -m "docs: add project research"
+```
+
+### Phase 5: Requirements Scoping
+
+Read `.tiki/prompts/new-project/feature-scoping.md` for workflow.
+
+**If research exists:** Present features by category from FEATURES.md.
+
+**If no research:** Gather requirements conversationally.
+
+For each category, use AskUserQuestion with multiSelect:
+
+- Which features are in v1?
+- Selected → v1 requirements
+- Unselected table stakes → v2
+- Unselected differentiators → out of scope
+
+Generate `.tiki/requirements.json` and `.tiki/REQUIREMENTS.md` with REQ-IDs (e.g., AUTH-01, CORE-02).
+
+Commit:
+
+```bash
+git add .tiki/requirements.json .tiki/REQUIREMENTS.md
+git commit -m "docs: define v1 requirements - [count] requirements"
+```
+
+### Phase 6: Issue Generation
+
+**Skip if `--skip-issues` flag.**
+
+Read `.tiki/prompts/new-project/issue-generation.md` for workflow.
+
+Use AskUserQuestion:
+
+- header: "GitHub Issues"
+- question: "Create GitHub issues from requirements?"
+- options:
+  - "Create issues (Recommended)" — Generate issues ready for /tiki:yolo
+  - "Skip for now" — I'll create issues manually later
+
+**If create issues:**
+
+For each requirement (or logical grouping):
+
+1. Create issue with title, body, labels
+2. Add dependency references in body
+3. Optionally create v1 milestone and assign
+
+Display created issues summary.
+
+### Phase 7: Completion
+
+Display summary:
+
+```text
+## Project Initialized
+
+**[Project Name]**
+
+| Artifact | Location |
+|----------|----------|
+| Project | PROJECT.md |
+| Config | .tiki/project-config.json |
+| Research | .tiki/research/project/ (if created) |
+| Requirements | .tiki/REQUIREMENTS.md |
+| Issues | [count] created (if created) |
+
+## Next Steps
+
+- `/tiki:pick-issue` — See which issue to start with
+- `/tiki:yolo [number]` — Execute an issue end-to-end
+- `/tiki:plan-issue [number]` — Plan an issue manually
+```
 
 ## Notes
 
-- PROJECT.md is human-readable and editable; update it directly as project evolves
-- Keep questionnaire conversational, 2-4 questions per section
-- For experiments, use the minimal template format
-- `/plan-issue` automatically loads PROJECT.md when present
+- Deep questioning follows threads, not rigid Q&A
+- Research is optional but recommended for unfamiliar domains
+- Requirements use REQ-IDs for traceability
+- GitHub issues are the "roadmap" in Tiki's issue-centric model
+- Conditional prompts in `.tiki/prompts/new-project/`:
+  - `deep-questioning.md` - Questioning techniques
+  - `project-templates.md` - PROJECT.md and config templates
+  - `tech-stack-analysis.md` - Brownfield stack detection
+  - `research-agents.md` - Project research agent specs
+  - `feature-scoping.md` - Category-based feature selection
+  - `issue-generation.md` - Requirements to GitHub issues

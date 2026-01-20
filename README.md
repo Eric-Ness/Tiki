@@ -2,7 +2,7 @@
 
 A GitHub-issue-centric workflow framework for Claude Code. Break large issues into phases, execute them with fresh context windows, and track progress automatically.
 
-**Version:** 1.7.0
+**Version:** 1.8.0
 
 ## Why Tiki?
 
@@ -140,7 +140,7 @@ Runs the complete workflow automatically: fetch → review → plan → audit �
 
 | Command | Description |
 |---------|-------------|
-| `/tiki:new-project` | Initialize a new project with PROJECT.md |
+| `/tiki:new-project` | Initialize a new project with vision, research, requirements, and issues |
 
 ### Utilities
 
@@ -149,6 +149,32 @@ Runs the complete workflow automatically: fetch → review → plan → audit �
 | `/tiki:test-creator` | Create tests (TDD before/after modes) |
 | `/tiki:cleanup` | Remove temporary artifacts |
 | `/tiki:update-tiki` | Self-update to latest version |
+
+## Starting a New Project
+
+For greenfield projects (starting from scratch), use `/tiki:new-project`:
+
+```bash
+/tiki:new-project                   # Full guided flow
+/tiki:new-project --skip-research   # Skip domain research
+/tiki:new-project --skip-issues     # Skip GitHub issue creation
+```
+
+The command guides you through:
+
+1. **Deep Questioning** — Conversational exploration of your vision, users, constraints
+2. **Domain Research** (optional) — 4 parallel agents research Stack, Features, Architecture, Pitfalls
+3. **Requirements Scoping** — Interactive feature selection by category (v1 vs v2 vs out-of-scope)
+4. **Issue Generation** — Creates GitHub issues from requirements, ready for `/tiki:yolo`
+
+**Output:**
+
+- `PROJECT.md` — Project vision and context
+- `.tiki/research/project/` — Research findings (if selected)
+- `.tiki/requirements.json` — Structured requirements with REQ-IDs
+- GitHub issues — Ready for execution
+
+After `/tiki:new-project`, use `/tiki:pick-issue` to see where to start, then `/tiki:yolo` to execute.
 
 ## Typical Workflow
 
