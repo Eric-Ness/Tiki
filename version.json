@@ -1,7 +1,14 @@
 {
-  "version": "1.3.6",
+  "version": "1.3.7",
   "releaseDate": "2026-01-20",
   "changelog": [
+    {
+      "version": "1.3.7",
+      "date": "2026-01-20",
+      "changes": [
+        "Issue #49: Refactor release-yolo.md for context window efficiency (87% token reduction)"
+      ]
+    },
     {
       "version": "1.3.6",
       "date": "2026-01-20",
