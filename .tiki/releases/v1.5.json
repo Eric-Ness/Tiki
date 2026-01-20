@@ -21,11 +21,11 @@
     {
       "number": 57,
       "title": "Refactor review-queue.md for context window efficiency",
-      "status": "pending",
-      "tokenSavings": 2666,
-      "currentPhase": null,
-      "totalPhases": null,
-      "completedAt": null
+      "status": "completed",
+      "tokenSavings": 3216,
+      "currentPhase": 3,
+      "totalPhases": 3,
+      "completedAt": "2026-01-20T12:10:00Z"
     },
     {
       "number": 58,
