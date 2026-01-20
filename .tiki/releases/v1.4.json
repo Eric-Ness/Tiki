@@ -2,25 +2,52 @@
   "version": "v1.4",
   "createdAt": "2026-01-18T18:45:00Z",
   "status": "active",
-  "requirementsEnabled": true,
+  "description": "High-impact command refactoring for context window efficiency",
+  "requirementsEnabled": false,
   "githubMilestone": {
     "number": 3,
     "url": "https://github.com/Eric-Ness/Tiki/milestone/3"
   },
   "issues": [
     {
-      "number": 30,
-      "title": "Standardize command naming conventions",
+      "number": 52,
+      "title": "Refactor map-codebase.md for context window efficiency",
+      "status": "completed",
+      "tokenSavings": 5155,
+      "currentPhase": 3,
+      "totalPhases": 3,
+      "completedAt": "2026-01-19T12:25:00Z"
+    },
+    {
+      "number": 53,
+      "title": "Refactor review-issue.md for context window efficiency",
       "status": "pending",
-      "requirements": ["QUAL-03"],
+      "tokenSavings": 3573,
+      "currentPhase": null,
+      "totalPhases": null,
+      "completedAt": null
+    },
+    {
+      "number": 54,
+      "title": "Refactor roadmap.md for context window efficiency",
+      "status": "pending",
+      "tokenSavings": 3548,
+      "currentPhase": null,
+      "totalPhases": null,
+      "completedAt": null
+    },
+    {
+      "number": 55,
+      "title": "Refactor yolo.md for context window efficiency",
+      "status": "pending",
+      "tokenSavings": 3543,
       "currentPhase": null,
       "totalPhases": null,
       "completedAt": null
     }
   ],
-  "requirements": {
-    "total": 1,
-    "implemented": 0,
-    "verified": 0
+  "metrics": {
+    "totalTokenSavings": 15029,
+    "commandsToRefactor": 4
   }
 }

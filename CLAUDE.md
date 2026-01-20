@@ -101,8 +101,12 @@ Large commands use conditional prompt files to reduce context usage:
 | debug.md | Hypothesis workflow | .tiki/prompts/debug/hypothesis-tracking.md |
 | debug.md | Marking resolved/abandoned | .tiki/prompts/debug/resolution-recording.md |
 | debug.md | After session changes | .tiki/prompts/debug/index-management.md |
+| map-codebase.md | --conventions or --all-docs | .tiki/prompts/map-codebase/conventions-doc.md |
+| map-codebase.md | --testing or --all-docs | .tiki/prompts/map-codebase/testing-doc.md |
+| map-codebase.md | --integrations or --all-docs | .tiki/prompts/map-codebase/integrations-doc.md |
+| map-codebase.md | --update-claude | .tiki/prompts/map-codebase/claude-update.md |
 
-Prompts are read by the orchestrator and passed to sub-agents via Task tool only when needed. This pattern reduced execute.md from ~20,000 tokens to ~1,700 tokens (91% reduction for happy-path execution), and debug.md from ~15,400 tokens to ~1,300 tokens (92% reduction for list/show/search operations).
+Prompts are read by the orchestrator and passed to sub-agents via Task tool only when needed. This pattern reduced execute.md from ~20,000 tokens to ~1,700 tokens (91% reduction for happy-path execution), debug.md from ~15,400 tokens to ~1,300 tokens (92% reduction for list/show/search operations), and map-codebase.md from ~5,865 tokens to ~710 tokens (88% reduction for core STACK.md/CONCERNS.md generation).
 
 ## Testing
 
