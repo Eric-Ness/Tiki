@@ -48,11 +48,11 @@
     {
       "number": 60,
       "title": "Refactor verify.md for context window efficiency",
-      "status": "pending",
-      "tokenSavings": 2152,
-      "currentPhase": null,
-      "totalPhases": null,
-      "completedAt": null
+      "status": "completed",
+      "tokenSavings": 2767,
+      "currentPhase": 3,
+      "totalPhases": 3,
+      "completedAt": "2026-01-20T12:25:00Z"
     },
     {
       "number": 61,
