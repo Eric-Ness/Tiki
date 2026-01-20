@@ -66,11 +66,11 @@
     {
       "number": 62,
       "title": "Refactor list-todos.md for context window efficiency",
-      "status": "pending",
-      "tokenSavings": 1749,
-      "currentPhase": null,
-      "totalPhases": null,
-      "completedAt": null
+      "status": "completed",
+      "tokenSavings": 2593,
+      "currentPhase": 3,
+      "totalPhases": 3,
+      "completedAt": "2026-01-20T12:35:00Z"
     },
     {
       "number": 63,
