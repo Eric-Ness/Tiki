@@ -30,11 +30,11 @@
     {
       "number": 58,
       "title": "Refactor release-new.md for context window efficiency",
-      "status": "pending",
-      "tokenSavings": 2399,
-      "currentPhase": null,
-      "totalPhases": null,
-      "completedAt": null
+      "status": "completed",
+      "tokenSavings": 3024,
+      "currentPhase": 3,
+      "totalPhases": 3,
+      "completedAt": "2026-01-20T12:15:00Z"
     },
     {
       "number": 59,
