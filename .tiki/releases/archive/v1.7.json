@@ -1,7 +1,8 @@
 {
   "version": "v1.7",
   "createdAt": "2026-01-20T14:00:00Z",
-  "status": "in-progress",
+  "shippedAt": "2026-01-20T17:30:00Z",
+  "status": "shipped",
   "description": "Final command refactoring batch - remaining commands exceeding 1500 token budget",
   "requirementsEnabled": false,
   "githubMilestone": {
@@ -12,60 +13,61 @@
     {
       "number": 76,
       "title": "Refactor update-claude.md for context window efficiency",
-      "status": "open",
-      "estimatedTokenSavings": 1238
+      "status": "closed",
+      "actualTokenReduction": "79%"
     },
     {
       "number": 77,
       "title": "Refactor state.md for context window efficiency",
-      "status": "open",
-      "estimatedTokenSavings": 1210
+      "status": "closed",
+      "actualTokenReduction": "74%"
     },
     {
       "number": 78,
       "title": "Refactor adr.md for context window efficiency",
-      "status": "open",
-      "estimatedTokenSavings": 1175
+      "status": "closed",
+      "actualTokenReduction": "65%"
     },
     {
       "number": 79,
       "title": "Refactor pick-issue.md for context window efficiency",
-      "status": "open",
-      "estimatedTokenSavings": 985
+      "status": "closed",
+      "actualTokenReduction": "49%"
     },
     {
       "number": 80,
       "title": "Refactor resume.md for context window efficiency",
-      "status": "open",
-      "estimatedTokenSavings": 969
+      "status": "closed",
+      "actualTokenReduction": "54%"
     },
     {
       "number": 81,
       "title": "Refactor skip-phase.md for context window efficiency",
-      "status": "open",
-      "estimatedTokenSavings": 949
+      "status": "closed",
+      "actualTokenReduction": "47%"
     },
     {
       "number": 82,
       "title": "Refactor commit.md for context window efficiency",
-      "status": "open",
-      "estimatedTokenSavings": 876
+      "status": "closed",
+      "actualTokenReduction": "49%"
     },
     {
       "number": 83,
       "title": "Refactor add-todo.md for context window efficiency",
-      "status": "open",
-      "estimatedTokenSavings": 600
+      "status": "closed",
+      "actualTokenReduction": "42%"
     },
     {
       "number": 84,
       "title": "Refactor update-tiki.md for context window efficiency",
-      "status": "open",
-      "estimatedTokenSavings": 529
+      "status": "closed",
+      "actualTokenReduction": "43%"
     }
   ],
   "metrics": {
     "estimatedTotalTokenSavings": 8531,
-    "commandsToRefactor": 9
+    "commandsRefactored": 9,
+    "averageReduction": "56%"
   }
 }
