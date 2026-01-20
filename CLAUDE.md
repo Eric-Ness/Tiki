@@ -105,8 +105,11 @@ Large commands use conditional prompt files to reduce context usage:
 | map-codebase.md | --testing or --all-docs | .tiki/prompts/map-codebase/testing-doc.md |
 | map-codebase.md | --integrations or --all-docs | .tiki/prompts/map-codebase/integrations-doc.md |
 | map-codebase.md | --update-claude | .tiki/prompts/map-codebase/claude-update.md |
+| review-issue.md | Risk/security concerns found | .tiki/prompts/review-issue/risk-assessment.md |
+| review-issue.md | --alternatives flag or complex issue | .tiki/prompts/review-issue/alternative-analysis.md |
+| review-issue.md | Blocking issues found | .tiki/prompts/review-issue/blocking-concerns.md |
 
-Prompts are read by the orchestrator and passed to sub-agents via Task tool only when needed. This pattern reduced execute.md from ~20,000 tokens to ~1,700 tokens (91% reduction for happy-path execution), debug.md from ~15,400 tokens to ~1,300 tokens (92% reduction for list/show/search operations), and map-codebase.md from ~5,865 tokens to ~710 tokens (88% reduction for core STACK.md/CONCERNS.md generation).
+Prompts are read by the orchestrator and passed to sub-agents via Task tool only when needed. This pattern reduced execute.md from ~20,000 tokens to ~1,700 tokens (91% reduction for happy-path execution), debug.md from ~15,400 tokens to ~1,300 tokens (92% reduction for list/show/search operations), map-codebase.md from ~5,865 tokens to ~710 tokens (88% reduction for core STACK.md/CONCERNS.md generation), and review-issue.md from ~5,073 tokens to ~1,150 tokens (77% reduction for standard issue reviews).
 
 ## Testing
 
