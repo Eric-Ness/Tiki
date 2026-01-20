@@ -1,0 +1,71 @@
+{
+  "version": "v1.7",
+  "createdAt": "2026-01-20T14:00:00Z",
+  "status": "in-progress",
+  "description": "Final command refactoring batch - remaining commands exceeding 1500 token budget",
+  "requirementsEnabled": false,
+  "githubMilestone": {
+    "number": 6,
+    "url": "https://github.com/Eric-Ness/Tiki/milestone/6"
+  },
+  "issues": [
+    {
+      "number": 76,
+      "title": "Refactor update-claude.md for context window efficiency",
+      "status": "open",
+      "estimatedTokenSavings": 1238
+    },
+    {
+      "number": 77,
+      "title": "Refactor state.md for context window efficiency",
+      "status": "open",
+      "estimatedTokenSavings": 1210
+    },
+    {
+      "number": 78,
+      "title": "Refactor adr.md for context window efficiency",
+      "status": "open",
+      "estimatedTokenSavings": 1175
+    },
+    {
+      "number": 79,
+      "title": "Refactor pick-issue.md for context window efficiency",
+      "status": "open",
+      "estimatedTokenSavings": 985
+    },
+    {
+      "number": 80,
+      "title": "Refactor resume.md for context window efficiency",
+      "status": "open",
+      "estimatedTokenSavings": 969
+    },
+    {
+      "number": 81,
+      "title": "Refactor skip-phase.md for context window efficiency",
+      "status": "open",
+      "estimatedTokenSavings": 949
+    },
+    {
+      "number": 82,
+      "title": "Refactor commit.md for context window efficiency",
+      "status": "open",
+      "estimatedTokenSavings": 876
+    },
+    {
+      "number": 83,
+      "title": "Refactor add-todo.md for context window efficiency",
+      "status": "open",
+      "estimatedTokenSavings": 600
+    },
+    {
+      "number": 84,
+      "title": "Refactor update-tiki.md for context window efficiency",
+      "status": "open",
+      "estimatedTokenSavings": 529
+    }
+  ],
+  "metrics": {
+    "estimatedTotalTokenSavings": 8531,
+    "commandsToRefactor": 9
+  }
+}
