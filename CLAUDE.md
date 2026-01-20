@@ -111,8 +111,12 @@ Large commands use conditional prompt files to reduce context usage:
 | roadmap.md | --output flag | .tiki/prompts/roadmap/file-output.md |
 | roadmap.md | --format table | .tiki/prompts/roadmap/table-format.md |
 | roadmap.md | Default or --format ascii | .tiki/prompts/roadmap/ascii-format.md |
+| yolo.md | Review enabled (no --skip-review) | .tiki/prompts/yolo/review-stage.md |
+| yolo.md | Ship enabled (no --no-ship) | .tiki/prompts/yolo/ship-stage.md |
+| yolo.md | TDD enabled (no --no-tdd) | .tiki/prompts/yolo/tdd-handling.md |
+| yolo.md | Stage failure | .tiki/prompts/yolo/error-recovery.md |
 
-Prompts are read by the orchestrator and passed to sub-agents via Task tool only when needed. This pattern reduced execute.md from ~20,000 tokens to ~1,700 tokens (91% reduction for happy-path execution), debug.md from ~15,400 tokens to ~1,300 tokens (92% reduction for list/show/search operations), map-codebase.md from ~5,865 tokens to ~710 tokens (88% reduction for core STACK.md/CONCERNS.md generation), review-issue.md from ~5,073 tokens to ~1,150 tokens (77% reduction for standard issue reviews), and roadmap.md from ~4,748 tokens to ~600 tokens (87% reduction for roadmap visualization).
+Prompts are read by the orchestrator and passed to sub-agents via Task tool only when needed. This pattern reduced execute.md from ~20,000 tokens to ~1,700 tokens (91% reduction for happy-path execution), debug.md from ~15,400 tokens to ~1,300 tokens (92% reduction for list/show/search operations), map-codebase.md from ~5,865 tokens to ~710 tokens (88% reduction for core STACK.md/CONCERNS.md generation), review-issue.md from ~5,073 tokens to ~1,150 tokens (77% reduction for standard issue reviews), roadmap.md from ~4,748 tokens to ~600 tokens (87% reduction for roadmap visualization), and yolo.md from ~4,743 tokens to ~650 tokens (86% reduction for YOLO workflow execution).
 
 ## Testing
 
