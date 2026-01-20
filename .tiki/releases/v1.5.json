@@ -1,0 +1,89 @@
+{
+  "version": "v1.5",
+  "createdAt": "2026-01-20T04:41:00Z",
+  "status": "planned",
+  "description": "Release commands refactoring for context window efficiency",
+  "requirementsEnabled": false,
+  "githubMilestone": {
+    "number": 4,
+    "url": "https://github.com/Eric-Ness/Tiki/milestone/4"
+  },
+  "issues": [
+    {
+      "number": 56,
+      "title": "Refactor release-ship.md for context window efficiency",
+      "status": "pending",
+      "tokenSavings": 2872,
+      "currentPhase": null,
+      "totalPhases": null,
+      "completedAt": null
+    },
+    {
+      "number": 57,
+      "title": "Refactor review-queue.md for context window efficiency",
+      "status": "pending",
+      "tokenSavings": 2666,
+      "currentPhase": null,
+      "totalPhases": null,
+      "completedAt": null
+    },
+    {
+      "number": 58,
+      "title": "Refactor release-new.md for context window efficiency",
+      "status": "pending",
+      "tokenSavings": 2399,
+      "currentPhase": null,
+      "totalPhases": null,
+      "completedAt": null
+    },
+    {
+      "number": 59,
+      "title": "Refactor release-status.md for context window efficiency",
+      "status": "pending",
+      "tokenSavings": 2155,
+      "currentPhase": null,
+      "totalPhases": null,
+      "completedAt": null
+    },
+    {
+      "number": 60,
+      "title": "Refactor verify.md for context window efficiency",
+      "status": "pending",
+      "tokenSavings": 2152,
+      "currentPhase": null,
+      "totalPhases": null,
+      "completedAt": null
+    },
+    {
+      "number": 61,
+      "title": "Refactor release-add.md for context window efficiency",
+      "status": "pending",
+      "tokenSavings": 1955,
+      "currentPhase": null,
+      "totalPhases": null,
+      "completedAt": null
+    },
+    {
+      "number": 62,
+      "title": "Refactor list-todos.md for context window efficiency",
+      "status": "pending",
+      "tokenSavings": 1749,
+      "currentPhase": null,
+      "totalPhases": null,
+      "completedAt": null
+    },
+    {
+      "number": 63,
+      "title": "Refactor release-sync.md for context window efficiency",
+      "status": "pending",
+      "tokenSavings": 1702,
+      "currentPhase": null,
+      "totalPhases": null,
+      "completedAt": null
+    }
+  ],
+  "metrics": {
+    "totalTokenSavings": 17650,
+    "commandsToRefactor": 8
+  }
+}

@@ -1,0 +1,125 @@
+{
+  "version": "v1.6",
+  "createdAt": "2026-01-20T04:41:03Z",
+  "status": "planned",
+  "description": "Core workflow commands refactoring for context window efficiency",
+  "requirementsEnabled": false,
+  "githubMilestone": {
+    "number": 5,
+    "url": "https://github.com/Eric-Ness/Tiki/milestone/5"
+  },
+  "issues": [
+    {
+      "number": 64,
+      "title": "Refactor test-creator.md for context window efficiency",
+      "status": "pending",
+      "tokenSavings": 1571,
+      "currentPhase": null,
+      "totalPhases": null,
+      "completedAt": null
+    },
+    {
+      "number": 65,
+      "title": "Refactor assess-code.md for context window efficiency",
+      "status": "pending",
+      "tokenSavings": 1441,
+      "currentPhase": null,
+      "totalPhases": null,
+      "completedAt": null
+    },
+    {
+      "number": 66,
+      "title": "Refactor audit-plan.md for context window efficiency",
+      "status": "pending",
+      "tokenSavings": 1244,
+      "currentPhase": null,
+      "totalPhases": null,
+      "completedAt": null
+    },
+    {
+      "number": 67,
+      "title": "Refactor ship.md for context window efficiency",
+      "status": "pending",
+      "tokenSavings": 1189,
+      "currentPhase": null,
+      "totalPhases": null,
+      "completedAt": null
+    },
+    {
+      "number": 68,
+      "title": "Refactor new-project.md for context window efficiency",
+      "status": "pending",
+      "tokenSavings": 976,
+      "currentPhase": null,
+      "totalPhases": null,
+      "completedAt": null
+    },
+    {
+      "number": 69,
+      "title": "Refactor whats-next.md for context window efficiency",
+      "status": "pending",
+      "tokenSavings": 763,
+      "currentPhase": null,
+      "totalPhases": null,
+      "completedAt": null
+    },
+    {
+      "number": 70,
+      "title": "Refactor add-issue.md for context window efficiency",
+      "status": "pending",
+      "tokenSavings": 711,
+      "currentPhase": null,
+      "totalPhases": null,
+      "completedAt": null
+    },
+    {
+      "number": 71,
+      "title": "Refactor create-issues.md for context window efficiency",
+      "status": "pending",
+      "tokenSavings": 453,
+      "currentPhase": null,
+      "totalPhases": null,
+      "completedAt": null
+    },
+    {
+      "number": 72,
+      "title": "Refactor heal.md for context window efficiency",
+      "status": "pending",
+      "tokenSavings": 378,
+      "currentPhase": null,
+      "totalPhases": null,
+      "completedAt": null
+    },
+    {
+      "number": 73,
+      "title": "Refactor release-remove.md for context window efficiency",
+      "status": "pending",
+      "tokenSavings": 353,
+      "currentPhase": null,
+      "totalPhases": null,
+      "completedAt": null
+    },
+    {
+      "number": 74,
+      "title": "Refactor discuss-phases.md for context window efficiency",
+      "status": "pending",
+      "tokenSavings": 334,
+      "currentPhase": null,
+      "totalPhases": null,
+      "completedAt": null
+    },
+    {
+      "number": 75,
+      "title": "Refactor redo-phase.md for context window efficiency",
+      "status": "pending",
+      "tokenSavings": 314,
+      "currentPhase": null,
+      "totalPhases": null,
+      "completedAt": null
+    }
+  ],
+  "metrics": {
+    "totalTokenSavings": 9727,
+    "commandsToRefactor": 12
+  }
+}

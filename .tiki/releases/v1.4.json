@@ -1,7 +1,7 @@
 {
   "version": "v1.4",
   "createdAt": "2026-01-18T18:45:00Z",
-  "status": "active",
+  "status": "shipped",
   "description": "High-impact command refactoring for context window efficiency",
   "requirementsEnabled": false,
   "githubMilestone": {
@@ -30,24 +30,25 @@
     {
       "number": 54,
       "title": "Refactor roadmap.md for context window efficiency",
-      "status": "pending",
-      "tokenSavings": 3548,
-      "currentPhase": null,
-      "totalPhases": null,
-      "completedAt": null
+      "status": "completed",
+      "tokenSavings": 4148,
+      "currentPhase": 3,
+      "totalPhases": 3,
+      "completedAt": "2026-01-19T13:15:00Z"
     },
     {
       "number": 55,
       "title": "Refactor yolo.md for context window efficiency",
-      "status": "pending",
-      "tokenSavings": 3543,
-      "currentPhase": null,
-      "totalPhases": null,
-      "completedAt": null
+      "status": "completed",
+      "tokenSavings": 4093,
+      "currentPhase": 3,
+      "totalPhases": 3,
+      "completedAt": "2026-01-19T13:35:00Z"
     }
   ],
   "metrics": {
-    "totalTokenSavings": 15029,
+    "totalTokenSavings": 17319,
     "commandsToRefactor": 4
-  }
+  },
+  "shippedAt": "2026-01-19T13:40:00Z"
 }
