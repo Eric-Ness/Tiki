@@ -118,8 +118,10 @@ Large commands use conditional prompt files to reduce context usage:
 | release-ship.md | Milestone exists on release | .tiki/prompts/release-ship/milestone-sync.md |
 | release-ship.md | --changelog flag | .tiki/prompts/release-ship/changelog-generation.md |
 | release-ship.md | Ship step fails | .tiki/prompts/release-ship/rollback-instructions.md |
+| review-queue.md | User selects create/convert action | .tiki/prompts/review-queue/create-issue.md |
+| review-queue.md | Batch flag provided | .tiki/prompts/review-queue/batch-operations.md |
 
-Prompts are read by the orchestrator and passed to sub-agents via Task tool only when needed. This pattern reduced execute.md from ~20,000 tokens to ~1,700 tokens (91% reduction for happy-path execution), debug.md from ~15,400 tokens to ~1,300 tokens (92% reduction for list/show/search operations), map-codebase.md from ~5,865 tokens to ~710 tokens (88% reduction for core STACK.md/CONCERNS.md generation), review-issue.md from ~5,073 tokens to ~1,150 tokens (77% reduction for standard issue reviews), roadmap.md from ~4,748 tokens to ~600 tokens (87% reduction for roadmap visualization), yolo.md from ~4,743 tokens to ~650 tokens (86% reduction for YOLO workflow execution), and release-ship.md from ~4,072 tokens to ~650 tokens (84% reduction for basic ship operations).
+Prompts are read by the orchestrator and passed to sub-agents via Task tool only when needed. This pattern reduced execute.md from ~20,000 tokens to ~1,700 tokens (91% reduction for happy-path execution), debug.md from ~15,400 tokens to ~1,300 tokens (92% reduction for list/show/search operations), map-codebase.md from ~5,865 tokens to ~710 tokens (88% reduction for core STACK.md/CONCERNS.md generation), review-issue.md from ~5,073 tokens to ~1,150 tokens (77% reduction for standard issue reviews), roadmap.md from ~4,748 tokens to ~600 tokens (87% reduction for roadmap visualization), yolo.md from ~4,743 tokens to ~650 tokens (86% reduction for YOLO workflow execution), release-ship.md from ~4,072 tokens to ~650 tokens (84% reduction for basic ship operations), and review-queue.md from ~3,866 tokens to ~650 tokens (83% reduction for interactive queue review).
 
 ## Testing
 
