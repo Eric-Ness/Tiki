@@ -2,7 +2,7 @@
 
 A GitHub-issue-centric workflow framework for Claude Code. Break large issues into phases, execute them with fresh context windows, and track progress automatically.
 
-**Version:** 1.3.7
+**Version:** 1.7.0
 
 ## Why Tiki?
 
@@ -287,16 +287,19 @@ Tiki uses conditional prompt loading to minimize context window usage. Instead o
 | `/tiki:execute` | TDD workflow, autofix strategies, subtask execution |
 | `/tiki:plan-issue` | Research integration, release integration, assumptions |
 | `/tiki:debug` | Session start, hypothesis tracking, resolution recording |
-| `/tiki:research` | Quick mode, refresh mode, document generation |
-| `/tiki:define-requirements` | Interactive mode, from-issues mode, AI suggestions |
-| `/tiki:release-yolo` | Plan/execute/ship stages, error recovery, verification |
+| `/tiki:state` | Release context, context budget, output formats |
+| `/tiki:adr` | Create workflow, list/show/update, auto-generation |
+| `/tiki:resume` | Context verification, execution options, edge cases |
+| `/tiki:commit` | Message format, staging workflow, examples |
 
 **Results:**
 
 - `execute.md`: ~20,000 → ~1,700 tokens (91% reduction)
 - `debug.md`: ~15,400 → ~1,300 tokens (92% reduction)
-- `plan-issue.md`: ~8,200 → ~2,800 tokens (66% reduction)
-- Other commands: 50-80% reductions
+- `update-claude.md`: ~1,938 → ~400 tokens (79% reduction)
+- `state.md`: ~1,910 → ~500 tokens (74% reduction)
+- `adr.md`: ~1,875 → ~650 tokens (65% reduction)
+- **30+ commands refactored** with 40-90% token reductions
 
 Prompt files are stored in `.tiki/prompts/<command>/` and loaded by the orchestrator only when specific conditions are met.
 

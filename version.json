@@ -1,7 +1,30 @@
 {
-  "version": "1.3.7",
+  "version": "1.7.0",
   "releaseDate": "2026-01-20",
   "changelog": [
+    {
+      "version": "1.7.0",
+      "date": "2026-01-20",
+      "changes": [
+        "Release v1.7: Final command refactoring batch (9 commands, avg 56% reduction)",
+        "Issue #76: Refactor update-claude.md (79% reduction)",
+        "Issue #77: Refactor state.md (74% reduction)",
+        "Issue #78: Refactor adr.md (65% reduction)",
+        "Issue #79: Refactor pick-issue.md (49% reduction)",
+        "Issue #80: Refactor resume.md (54% reduction)",
+        "Issue #81: Refactor skip-phase.md (47% reduction)",
+        "Issue #82: Refactor commit.md (49% reduction)",
+        "Issue #83: Refactor add-todo.md (42% reduction)",
+        "Issue #84: Refactor update-tiki.md (43% reduction)"
+      ]
+    },
+    {
+      "version": "1.6.0",
+      "date": "2026-01-20",
+      "changes": [
+        "Release v1.6: Command refactoring batch (12 commands refactored)"
+      ]
+    },
     {
       "version": "1.3.7",
       "date": "2026-01-20",
