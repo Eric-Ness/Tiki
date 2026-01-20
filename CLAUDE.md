@@ -97,8 +97,12 @@ Large commands use conditional prompt files to reduce context usage:
 | execute.md | TDD enabled | .tiki/prompts/execute/tdd-workflow.md |
 | execute.md | Verification fails | .tiki/prompts/execute/autofix-strategies.md |
 | execute.md | Phase has subtasks | .tiki/prompts/execute/subtask-execution.md |
+| debug.md | Starting new session | .tiki/prompts/debug/start-session.md |
+| debug.md | Hypothesis workflow | .tiki/prompts/debug/hypothesis-tracking.md |
+| debug.md | Marking resolved/abandoned | .tiki/prompts/debug/resolution-recording.md |
+| debug.md | After session changes | .tiki/prompts/debug/index-management.md |
 
-Prompts are read by the orchestrator and passed to sub-agents via Task tool only when needed. This pattern reduced execute.md from ~20,000 tokens to ~1,700 tokens (91% reduction for happy-path execution).
+Prompts are read by the orchestrator and passed to sub-agents via Task tool only when needed. This pattern reduced execute.md from ~20,000 tokens to ~1,700 tokens (91% reduction for happy-path execution), and debug.md from ~15,400 tokens to ~1,300 tokens (92% reduction for list/show/search operations).
 
 ## Testing
 
