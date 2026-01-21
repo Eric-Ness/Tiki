@@ -123,8 +123,11 @@ Spawn test-creator sub-agent after implementation, verify tests pass.
 2. Extract `DISCOVERED:` items → add to `.tiki/queue/pending.json`
 3. Extract `ASSUMPTION_INVALID:` markers → add to queue as invalid-assumption type
 4. Extract `ADR_TRIGGER:` and `CONVENTION_TRIGGER:` markers → add to `.tiki/triggers/pending.json`
-5. Update phase: `status: "completed"`, `summary`, `completedAt`
-6. Update state: add to `completedPhases`, update `lastActivity`
+5. Extract `KNOWLEDGE:` markers → create entries in `.tiki/knowledge/entries/`
+   - Format: `KNOWLEDGE: {"title": "...", "summary": "...", "keywords": [...]}`
+   - See `.tiki/prompts/execute/knowledge-capture.md` for processing details
+6. Update phase: `status: "completed"`, `summary`, `completedAt`
+7. Update state: add to `completedPhases`, update `lastActivity`
 
 #### 4j. Report Progress
 
@@ -176,7 +179,8 @@ You are executing Phase {N} of {total} for Issue #{number}: {title}
 3. Run tests to verify changes
 4. Flag incorrect assumptions: `ASSUMPTION_INVALID: {id} - {reason}`
 5. Note discoveries: `DISCOVERED: <item>`
-6. Provide summary: `SUMMARY: <what you accomplished>`
+6. Emit knowledge when solving non-obvious problems: `KNOWLEDGE: {"title": "...", "summary": "...", "keywords": [...]}`
+7. Provide summary: `SUMMARY: <what you accomplished>`
 ```
 
 ## State Files
@@ -223,3 +227,4 @@ rm -f ./tmpclaude-* ./nul ./NUL .tiki/tmp-* .tiki/*.tmp 2>/dev/null || true
 - For TDD details: see `.tiki/prompts/execute/tdd-workflow.md`
 - For parallel execution: see `.tiki/prompts/execute/subtask-execution.md`
 - For auto-fix strategies: see `.tiki/prompts/execute/autofix-strategies.md`
+- For knowledge capture: see `.tiki/prompts/execute/knowledge-capture.md`

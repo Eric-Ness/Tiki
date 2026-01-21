@@ -49,8 +49,29 @@ All state lives in `.tiki/`:
 ├── context/            # Saved context for resume
 ├── debug/              # Debug session history + index
 ├── research/           # Research documents + index
-└── adr/                # Architecture Decision Records
+├── adr/                # Architecture Decision Records
+└── knowledge/          # Institutional knowledge entries
 ```
+
+### Knowledge System
+
+Institutional knowledge is automatically captured and surfaced:
+
+**Storage:** `.tiki/knowledge/`
+
+- `index.json` - Fast lookup with keywords
+- `entries/KNNN.json` - Individual knowledge entries
+
+**Automatic Capture:**
+
+- During execute: Sub-agents emit `KNOWLEDGE:` markers for non-obvious solutions
+- After ship: Synthesized entry from phase summaries (if enabled in config)
+
+**Manual Commands:** `/tiki:knowledge add|edit|show|list|search|archive`
+
+**Configuration:** `.tiki/config.json` `knowledge.autoCapture`, `knowledge.captureOnShip`, `knowledge.minPhasesForCapture`
+
+**Retrieval:** Surfaces during `/tiki:plan-issue` and `/tiki:review-issue` when related entries exist
 
 ### Schema Validation
 
@@ -63,6 +84,8 @@ JSON Schema files in `.tiki/schemas/` document the expected structure of state f
 | `state.schema.json` | `.tiki/state/current.json` | Active execution state |
 | `queue.schema.json` | `.tiki/queue/pending.json` | Discovered items |
 | `todos.schema.json` | `.tiki/todos.json` | Backlog items |
+| `knowledge.schema.json` | `.tiki/knowledge/entries/KNNN.json` | Knowledge entries |
+| `knowledge-index.schema.json` | `.tiki/knowledge/index.json` | Knowledge index |
 
 Schemas can be used for IDE autocomplete via JSON `$schema` references. Run schema validation tests: `node .tiki/test/commands/schema-validation.test.js`
 
@@ -97,6 +120,7 @@ Large commands use conditional prompt files to reduce context usage:
 | execute.md | TDD enabled | .tiki/prompts/execute/tdd-workflow.md |
 | execute.md | Verification fails | .tiki/prompts/execute/autofix-strategies.md |
 | execute.md | Phase has subtasks | .tiki/prompts/execute/subtask-execution.md |
+| execute.md | KNOWLEDGE markers found | .tiki/prompts/execute/knowledge-capture.md |
 | debug.md | Starting new session | .tiki/prompts/debug/start-session.md |
 | debug.md | Hypothesis workflow | .tiki/prompts/debug/hypothesis-tracking.md |
 | debug.md | Marking resolved/abandoned | .tiki/prompts/debug/resolution-recording.md |
@@ -105,6 +129,7 @@ Large commands use conditional prompt files to reduce context usage:
 | map-codebase.md | --testing or --all-docs | .tiki/prompts/map-codebase/testing-doc.md |
 | map-codebase.md | --integrations or --all-docs | .tiki/prompts/map-codebase/integrations-doc.md |
 | map-codebase.md | --update-claude | .tiki/prompts/map-codebase/claude-update.md |
+| review-issue.md | Knowledge index exists | .tiki/prompts/review-issue/knowledge-context.md |
 | review-issue.md | Risk/security concerns found | .tiki/prompts/review-issue/risk-assessment.md |
 | review-issue.md | --alternatives flag or complex issue | .tiki/prompts/review-issue/alternative-analysis.md |
 | review-issue.md | Blocking issues found | .tiki/prompts/review-issue/blocking-concerns.md |
@@ -146,6 +171,7 @@ Large commands use conditional prompt files to reduce context usage:
 | audit-plan.md | Audit issues found | .tiki/prompts/audit-plan/fix-suggestions.md |
 | ship.md | Tiki repo version bump | .tiki/prompts/ship/version-bump.md |
 | ship.md | Issue in release | .tiki/prompts/ship/release-progress.md |
+| ship.md | Knowledge capture enabled | .tiki/prompts/ship/knowledge-synthesis.md |
 | new-project.md | Phase 2: Deep questioning | .tiki/prompts/new-project/deep-questioning.md |
 | new-project.md | Phase 3: Template generation | .tiki/prompts/new-project/project-templates.md |
 | new-project.md | Phase 4: Research selected | .tiki/prompts/new-project/research-agents.md |
@@ -163,6 +189,8 @@ Large commands use conditional prompt files to reduce context usage:
 | create-issues.md | --from-assessment flag | .tiki/prompts/create-issues/from-assessment.md |
 | heal.md | Error diagnosis | .tiki/prompts/heal/error-handlers.md |
 | heal.md | Fix approach selection | .tiki/prompts/heal/strategies.md |
+| knowledge.md | add subcommand | .tiki/prompts/knowledge/add-entry.md |
+| knowledge.md | search/list subcommand | .tiki/prompts/knowledge/search-display.md |
 | release-remove.md | Helper function implementations | .tiki/prompts/release-remove/helper-functions.md |
 | release-remove.md | Orphaned requirements handling | .tiki/prompts/release-remove/orphaned-requirements.md |
 | discuss-phases.md | Phase adjustment operations | .tiki/prompts/discuss-phases/operations.md |
@@ -172,6 +200,7 @@ Large commands use conditional prompt files to reduce context usage:
 | skip-phase.md | Examples and edge cases | .tiki/prompts/skip-phase/examples-and-edge-cases.md |
 | pick-issue.md | Scoring and dependency detection | .tiki/prompts/pick-issue/scoring-algorithm.md |
 | pick-issue.md | Output formatting | .tiki/prompts/pick-issue/output-formats.md |
+| plan-issue.md | Knowledge index exists | .tiki/prompts/plan-issue/knowledge-retrieval.md |
 | resume.md | Context verification | .tiki/prompts/resume/context-verification.md |
 | resume.md | Execution continuation | .tiki/prompts/resume/execution-options.md |
 | resume.md | Edge cases | .tiki/prompts/resume/edge-cases.md |

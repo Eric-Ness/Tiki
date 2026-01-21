@@ -205,6 +205,26 @@
       "type": "object",
       "description": "Context from matched research documents"
     },
+    "knowledgeContext": {
+      "type": "object",
+      "description": "Context from matched knowledge entries",
+      "properties": {
+        "matched": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "IDs of matched knowledge entries"
+        },
+        "keywords": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Keywords extracted from issue"
+        },
+        "displayed": {
+          "type": "boolean",
+          "description": "Whether matches were shown to user"
+        }
+      }
+    },
     "queue": {
       "type": "array",
       "description": "Items discovered during planning for later review",

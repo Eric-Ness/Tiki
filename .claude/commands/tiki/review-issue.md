@@ -90,6 +90,16 @@ Extract technology mentions from issue. Compare against:
 
 Unfamiliar topics -> info-level research suggestions.
 
+### Step 4.7: Knowledge Context (Conditional)
+
+**Skip if:** `.tiki/knowledge/index.json` doesn't exist.
+
+Check for related institutional knowledge:
+
+1. Read `.tiki/prompts/review-issue/knowledge-context.md`
+2. Follow knowledge matching workflow
+3. Add matches as info-level findings in **PRIOR ART** category
+
 ### Step 5: Compile Findings
 
 Categorize by severity:

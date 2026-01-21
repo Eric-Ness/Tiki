@@ -79,6 +79,16 @@ If issue found in a release:
 
 **Error handling:** If release detection fails, skip silently and continue normal planning.
 
+### Step 2.35: Knowledge Retrieval (Conditional)
+
+**Skip if `.tiki/knowledge/index.json` doesn't exist.**
+
+Check if knowledge entries exist:
+
+- Read `.tiki/prompts/plan-issue/knowledge-retrieval.md`
+- Follow the knowledge matching and display workflow
+- Store matched entries for reference in phases
+
 ### Step 2.4: Import or Generate Assumptions (Conditional)
 
 Check issue comments for prior review results (look for `REVIEW_RESULT:` marker).
@@ -288,6 +298,14 @@ Key recommendations:
 
 ---
 
+### Knowledge Context (if applicable)
+
+Relevant past work:
+- **{title}** ({id}) - from Issue #{ref}
+- **{title}** ({id}) - from Issue #{ref}
+
+---
+
 ### Assumptions (if applicable)
 *{Imported from prior review | Generated during planning}*
 
@@ -336,9 +354,11 @@ Plan saved to `.tiki/plans/issue-{number}.json`
 ```
 
 **Display Rules:**
-- Omit sections that don't apply (no release, no research, no assumptions)
+
+- Omit sections that don't apply (no release, no research, no knowledge, no assumptions)
 - Include release context at top if applicable
 - Show stale research warnings prominently
+- Show knowledge context with source issue references
 - Group assumptions by confidence level
 
 ### Step 7: Offer Next Steps
@@ -416,3 +436,4 @@ Break into logical chunks:
   - `research-integration.md` - Research matching and extraction
   - `release-integration.md` - Release detection and requirements mapping
   - `assumption-generation.md` - Assumption generation when no prior review
+  - `knowledge-retrieval.md` - Knowledge matching and display

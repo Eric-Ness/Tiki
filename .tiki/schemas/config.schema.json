@@ -124,6 +124,25 @@
           "description": "Labels that exclude issues from consideration"
         }
       }
+    },
+    "knowledge": {
+      "type": "object",
+      "description": "Knowledge capture configuration",
+      "properties": {
+        "autoCapture": {
+          "type": "boolean",
+          "description": "Enable automatic knowledge capture during execution"
+        },
+        "minPhasesForCapture": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Minimum phases for auto-capture on ship"
+        },
+        "captureOnShip": {
+          "type": "boolean",
+          "description": "Auto-generate knowledge entry when shipping issues"
+        }
+      }
     }
   },
   "additionalProperties": true

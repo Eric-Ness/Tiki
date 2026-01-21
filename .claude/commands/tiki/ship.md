@@ -54,6 +54,14 @@ Read `.tiki/prompts/ship/release-progress.md` for release tracking updates.
 
 **Note:** This step should never cause ship to fail - all errors are warnings only.
 
+### Step 6.7: Knowledge Capture (Optional)
+
+**Condition:** Only if `.tiki/config.json` has `knowledge.captureOnShip: true` (default: true) AND plan has >= `knowledge.minPhasesForCapture` phases (default: 1).
+
+Read `.tiki/prompts/ship/knowledge-synthesis.md` for knowledge synthesis workflow.
+
+**Note:** This step should never cause ship to fail - all errors are warnings only.
+
 ### Step 7: Clean Up Tiki State
 
 Update `.tiki/state/current.json`:
@@ -74,6 +82,7 @@ Display summary including:
 - Issue close status
 - Version bump (if applicable)
 - Release progress (if applicable, from Step 6.5)
+- Knowledge captured (if applicable, from Step 6.7)
 
 ### Offer Next Steps
 
