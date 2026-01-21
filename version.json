@@ -1,7 +1,21 @@
 {
-  "version": "1.8.0",
-  "releaseDate": "2026-01-20",
+  "version": "1.9.0",
+  "releaseDate": "2026-01-21",
   "changelog": [
+    {
+      "version": "1.9.0",
+      "date": "2026-01-21",
+      "changes": [
+        "Issue #86: Add institutional knowledge system with automatic capture",
+        "New /tiki:knowledge command (add/edit/show/list/search/archive)",
+        "KNOWLEDGE: marker extraction during phase execution",
+        "Auto-synthesis of knowledge entries on ship",
+        "Knowledge retrieval in plan-issue (Step 2.35) and review-issue (Step 4.7)",
+        "Config options: knowledge.autoCapture, captureOnShip, minPhasesForCapture",
+        "Schemas: knowledge.schema.json, knowledge-index.schema.json",
+        "6 new conditional prompts for knowledge workflows"
+      ]
+    },
     {
       "version": "1.8.0",
       "date": "2026-01-20",
