@@ -14,7 +14,7 @@
     }
   },
   "adr": {
-    "autoGenerate": true,
+    "autoGenerate": false,
     "directory": ".tiki/adr"
   },
   "autoFix": {
@@ -28,7 +28,12 @@
   "pickIssue": {
     "maxIssues": 25,
     "preferLabels": ["high-priority", "blocking"],
-    "deferLabels": ["nice-to-have", "low-priority", "wontfix"],
+    "deferLabels": ["nice-to-have", "low-priority"],
     "excludeLabels": ["on-hold", "waiting-for-info"]
+  },
+  "knowledge": {
+    "autoCapture": true,
+    "captureOnShip": false,
+    "minPhasesForCapture": 3
   }
 }

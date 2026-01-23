@@ -1,10 +1,28 @@
 /Notes
 
-# Tiki runtime state (user-specific)
+# Tiki runtime state (project-specific)
 .tiki/state/
 .tiki/context/
 .tiki/queue/
 .tiki/plans/
+.tiki/debug/
+.tiki/knowledge/
+
+# Tiki project data (project-specific)
+.tiki/adr/
+.tiki/releases/
+!.tiki/releases/.gitkeep
+.tiki/research/
+.tiki/notes/
+.tiki/docs/
+.tiki/tmp/
+
+# Tiki project configuration (project-specific)
+.tiki/config.json
+.tiki/requirements.json
+.tiki/REQUIREMENTS.md
+.tiki/context-baseline.json
+.tiki/todos.json
 
 # Claude Code local settings
 .claude/settings.local.json
