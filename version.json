@@ -1,7 +1,18 @@
 {
-  "version": "1.9.0",
-  "releaseDate": "2026-01-21",
+  "version": "1.10.0",
+  "releaseDate": "2026-01-27",
   "changelog": [
+    {
+      "version": "1.10.0",
+      "date": "2026-01-27",
+      "changes": [
+        "New /tiki:release-review command for batch review of all issues in a release",
+        "Runs /tiki:review-issue for each issue automatically",
+        "Deep-dives on warnings/blockers with code analysis",
+        "Posts decisions as GitHub comments",
+        "Displays summary table with verdicts"
+      ]
+    },
     {
       "version": "1.9.0",
       "date": "2026-01-21",

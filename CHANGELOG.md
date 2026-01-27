@@ -2,6 +2,16 @@
 
 All notable changes to Tiki are documented in this file.
 
+## [1.10.0] - 2026-01-27
+
+### Added
+
+- `/tiki:release-review` command for batch review of all issues in a release
+  - Runs `/tiki:review-issue` for each issue automatically
+  - Deep-dives on warnings/blockers with code analysis
+  - Posts decisions as GitHub comments
+  - Displays summary table with verdicts
+
 ## [1.1.0] - 2026-01-18
 
 ### Added
