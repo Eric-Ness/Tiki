@@ -1,7 +1,21 @@
 {
-  "version": "1.10.0",
-  "releaseDate": "2026-01-27",
+  "version": "1.11.0",
+  "releaseDate": "2026-01-30",
   "changelog": [
+    {
+      "version": "1.11.0",
+      "date": "2026-01-30",
+      "changes": [
+        "Issue #87: Add project-specific custom commands and lifecycle hooks",
+        "New /tiki:hook-run command for manual hook testing",
+        "8 lifecycle hooks: pre-ship, post-ship, pre-execute, post-execute, pre-commit, post-commit, phase-start, phase-complete",
+        "Cross-platform support: Git Bash and PowerShell on Windows",
+        "Environment variables passed to hooks (TIKI_ISSUE_NUMBER, TIKI_PHASE_NUMBER, etc.)",
+        "Hook integration in ship.md, execute.md, and commit.md",
+        "New schemas: hook-result.schema.json, extensions in config.schema.json",
+        "Custom commands support via .tiki/commands/"
+      ]
+    },
     {
       "version": "1.10.0",
       "date": "2026-01-27",
