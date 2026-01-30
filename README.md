@@ -2,7 +2,7 @@
 
 A GitHub-issue-centric workflow framework for Claude Code. Break large issues into phases, execute them with fresh context windows, and track progress automatically.
 
-**Version:** 1.10.0
+**Version:** 1.11.0
 
 ## Why Tiki?
 
@@ -141,6 +141,12 @@ Runs the complete workflow automatically: fetch → review → plan → audit �
 | Command | Description |
 |---------|-------------|
 | `/tiki:new-project` | Initialize a new project with vision, research, requirements, and issues |
+
+### Extensions & Hooks
+
+| Command | Description |
+|---------|-------------|
+| `/tiki:hook-run <name>` | Manually trigger a lifecycle hook for testing |
 
 ### Utilities
 
@@ -345,11 +351,14 @@ All state lives in `.tiki/`:
 ├── context/             # Saved context for resume
 ├── releases/            # Release definitions (v1.0.json, etc.)
 │   └── archive/         # Shipped releases
+├── commands/            # Custom user commands
+├── hooks/               # Lifecycle hook scripts
 ├── docs/                # Generated documentation
 ├── adr/                 # Architecture Decision Records
 ├── debug/               # Debug session history
 ├── research/            # Domain research documents
 │   └── index.json       # Research index for keyword matching
+├── prompts/             # Conditional prompts for commands
 └── schemas/             # JSON Schema files for validation
 ```
 
@@ -364,6 +373,7 @@ JSON Schema files in `.tiki/schemas/` document the expected structure of state f
 | `state.schema.json` | `.tiki/state/current.json` | Active execution state |
 | `queue.schema.json` | `.tiki/queue/pending.json` | Discovered items |
 | `todos.schema.json` | `.tiki/todos.json` | Backlog items |
+| `hook-result.schema.json` | Hook execution results | Lifecycle hook outputs |
 
 Schemas can be used for IDE autocomplete via JSON `$schema` references.
 
@@ -472,6 +482,80 @@ Optional `.tiki/config.json`:
 - `direct`: Attempt immediate fix based on error
 - `contextual-analysis`: Analyze surrounding context before fixing
 - `approach-review`: Review entire approach if simpler fixes fail
+
+## Extensions System
+
+Tiki supports project-specific extensibility through lifecycle hooks and custom commands.
+
+### Lifecycle Hooks
+
+Shell scripts in `.tiki/hooks/` that auto-run at workflow points:
+
+| Hook | When it runs | Blocks on failure |
+|------|--------------|-------------------|
+| `pre-ship` | Before `/tiki:ship` commits | Yes |
+| `post-ship` | After successful ship | No |
+| `pre-execute` | Before `/tiki:execute` starts | Yes |
+| `post-execute` | After all phases complete | No |
+| `pre-commit` | Before `/tiki:commit` | Yes |
+| `post-commit` | After commit | No |
+| `phase-start` | Before each phase | Yes |
+| `phase-complete` | After each phase | No |
+
+**Example:** `.tiki/hooks/pre-ship` to auto-bump version:
+
+```bash
+#!/bin/bash
+set -e
+echo "Bumping version for issue #$TIKI_ISSUE_NUMBER"
+npm version patch --no-git-tag-version
+git add package.json package-lock.json
+```
+
+**Environment variables** passed to hooks:
+- `TIKI_ISSUE_NUMBER`, `TIKI_ISSUE_TITLE` - Issue context
+- `TIKI_PHASE_NUMBER`, `TIKI_PHASE_STATUS` - Phase context
+- `TIKI_COMMIT_SHA` - Commit hash (post-commit, post-ship)
+
+**Windows support:** Use `.sh` (Git Bash) or `.ps1` (PowerShell).
+
+**Manual testing:** `/tiki:hook-run pre-ship --env TIKI_ISSUE_NUMBER=42`
+
+### Custom Commands
+
+Place custom command files in `.tiki/commands/` following Claude Code command format:
+
+```markdown
+---
+type: prompt
+name: tiki:my-command
+description: What your command does
+allowed-tools: ["Read", "Write", "Bash"]
+---
+
+# My Command
+
+Instructions here...
+```
+
+### Configuration
+
+```json
+{
+  "extensions": {
+    "customCommands": {
+      "enabled": true,
+      "directory": ".tiki/commands"
+    },
+    "lifecycleScripts": {
+      "enabled": true,
+      "directory": ".tiki/hooks",
+      "timeout": 30000,
+      "verbose": false
+    }
+  }
+}
+```
 
 ## Requirements
 
