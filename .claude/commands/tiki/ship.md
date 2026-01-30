@@ -28,6 +28,18 @@ Read `.tiki/state/current.json` to get the active issue. If no active issue, inf
 
 Check all phases are marked "completed" in the plan file. If incomplete phases exist, list them and suggest `/tiki:execute` to complete or `/tiki:skip-phase` to skip.
 
+### Step 2.5: Pre-Ship Hook (Conditional)
+
+**Only execute if:** `.tiki/hooks/pre-ship` (or `.sh`/`.ps1` on Windows) exists.
+
+Read `.tiki/prompts/hooks/execute-hook.md` for execution workflow. On Windows, also read `.tiki/prompts/hooks/windows-support.md`.
+
+Run `pre-ship` hook with:
+- `TIKI_ISSUE_NUMBER`: Active issue number
+- `TIKI_ISSUE_TITLE`: Issue title (sanitized)
+
+If hook fails (non-zero exit or timeout), abort ship and show error message.
+
 ### Step 3: Check for Uncommitted Changes
 
 Run `git status --porcelain`. If uncommitted changes exist, ask user to confirm staging and committing with a message that includes "Closes #N".
@@ -39,6 +51,19 @@ Unless `--no-push` flag: run `git push`. If push fails (e.g., non-fast-forward),
 ### Step 5: Close GitHub Issue
 
 Unless `--no-close` flag: run `gh issue close <N> --comment "Completed and shipped!"`. If gh fails, provide manual close URL.
+
+### Step 5.5: Post-Ship Hook (Conditional)
+
+**Only execute if:** `.tiki/hooks/post-ship` (or `.sh`/`.ps1` on Windows) exists.
+
+Read `.tiki/prompts/hooks/execute-hook.md` for execution workflow. On Windows, also read `.tiki/prompts/hooks/windows-support.md`.
+
+Run `post-ship` hook with:
+- `TIKI_ISSUE_NUMBER`: Issue number
+- `TIKI_ISSUE_TITLE`: Issue title (sanitized)
+- `TIKI_COMMIT_SHA`: Final commit hash
+
+**Note:** Post-ship failure logs warning but doesn't fail ship (work already done).
 
 ### Step 6: Bump Version (Tiki repo only)
 

@@ -73,6 +73,45 @@ Institutional knowledge is automatically captured and surfaced:
 
 **Retrieval:** Surfaces during `/tiki:plan-issue` and `/tiki:review-issue` when related entries exist
 
+### Extensions System
+
+Tiki supports project-specific extensibility through custom commands and lifecycle hooks.
+
+**Configuration:** `.tiki/config.json`
+```json
+"extensions": {
+  "customCommands": {
+    "enabled": true,
+    "directory": ".tiki/commands"
+  },
+  "lifecycleScripts": {
+    "enabled": true,
+    "directory": ".tiki/hooks",
+    "timeout": 30000,
+    "verbose": false
+  }
+}
+```
+
+**Lifecycle Hooks:** Shell scripts in `.tiki/hooks/` that auto-run at workflow points:
+
+| Hook | Trigger | Env Vars |
+|------|---------|----------|
+| pre-ship | Before ship commits | TIKI_ISSUE_NUMBER, TIKI_ISSUE_TITLE |
+| post-ship | After ship completes | TIKI_ISSUE_NUMBER, TIKI_ISSUE_TITLE, TIKI_COMMIT_SHA |
+| pre-execute | Before execution starts | TIKI_ISSUE_NUMBER, TIKI_ISSUE_TITLE, TIKI_TOTAL_PHASES |
+| post-execute | After all phases | TIKI_ISSUE_NUMBER, TIKI_ISSUE_TITLE, TIKI_PHASES_COMPLETED |
+| pre-commit | Before commit | TIKI_ISSUE_NUMBER, TIKI_ISSUE_TITLE, TIKI_PHASE_NUMBER |
+| post-commit | After commit | TIKI_ISSUE_NUMBER, TIKI_ISSUE_TITLE, TIKI_PHASE_NUMBER, TIKI_COMMIT_SHA |
+| phase-start | Before each phase | TIKI_ISSUE_NUMBER, TIKI_PHASE_NUMBER, TIKI_PHASE_TITLE |
+| phase-complete | After each phase | TIKI_ISSUE_NUMBER, TIKI_PHASE_NUMBER, TIKI_PHASE_STATUS |
+
+**Windows Support:** Hooks can be `.sh` (Git Bash) or `.ps1` (PowerShell). Git Bash auto-detected.
+
+**Manual Trigger:** `/tiki:hook-run <name> [--env KEY=VALUE]`
+
+**Custom Commands:** Place command files in `.tiki/commands/` following Claude Code command format.
+
 ### Schema Validation
 
 JSON Schema files in `.tiki/schemas/` document the expected structure of state files:
@@ -121,6 +160,8 @@ Large commands use conditional prompt files to reduce context usage:
 | execute.md | Verification fails | .tiki/prompts/execute/autofix-strategies.md |
 | execute.md | Phase has subtasks | .tiki/prompts/execute/subtask-execution.md |
 | execute.md | KNOWLEDGE markers found | .tiki/prompts/execute/knowledge-capture.md |
+| execute.md | Hook exists | .tiki/prompts/hooks/execute-hook.md |
+| execute.md | Windows platform | .tiki/prompts/hooks/windows-support.md |
 | debug.md | Starting new session | .tiki/prompts/debug/start-session.md |
 | debug.md | Hypothesis workflow | .tiki/prompts/debug/hypothesis-tracking.md |
 | debug.md | Marking resolved/abandoned | .tiki/prompts/debug/resolution-recording.md |
@@ -172,6 +213,8 @@ Large commands use conditional prompt files to reduce context usage:
 | ship.md | Tiki repo version bump | .tiki/prompts/ship/version-bump.md |
 | ship.md | Issue in release | .tiki/prompts/ship/release-progress.md |
 | ship.md | Knowledge capture enabled | .tiki/prompts/ship/knowledge-synthesis.md |
+| ship.md | Hook exists | .tiki/prompts/hooks/execute-hook.md |
+| ship.md | Windows platform | .tiki/prompts/hooks/windows-support.md |
 | new-project.md | Phase 2: Deep questioning | .tiki/prompts/new-project/deep-questioning.md |
 | new-project.md | Phase 3: Template generation | .tiki/prompts/new-project/project-templates.md |
 | new-project.md | Phase 4: Research selected | .tiki/prompts/new-project/research-agents.md |
@@ -189,6 +232,7 @@ Large commands use conditional prompt files to reduce context usage:
 | create-issues.md | --from-assessment flag | .tiki/prompts/create-issues/from-assessment.md |
 | heal.md | Error diagnosis | .tiki/prompts/heal/error-handlers.md |
 | heal.md | Fix approach selection | .tiki/prompts/heal/strategies.md |
+| hook-run.md | Auto-populating context | .tiki/prompts/hooks/manual-trigger.md |
 | knowledge.md | add subcommand | .tiki/prompts/knowledge/add-entry.md |
 | knowledge.md | search/list subcommand | .tiki/prompts/knowledge/search-display.md |
 | release-remove.md | Helper function implementations | .tiki/prompts/release-remove/helper-functions.md |
@@ -213,6 +257,8 @@ Large commands use conditional prompt files to reduce context usage:
 | commit.md | Message format needed | .tiki/prompts/commit/message-format.md |
 | commit.md | Staging workflow | .tiki/prompts/commit/staging-workflow.md |
 | commit.md | Examples requested | .tiki/prompts/commit/examples.md |
+| commit.md | Hook exists | .tiki/prompts/hooks/execute-hook.md |
+| commit.md | Windows platform | .tiki/prompts/hooks/windows-support.md |
 | update-tiki.md | Update workflow | .tiki/prompts/update-tiki/update-workflow.md |
 | update-tiki.md | Error handling | .tiki/prompts/update-tiki/error-handling.md |
 | update-tiki.md | Example outputs | .tiki/prompts/update-tiki/example-outputs.md |

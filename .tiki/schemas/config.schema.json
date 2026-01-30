@@ -143,6 +143,55 @@
           "description": "Auto-generate knowledge entry when shipping issues"
         }
       }
+    },
+    "extensions": {
+      "type": "object",
+      "description": "Project-specific extensibility configuration",
+      "properties": {
+        "customCommands": {
+          "type": "object",
+          "description": "Custom command configuration",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Enable custom commands"
+            },
+            "directory": {
+              "type": "string",
+              "default": ".tiki/commands",
+              "description": "Directory containing custom command files"
+            }
+          }
+        },
+        "lifecycleScripts": {
+          "type": "object",
+          "description": "Lifecycle hook scripts configuration",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Enable lifecycle scripts"
+            },
+            "directory": {
+              "type": "string",
+              "default": ".tiki/hooks",
+              "description": "Directory containing lifecycle hook scripts"
+            },
+            "timeout": {
+              "type": "integer",
+              "default": 30000,
+              "minimum": 1000,
+              "description": "Maximum execution time for hooks in milliseconds"
+            },
+            "verbose": {
+              "type": "boolean",
+              "default": false,
+              "description": "Enable verbose output for hook execution"
+            }
+          }
+        }
+      }
     }
   },
   "additionalProperties": true

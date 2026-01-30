@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tiki.dev/schemas/hook-result.schema.json",
+  "title": "Tiki Hook Result",
+  "description": "Schema for lifecycle hook execution results",
+  "type": "object",
+  "required": ["hook", "exitCode", "timestamp"],
+  "properties": {
+    "hook": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Name of the hook that was executed"
+    },
+    "exitCode": {
+      "type": "integer",
+      "description": "Exit code from hook execution (0 = success)"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp when hook execution completed"
+    },
+    "stdout": {
+      "type": "string",
+      "description": "Standard output from hook execution"
+    },
+    "stderr": {
+      "type": "string",
+      "description": "Standard error from hook execution"
+    },
+    "duration": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Execution duration in milliseconds"
+    },
+    "timedOut": {
+      "type": "boolean",
+      "description": "Whether the hook execution timed out"
+    },
+    "skipped": {
+      "type": "boolean",
+      "description": "Whether the hook was skipped"
+    }
+  },
+  "additionalProperties": false
+}

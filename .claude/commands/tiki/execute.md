@@ -52,6 +52,19 @@ Create/update `.tiki/state/current.json`. State format: see `.tiki/schemas/state
 }
 ```
 
+### Step 3.5: Pre-Execute Hook (Conditional)
+
+**Only execute if:** `.tiki/hooks/pre-execute` (or `.sh`/`.ps1` on Windows) exists.
+
+Read `.tiki/prompts/hooks/execute-hook.md` for execution workflow. On Windows, also read `.tiki/prompts/hooks/windows-support.md`.
+
+Run `pre-execute` hook with:
+- `TIKI_ISSUE_NUMBER`: Issue number
+- `TIKI_ISSUE_TITLE`: Issue title (sanitized)
+- `TIKI_TOTAL_PHASES`: Total phase count
+
+If hook fails (non-zero exit or timeout), abort execution and show error message.
+
 ### Step 4: Execute Each Phase
 
 For each phase (respecting dependencies):
@@ -67,6 +80,19 @@ Otherwise, continue with standard single-agent execution.
 #### 4b. Check Dependencies
 
 Verify dependent phases are completed before starting.
+
+#### 4b.5. Phase-Start Hook (Conditional)
+
+**Only execute if:** `.tiki/hooks/phase-start` (or `.sh`/`.ps1` on Windows) exists.
+
+Read `.tiki/prompts/hooks/execute-hook.md` for execution workflow. On Windows, also read `.tiki/prompts/hooks/windows-support.md`.
+
+Run `phase-start` hook with:
+- `TIKI_ISSUE_NUMBER`: Issue number
+- `TIKI_PHASE_NUMBER`: Current phase number
+- `TIKI_PHASE_TITLE`: Current phase title (sanitized)
+
+If hook fails (non-zero exit or timeout), abort execution and show error message.
 
 #### 4c. Update State
 
@@ -129,7 +155,21 @@ Spawn test-creator sub-agent after implementation, verify tests pass.
 6. Update phase: `status: "completed"`, `summary`, `completedAt`
 7. Update state: add to `completedPhases`, update `lastActivity`
 
-#### 4j. Report Progress
+#### 4j. Phase-Complete Hook (Conditional)
+
+**Only execute if:** `.tiki/hooks/phase-complete` (or `.sh`/`.ps1` on Windows) exists.
+
+Read `.tiki/prompts/hooks/execute-hook.md` for execution workflow. On Windows, also read `.tiki/prompts/hooks/windows-support.md`.
+
+Run `phase-complete` hook with:
+- `TIKI_ISSUE_NUMBER`: Issue number
+- `TIKI_PHASE_NUMBER`: Completed phase number
+- `TIKI_PHASE_TITLE`: Phase title (sanitized)
+- `TIKI_PHASE_STATUS`: "completed" or "failed"
+
+**Note:** Phase-complete failure logs warning but doesn't fail execution (phase work already done).
+
+#### 4k. Report Progress
 
 ```text
 Phase N/total complete: <title>
@@ -145,7 +185,23 @@ When all phases complete:
 1. Update plan status to `completed`
 2. Update state: `status: "idle"`, clear `activeIssue`
 3. Display completion summary with phase summaries and queue item count
-4. Offer next steps: `/tiki:ship`, `/tiki:review-queue`, `/tiki:state`
+
+### Step 5.5: Post-Execute Hook (Conditional)
+
+**Only execute if:** `.tiki/hooks/post-execute` (or `.sh`/`.ps1` on Windows) exists.
+
+Read `.tiki/prompts/hooks/execute-hook.md` for execution workflow. On Windows, also read `.tiki/prompts/hooks/windows-support.md`.
+
+Run `post-execute` hook with:
+- `TIKI_ISSUE_NUMBER`: Issue number
+- `TIKI_ISSUE_TITLE`: Issue title (sanitized)
+- `TIKI_PHASES_COMPLETED`: Count of completed phases
+
+**Note:** Post-execute failure logs warning but doesn't fail (work already done).
+
+### Step 6: Offer Next Steps
+
+Offer next steps: `/tiki:ship`, `/tiki:review-queue`, `/tiki:state`
 
 ## Sub-Agent Prompt Template
 
