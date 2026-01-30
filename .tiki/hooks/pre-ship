@@ -1,0 +1,38 @@
+#!/bin/bash
+set -e
+
+echo "Pre-ship hook: Updating version for issue #$TIKI_ISSUE_NUMBER"
+
+# Get current version from version.json
+CURRENT=$(node -p "require('./version.json').version")
+echo "Current version: $CURRENT"
+
+# Parse version components
+IFS='.' read -r major minor patch <<< "$CURRENT"
+
+# Increment patch version
+NEW_VERSION="$major.$minor.$((patch + 1))"
+echo "New version: $NEW_VERSION"
+
+# Get today's date
+TODAY=$(date +%Y-%m-%d)
+
+# Update version.json - version and releaseDate
+node -e "
+const fs = require('fs');
+const data = JSON.parse(fs.readFileSync('version.json', 'utf8'));
+data.version = '$NEW_VERSION';
+data.releaseDate = '$TODAY';
+fs.writeFileSync('version.json', JSON.stringify(data, null, 2) + '\n');
+console.log('Updated version.json');
+"
+
+# Update README.md version
+sed -i "s/\*\*Version:\*\* [0-9]*\.[0-9]*\.[0-9]*/\*\*Version:\*\* $NEW_VERSION/" README.md
+echo "Updated README.md"
+
+# Stage the updated files
+git add version.json README.md
+echo "Staged version.json and README.md"
+
+echo "Version bumped: $CURRENT -> $NEW_VERSION"
