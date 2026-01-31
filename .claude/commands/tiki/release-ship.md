@@ -113,11 +113,17 @@ Core command: `gh api repos/:owner/:repo/milestones/{number} -X PATCH -f state="
 ### Step 8: Archive Release
 
 1. Get current user: `git config user.name || whoami`
-2. Build archived release with: status="shipped", shippedAt, shippedBy, gitTag, summary{}
-3. Create archive: `mkdir -p .tiki/releases/archive`
-4. Write to `.tiki/releases/archive/${VERSION}.json`
-5. Remove `.tiki/releases/${VERSION}.json`
-6. Update `.tiki/requirements.json` if modified
+2. Read current release JSON from `.tiki/releases/${VERSION}.json`
+3. Modify the release object:
+   - Set `status` to `"shipped"`
+   - Add `shippedAt` with current ISO timestamp
+   - Add `shippedBy` with current user
+   - Add `gitTag` (from Step 9 if created, otherwise null)
+   - Add `summary` object with issue counts and completion stats
+4. Create archive directory: `mkdir -p .tiki/releases/archive`
+5. Write modified release to `.tiki/releases/archive/${VERSION}.json`
+6. Remove `.tiki/releases/${VERSION}.json`
+7. Update `.tiki/requirements.json` if modified
 
 ### Step 9: Git Tag (Optional)
 

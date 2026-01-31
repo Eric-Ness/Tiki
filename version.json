@@ -1,7 +1,14 @@
 {
-  "version": "1.12.1",
+  "version": "1.12.2",
   "releaseDate": "2026-01-31",
   "changelog": [
+    {
+      "version": "1.12.2",
+      "date": "2026-01-31",
+      "changes": [
+        "Issue #91: Bug: Release status not updated to shipped when archived"
+      ]
+    },
     {
       "version": "1.12.1",
       "date": "2026-01-31",
