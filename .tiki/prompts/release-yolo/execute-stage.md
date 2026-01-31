@@ -34,13 +34,16 @@ The execute command handles:
 3. Auto-fix attempts on failures
 4. State tracking in `.tiki/state/current.json`
 
-### Update YOLO State During Execution
+### Update Release Execution State During Execution
 
-As phases complete:
+As phases complete, update the release execution in main state:
 
 ```javascript
-yoloState.currentPhase = currentPhaseNumber;
-// Save state after each phase
+const state = JSON.parse(fs.readFileSync('.tiki/state/current.json'));
+const releaseExec = state.activeExecutions.find(e => e.type === "release");
+releaseExec.lastActivity = new Date().toISOString();
+fs.writeFileSync('.tiki/state/current.json', JSON.stringify(state, null, 2));
+// Individual phase tracking is handled by execute.md in main state
 ```
 
 ### Phase Progress Display
@@ -81,9 +84,12 @@ Load .tiki/prompts/release-yolo/error-recovery.md for user recovery options.
 
 ## State Updates
 
-After all phases complete successfully:
+After all phases complete successfully, update the release execution:
 
 ```javascript
+const state = JSON.parse(fs.readFileSync('.tiki/state/current.json'));
+const releaseExec = state.activeExecutions.find(e => e.type === "release");
+releaseExec.lastActivity = new Date().toISOString();
+fs.writeFileSync('.tiki/state/current.json', JSON.stringify(state, null, 2));
 // Issue execution complete, ready for ship stage
-yoloState.currentPhase = null;
 ```

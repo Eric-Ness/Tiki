@@ -4,15 +4,22 @@ Load this prompt when --continue flag is provided.
 
 ## Load Saved State
 
-```bash
-if [ -f ".tiki/state/yolo.json" ]; then
-  cat ".tiki/state/yolo.json"
-else
-  echo "NO_YOLO_STATE"
-fi
+Read main state at `.tiki/state/current.json` and find release execution:
+
+```javascript
+// Read state
+const state = JSON.parse(fs.readFileSync('.tiki/state/current.json'));
+
+// Find release execution in activeExecutions
+const releaseExec = state.activeExecutions?.find(e => e.type === "release");
+
+if (!releaseExec) {
+  // No active release execution
+  console.log("NO_RELEASE_EXECUTION");
+}
 ```
 
-### If No Saved State
+### If No Active Release Execution
 
 ```text
 ## No YOLO State Found
@@ -28,13 +35,15 @@ To see available releases:
 
 Exit execution.
 
-### If Saved State Exists
+### If Release Execution Exists
 
-Extract from state:
-- Release version
-- Current position (issue and phase)
-- Completed issues
-- Flags from original invocation
+Extract from execution object:
+- Release version (`releaseExec.release`)
+- Current position (`releaseExec.currentIssue`)
+- Completed issues (`releaseExec.completedIssues`)
+- Failed issues (`releaseExec.failedIssues`)
+- Issue order (`releaseExec.issueOrder`)
+- Flags from original invocation (`releaseExec.flags`)
 
 Override with any new flags provided (e.g., `--skip-verify` can be added on continue).
 
@@ -43,17 +52,22 @@ Override with any new flags provided (e.g., `--skip-verify` can be added on cont
 ```text
 ## Resuming YOLO Execution
 
-Release: {version}
-Started: {startedAt}
-Progress: {completedIssues.length}/{totalIssues} issues complete
+Release: {releaseExec.release}
+Execution ID: {releaseExec.id}
+Started: {releaseExec.startedAt}
+Last Activity: {releaseExec.lastActivity}
+Progress: {releaseExec.completedIssues.length}/{releaseExec.issueOrder.length} issues complete
 
 ### Completed Issues
-{For each completed issue:}
+{For each in releaseExec.completedIssues:}
 - #{number}: {title}
 
+### Failed Issues
+{For each in releaseExec.failedIssues:}
+- #{number}: {title} - {error}
+
 ### Resuming From
-Issue #{currentIssue}: {title}
-Phase: {currentPhase}/{totalPhases}
+Issue #{releaseExec.currentIssue}: {title}
 
 Continue? [Y/n]
 ```

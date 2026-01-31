@@ -55,12 +55,20 @@ Enter choice:
 
 ## State Updates
 
-After successful ship:
+After successful ship, update the release execution in main state:
 
 ```javascript
-yoloState.completedIssues.push(issue.number);
-yoloState.currentIssue = null;
-yoloState.currentPhase = null;
+// Read main state
+const state = JSON.parse(fs.readFileSync('.tiki/state/current.json'));
+
+// Find and update release execution
+const releaseExec = state.activeExecutions.find(e => e.type === "release");
+releaseExec.completedIssues.push(issue.number);
+releaseExec.currentIssue = null;
+releaseExec.lastActivity = new Date().toISOString();
+
+// Write updated state
+fs.writeFileSync('.tiki/state/current.json', JSON.stringify(state, null, 2));
 ```
 
 Update release file:

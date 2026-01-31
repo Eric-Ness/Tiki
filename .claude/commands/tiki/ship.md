@@ -22,7 +22,23 @@ Wrap up a completed issue: commit remaining changes, push to remote, and close t
 
 ### Step 1: Check Tiki State
 
-Read `.tiki/state/current.json` to get the active issue. If no active issue, inform user to run `/tiki:get-issue` first. Also read `.tiki/plans/issue-<N>.json` for issue details.
+Read `.tiki/state/current.json` to get the active issue.
+
+**V2 Format Detection:**
+- If `version` field equals `2` or `activeExecutions` array exists: use v2 format
+- Otherwise: fall back to v1 format
+
+**V2 State Handling:**
+1. Check `activeExecutions` array for active execution (status != "completed")
+2. If multiple active executions exist, use the one matching `activeIssue` (if set) or ask user to specify
+3. Extract `issue` number from the execution object
+4. Store execution `id` for later archival in Step 7
+
+**V1 State Handling (fallback):**
+1. Use `activeIssue` field directly
+2. No execution ID to track
+
+If no active issue found in either format, inform user to run `/tiki:get-issue` first. Also read `.tiki/plans/issue-<N>.json` for issue details.
 
 ### Step 2: Verify Phase Completion
 
@@ -91,11 +107,39 @@ Read `.tiki/prompts/ship/knowledge-synthesis.md` for knowledge synthesis workflo
 
 Update `.tiki/state/current.json`:
 
+**V2 Format (if `version` equals 2 or `activeExecutions` exists):**
+1. Find the execution in `activeExecutions` by its `id` (stored from Step 1)
+2. Remove from `activeExecutions` array
+3. Create archived execution object for `executionHistory`:
+   ```json
+   {
+     "id": "<execution-id>",
+     "issue": <issue-number>,
+     "issueTitle": "<issue-title>",
+     "status": "completed",
+     "startedAt": "<original-startedAt>",
+     "endedAt": "<current-timestamp>",
+     "completedPhases": <count-of-completed-phases>,
+     "totalPhases": <total-phases>,
+     "summary": "Issue #N completed and shipped"
+   }
+   ```
+4. Append to `executionHistory` array (create if doesn't exist)
+5. Update top-level fields:
+   - Set `lastCompletedIssue` to the issue number
+   - Set `lastCompletedAt` to current timestamp
+   - Set `lastActivity` to current timestamp
+6. Update deprecated v1 fields for compatibility:
+   - If no remaining active executions: set `activeIssue`, `currentPhase` to null, `status` to "idle"
+   - If other active executions remain: set to next active execution's values
+
+**V1 Format (fallback):**
 - Set `activeIssue` and `currentPhase` to null
 - Set `status` to "idle"
-- Record `lastCompletedIssue` and `lastCompletedAt`
+- Set `lastCompletedIssue` to the issue number
+- Set `lastCompletedAt` to current timestamp
 
-Update plan file: set `status` to "shipped" and add `shippedAt` timestamp.
+**Update plan file:** Set `status` to "shipped" and add `shippedAt` timestamp.
 
 ### Step 8: Report Results
 

@@ -20,10 +20,23 @@ Use AskUserQuestion for recovery choice.
 
 ## Option 1: Manual Fix
 
-- Set yoloState.status to "paused"
-- Set yoloState.pauseReason to "manual_intervention"
-- Save state
-- Display resume instructions:
+Update the release execution in main state:
+
+```javascript
+// Read main state
+const state = JSON.parse(fs.readFileSync('.tiki/state/current.json'));
+
+// Find and update release execution
+const releaseExec = state.activeExecutions.find(e => e.type === "release");
+releaseExec.status = "paused";
+releaseExec.pauseReason = "manual_intervention";
+releaseExec.lastActivity = new Date().toISOString();
+
+// Write updated state
+fs.writeFileSync('.tiki/state/current.json', JSON.stringify(state, null, 2));
+```
+
+Display resume instructions:
 
 ```text
 ## YOLO Paused
@@ -33,26 +46,31 @@ State saved. After fixing the issue manually:
 
 Current position:
 - Issue: #{number} - {title}
-- Phase: {currentPhase}/{totalPhases}
+- Execution ID: {releaseExec.id}
 ```
 
 Exit execution.
 
 ## Option 2: Skip Issue
 
-- Add issue to failedIssues array with error details
-- Log error to errorHistory
-- Continue to next issue
+Update the release execution in main state:
 
 ```javascript
-yoloState.failedIssues.push(issue.number);
-yoloState.errorHistory.push({
-  issue: issue.number,
-  phase: currentPhase,
+// Read main state
+const state = JSON.parse(fs.readFileSync('.tiki/state/current.json'));
+
+// Find and update release execution
+const releaseExec = state.activeExecutions.find(e => e.type === "release");
+releaseExec.failedIssues.push({
+  number: issue.number,
   error: errorMessage,
-  timestamp: new Date().toISOString(),
-  resolution: 'skipped'
+  skippedAt: new Date().toISOString()
 });
+releaseExec.currentIssue = null;
+releaseExec.lastActivity = new Date().toISOString();
+
+// Write updated state
+fs.writeFileSync('.tiki/state/current.json', JSON.stringify(state, null, 2));
 ```
 
 Display:
@@ -63,17 +81,34 @@ Issue #{number} marked as failed. Continuing with remaining issues...
 
 ## Option 3: Abort
 
-- Set yoloState.status to "failed"
-- Save state
-- Display summary and exit
+Update and move release execution to history:
+
+```javascript
+// Read main state
+const state = JSON.parse(fs.readFileSync('.tiki/state/current.json'));
+
+// Find and update release execution
+const releaseExec = state.activeExecutions.find(e => e.type === "release");
+releaseExec.status = "failed";
+releaseExec.failedAt = new Date().toISOString();
+
+// Move from activeExecutions to executionHistory
+state.activeExecutions = state.activeExecutions.filter(e => e.type !== "release");
+state.executionHistory.push(releaseExec);
+
+// Write updated state
+fs.writeFileSync('.tiki/state/current.json', JSON.stringify(state, null, 2));
+```
+
+Display summary and exit:
 
 ```text
 ## YOLO Aborted
 
-Execution aborted. {completedCount}/{totalCount} issues completed.
+Execution aborted. {releaseExec.completedIssues.length}/{releaseExec.issueOrder.length} issues completed.
 
 Completed issues:
-{List completed issues}
+{List releaseExec.completedIssues}
 
 To retry:
   /tiki:release-yolo {version} --from {failedIssueNumber}
@@ -84,23 +119,24 @@ To retry:
 ### State File Corrupted
 
 ```text
-## YOLO State Corrupted
+## Main State Corrupted
 
 Options:
-1. **Start fresh** - Delete state and start new YOLO
+1. **Start fresh** - Reset state and start new YOLO
 2. **Restore** - Attempt to reconstruct state from release file
 3. **Cancel** - Exit without changes
 ```
 
-### Concurrent YOLO Execution
+### Concurrent Release Execution
 
 ```text
-## YOLO Already Running
+## Release Execution Already Running
 
-A YOLO execution is already in progress for release {version}.
+A release execution is already in progress for release {version}.
+Execution ID: {releaseExec.id}
 
 Options:
 1. **Continue existing** - Resume the in-progress execution
-2. **Restart** - Abort current and start fresh
+2. **Restart** - Move current to history and start fresh
 3. **Cancel** - Exit without changes
 ```
