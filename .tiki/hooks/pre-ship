@@ -17,12 +17,40 @@ echo "New version: $NEW_VERSION"
 # Get today's date
 TODAY=$(date +%Y-%m-%d)
 
-# Update version.json - version and releaseDate
+# Update version.json - version, releaseDate, and add changelog entry
 node -e "
 const fs = require('fs');
 const data = JSON.parse(fs.readFileSync('version.json', 'utf8'));
+
+// Update version and date
 data.version = '$NEW_VERSION';
 data.releaseDate = '$TODAY';
+
+// Add changelog entry for this issue if not already present
+const issueNumber = '$TIKI_ISSUE_NUMBER';
+const issueTitle = process.env.TIKI_ISSUE_TITLE || 'Unknown';
+
+// Check if this version already has an entry
+const existingEntry = data.changelog.find(e => e.version === '$NEW_VERSION');
+if (!existingEntry) {
+  // Add new changelog entry at the beginning
+  data.changelog.unshift({
+    version: '$NEW_VERSION',
+    date: '$TODAY',
+    changes: [
+      'Issue #' + issueNumber + ': ' + issueTitle
+    ]
+  });
+  console.log('Added changelog entry for issue #' + issueNumber);
+} else {
+  // Append to existing entry if issue not already listed
+  const issueRef = 'Issue #' + issueNumber;
+  if (!existingEntry.changes.some(c => c.startsWith(issueRef))) {
+    existingEntry.changes.push(issueRef + ': ' + issueTitle);
+    console.log('Appended to existing changelog entry');
+  }
+}
+
 fs.writeFileSync('version.json', JSON.stringify(data, null, 2) + '\n');
 console.log('Updated version.json');
 "
