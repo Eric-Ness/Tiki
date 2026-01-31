@@ -20,16 +20,36 @@ This prompt is loaded by commands that run lifecycle hooks.
 ### 1. Check if hooks enabled
 
 - Read `.tiki/config.json`
-- If `extensions.lifecycleScripts.enabled` is false, skip silently
+- If `extensions.lifecycleScripts.enabled` is EXPLICITLY false, skip silently. If undefined or true, proceed with hook execution.
 - Get directory from config (default: `.tiki/hooks`)
 - Get timeout from config (default: 30000ms)
 - Get verbose setting from config (default: false)
 
+**Default:** Hooks are enabled unless explicitly disabled with `enabled: false`
+
 ### 2. Locate hook file
 
-- Check for `<directory>/<hook-name>` (Unix-style, no extension)
-- On Windows: also check `<hook-name>.sh` and `<hook-name>.ps1`
-- If not found, skip silently (hooks are optional)
+Check for hook file in this exact order:
+1. `<directory>/<hook-name>` (no extension) - run via bash
+2. `<directory>/<hook-name>.sh` - run via bash
+3. `<directory>/<hook-name>.ps1` - run via pwsh/powershell
+
+Use the FIRST match found. If no file is found, skip silently (hooks are optional).
+
+### 2.5 Verbose Logging (if enabled)
+
+If `verbose: true` in config, output status at each step:
+
+**Hook detection:**
+- "Checking for {hook-name} hook..."
+- "Found: {full-path}" OR "Not found: {hook-name} (skipping)"
+
+**Hook execution:**
+- "Executing {hook-name} via {shell}..."
+- "Hook {hook-name} completed (exit code: {code})"
+
+**Hook skipped:**
+- "Hooks disabled in config (skipping {hook-name})"
 
 ### 3. Sanitize environment variables
 
@@ -61,7 +81,7 @@ Run the hook with the configured timeout. Capture both stdout and stderr.
 ### 5. Handle result
 
 **Exit code 0 (Success):**
-- If verbose=true in config, display stdout
+- If verbose=true in config, display stdout and the completion message from Step 2.5 ("Hook {hook-name} completed (exit code: 0)")
 - Continue with parent operation
 
 **Exit code non-zero (Failure):**

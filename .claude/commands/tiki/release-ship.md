@@ -46,6 +46,18 @@ fi
 - **Not found:** List available releases, suggest `/tiki:release-new`
 - **Already shipped:** Show ship date and archive location
 
+### Step 2.5: Pre-Ship Hook (Conditional)
+
+**Only execute if:** `.tiki/hooks/pre-ship` (or `.sh`/`.ps1` on Windows) exists.
+
+Read `.tiki/prompts/hooks/execute-hook.md` for execution workflow. On Windows, also read `.tiki/prompts/hooks/windows-support.md`.
+
+Run `pre-ship` hook with:
+- `TIKI_ISSUE_NUMBER`: First issue number in release (for context)
+- `TIKI_RELEASE_VERSION`: Release version being shipped
+
+If hook fails (non-zero exit or timeout), abort release ship and show error message.
+
 ### Step 3: Pre-Ship Verification
 
 For each issue, verify GitHub state:
@@ -118,6 +130,18 @@ Prompt user:
 git tag -a "${VERSION}" -m "Release ${VERSION}"
 git push origin "${VERSION}"  # if pushing
 ```
+
+### Step 9.5: Post-Ship Hook (Conditional)
+
+**Only execute if:** `.tiki/hooks/post-ship` (or `.sh`/`.ps1` on Windows) exists.
+
+Read `.tiki/prompts/hooks/execute-hook.md` for execution workflow. On Windows, also read `.tiki/prompts/hooks/windows-support.md`.
+
+Run `post-ship` hook with:
+- `TIKI_RELEASE_VERSION`: Release version shipped
+- `TIKI_GIT_TAG`: Git tag created (if any)
+
+**Note:** Post-ship failure logs warning but doesn't fail release ship (work already done).
 
 ### Step 10: Ship Summary
 

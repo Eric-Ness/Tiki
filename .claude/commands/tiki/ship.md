@@ -46,7 +46,12 @@ Check all phases are marked "completed" in the plan file. If incomplete phases e
 
 ### Step 2.5: Pre-Ship Hook (Conditional)
 
-**Only execute if:** `.tiki/hooks/pre-ship` (or `.sh`/`.ps1` on Windows) exists.
+Check for hook file in order:
+1. `.tiki/hooks/pre-ship` (no extension)
+2. `.tiki/hooks/pre-ship.sh`
+3. `.tiki/hooks/pre-ship.ps1`
+
+**Only execute if:** one of the above files exists. Execute the first match found using the appropriate shell.
 
 Read `.tiki/prompts/hooks/execute-hook.md` for execution workflow. On Windows, also read `.tiki/prompts/hooks/windows-support.md`.
 
