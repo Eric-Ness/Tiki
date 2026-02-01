@@ -138,8 +138,13 @@ If no plan exists:
 #### 7d: Execute Stage
 
 1. Read `.tiki/prompts/release-yolo/execute-stage.md`
-2. Invoke `/tiki:execute {number}`
-3. If failure, read `.tiki/prompts/release-yolo/error-recovery.md`
+2. Invoke `/tiki:execute {number}` using the Skill tool
+3. **Validation Checkpoint**: After execute returns, verify state was updated:
+   - Read `.tiki/state/current.json`
+   - Check that `activeExecutions` contains an execution for this issue OR `executionHistory` contains a completed execution for this issue
+   - Check that the issue execution has `currentPhase > 0` OR `completedPhases` is non-empty
+   - If validation fails: display warning and offer recovery options (Retry execute, Manual state update, Continue anyway)
+4. If failure, read `.tiki/prompts/release-yolo/error-recovery.md`
 
 #### 7e: Ship Stage
 

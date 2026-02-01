@@ -1,7 +1,14 @@
 {
-  "version": "1.12.4",
-  "releaseDate": "2026-01-31",
+  "version": "1.12.5",
+  "releaseDate": "2026-02-01",
   "changelog": [
+    {
+      "version": "1.12.5",
+      "date": "2026-02-01",
+      "changes": [
+        "Issue #96: State file not updated during release-yolo execution"
+      ]
+    },
     {
       "version": "1.12.4",
       "date": "2026-01-31",
