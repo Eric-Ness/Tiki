@@ -131,26 +131,60 @@ Add new execution to `activeExecutions` array:
 }
 ```
 
-#### 3e. Update Deprecated v1 Fields
+#### 3e. Update Deprecated v1 Fields (CRITICAL for Tiki.Desktop)
 
-After modifying `activeExecutions`, sync deprecated fields for Tiki.Desktop compatibility:
+After modifying `activeExecutions`, you MUST sync deprecated top-level fields for Tiki.Desktop compatibility. Follow these steps exactly:
 
+**Step 3e.1: Find the active execution to sync from:**
 ```javascript
-// Find first executing execution for deprecated fields
 const firstActive = state.activeExecutions.find(e => e.status === 'executing')
   || state.activeExecutions[0];
+```
 
+**Step 3e.2: Sync each deprecated field:**
+```javascript
 state.activeIssue = firstActive?.issue || null;
 state.currentPhase = firstActive?.currentPhase || null;
 state.status = calculateAggregateStatus(state.activeExecutions);
 state.startedAt = firstActive?.startedAt || null;
+state.lastActivity = firstActive?.lastActivity || new Date().toISOString();
+```
+
+**Step 3e.3: CRITICAL - Initialize top-level completedPhases array:**
+```javascript
+// Top-level completedPhases MUST be an array of phase NUMBERS (integers)
+// NOT phase objects - the mapping is required!
 state.completedPhases = firstActive?.completedPhases?.map(p =>
   typeof p === 'object' ? p.number : p
 ) || [];
-// ... other deprecated fields
 ```
 
 Aggregate status priority: `failed` > `paused` > `executing` > `idle`
+
+**Expected State Structure After Initialization:**
+
+The state file should look like this (showing both levels of completedPhases):
+
+```json
+{
+  "version": 2,
+  "status": "executing",
+  "activeIssue": 45,
+  "currentPhase": 1,
+  "completedPhases": [],          // <-- TOP-LEVEL: array of integers
+  "startedAt": "2026-01-30T10:00:00.000Z",
+  "lastActivity": "2026-01-30T10:00:00.000Z",
+  "activeExecutions": [
+    {
+      "id": "exec-45-a1b2c3d4",
+      "issue": 45,
+      "currentPhase": 1,
+      "completedPhases": [],      // <-- EXECUTION-LEVEL: will contain objects
+      "status": "executing"
+    }
+  ]
+}
+```
 
 **State Updates Summary:**
 1. Ensure `version: 2` in state
@@ -160,7 +194,8 @@ Aggregate status priority: `failed` > `paused` > `executing` > `idle`
 5. Set execution's `status` to `"executing"`
 6. Set execution's `startedAt` and `lastActivity` to current ISO timestamp
 7. Initialize execution's `completedPhases` to `[]` (or preserve if resuming)
-8. Sync all deprecated v1 fields from active execution
+8. **CRITICAL: Initialize top-level `state.completedPhases` to `[]`**
+9. Sync all other deprecated v1 fields from active execution
 
 ### Step 3.5: Pre-Execute Hook (Conditional)
 
@@ -314,7 +349,40 @@ const execution = state.activeExecutions.find(e => e.id === executionId);
    ```
 3. Update execution's `lastActivity` to current ISO timestamp
 4. If auto-fix was used: Clear execution's `autoFixAttempt: 0`, `autoFixMaxAttempts: null`
-5. Sync deprecated v1 fields (`completedPhases` as array of numbers)
+5. Sync deprecated v1 fields (see step 6 below)
+6. **CRITICAL - Update top-level `completedPhases` array:**
+   ```javascript
+   // Extract phase numbers from execution's completedPhases objects
+   state.completedPhases = execution.completedPhases.map(p =>
+     typeof p === 'object' ? p.number : p
+   );
+   ```
+
+**Example: After Phase 2 Completes**
+
+Execution object contains phase objects:
+```json
+{
+  "id": "exec-45-a1b2c3d4",
+  "completedPhases": [
+    { "number": 1, "title": "Setup", "completedAt": "...", "summary": "..." },
+    { "number": 2, "title": "Core implementation", "completedAt": "...", "summary": "..." }
+  ]
+}
+```
+
+Top-level state MUST have phase numbers only:
+```json
+{
+  "version": 2,
+  "completedPhases": [1, 2],     // <-- INTEGERS, not objects!
+  "activeIssue": 45,
+  "currentPhase": 3,
+  "activeExecutions": [...]
+}
+```
+
+**Verification:** After writing state, confirm `state.completedPhases` exists at the top level and contains integers.
 
 #### 4j. Phase-Complete Hook (Conditional)
 
