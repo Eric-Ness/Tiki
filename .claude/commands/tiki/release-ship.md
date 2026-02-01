@@ -54,7 +54,8 @@ Read `.tiki/prompts/hooks/execute-hook.md` for execution workflow. On Windows, a
 
 Run `pre-ship` hook with:
 - `TIKI_ISSUE_NUMBER`: First issue number in release (for context)
-- `TIKI_RELEASE_VERSION`: Release version being shipped
+- `TIKI_RELEASE_VERSION`: Release version being shipped (e.g., "v1.0.14")
+- `TIKI_RELEASE_ISSUE_COUNT`: Total number of issues in release
 
 If hook fails (non-zero exit or timeout), abort release ship and show error message.
 
