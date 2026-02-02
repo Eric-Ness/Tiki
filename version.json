@@ -1,7 +1,14 @@
 {
-  "version": "1.12.6",
+  "version": "1.12.7",
   "releaseDate": "2026-02-01",
   "changelog": [
+    {
+      "version": "1.12.7",
+      "date": "2026-02-01",
+      "changes": [
+        "Issue #103: Simplify ship.md State Cleanup"
+      ]
+    },
     {
       "version": "1.12.6",
       "date": "2026-02-01",

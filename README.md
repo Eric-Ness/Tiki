@@ -2,7 +2,7 @@
 
 A GitHub-issue-centric workflow framework for Claude Code. Break large issues into phases, execute them with fresh context windows, and track progress automatically.
 
-**Version:** 1.12.6
+**Version:** 1.12.7
 
 ## Why Tiki?
 
