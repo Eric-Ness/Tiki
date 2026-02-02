@@ -58,6 +58,16 @@ Update `.tiki/state/current.json`:
 Update plan file `.tiki/plans/issue-N.json`:
 - Set current phase's `status` to "in_progress"
 
+Update `.tiki/state/phases.json` (UI state):
+- Read existing file (or create if missing)
+- Find execution entry matching `activeIssue`
+- Set execution `status` to "executing"
+- Set current phase's `status` to "in_progress" and update `startedAt` to current timestamp
+- If `releaseContext` exists and has `status` of "paused", set it to "in_progress"
+- Set `lastUpdated` to current ISO timestamp
+
+See `.tiki/prompts/state/phases-update.md` for the read-modify-write pattern and format details.
+
 ### Step 5: Continue Execution
 
 Read `.tiki/prompts/resume/execution-options.md` for:

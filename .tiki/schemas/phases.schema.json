@@ -1,0 +1,235 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Tiki Phases UI State",
+  "description": "UI-optimized state for desktop applications. Provides execution details for display without parsing plan files.",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Schema version for future evolution (current: 1)"
+    },
+    "lastUpdated": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of last state update"
+    },
+    "lastCompleted": {
+      "type": ["object", "null"],
+      "description": "Most recently completed issue",
+      "properties": {
+        "issueNumber": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Issue number"
+        },
+        "issueTitle": {
+          "type": "string",
+          "description": "Issue title"
+        },
+        "completedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the issue was completed"
+        }
+      },
+      "required": ["issueNumber", "issueTitle", "completedAt"]
+    },
+    "executions": {
+      "type": "array",
+      "description": "Active and recent executions",
+      "items": {
+        "type": "object",
+        "required": ["id", "issueNumber", "issueTitle", "status", "currentPhase", "phases", "completedCount", "totalCount", "startedAt"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^exec-[0-9]+-[0-9]+$",
+            "description": "Unique execution ID: exec-{issueNumber}-{timestamp}"
+          },
+          "issueNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "GitHub issue number"
+          },
+          "issueTitle": {
+            "type": "string",
+            "description": "Issue title for display"
+          },
+          "issueUrl": {
+            "type": ["string", "null"],
+            "format": "uri",
+            "description": "Full GitHub issue URL"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "executing", "paused", "completed", "failed"],
+            "description": "Current execution status"
+          },
+          "currentPhase": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "description": "Currently executing phase number, or null if not active"
+          },
+          "phases": {
+            "type": "array",
+            "description": "Phase details for UI display",
+            "items": {
+              "type": "object",
+              "required": ["number", "title", "status"],
+              "properties": {
+                "number": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Phase number (1-indexed)"
+                },
+                "title": {
+                  "type": "string",
+                  "description": "Phase title for display"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": ["pending", "in_progress", "completed", "failed", "skipped"],
+                  "description": "Phase status"
+                },
+                "startedAt": {
+                  "type": ["string", "null"],
+                  "format": "date-time",
+                  "description": "When phase started executing"
+                },
+                "completedAt": {
+                  "type": ["string", "null"],
+                  "format": "date-time",
+                  "description": "When phase completed"
+                }
+              }
+            }
+          },
+          "completedCount": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Number of completed phases"
+          },
+          "totalCount": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Total number of phases"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When execution started"
+          },
+          "errorMessage": {
+            "type": ["string", "null"],
+            "description": "Error message if status is failed"
+          },
+          "autoFix": {
+            "type": ["object", "null"],
+            "description": "Auto-fix status if heal is in progress",
+            "properties": {
+              "attempt": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Current auto-fix attempt number"
+              },
+              "maxAttempts": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Maximum auto-fix attempts allowed"
+              },
+              "startedAt": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When auto-fix started"
+              }
+            },
+            "required": ["attempt", "maxAttempts", "startedAt"]
+          }
+        }
+      }
+    },
+    "releaseContext": {
+      "type": ["object", "null"],
+      "description": "Release execution context (for release-yolo workflow)",
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^v[0-9]+\\.[0-9]+(\\.[0-9]+)?$",
+          "description": "Release version being processed"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "in_progress", "paused", "completed", "failed"],
+          "description": "Release execution status"
+        },
+        "startedAt": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "When release execution started"
+        },
+        "issues": {
+          "type": "object",
+          "description": "Issue tracking for the release",
+          "properties": {
+            "total": {
+              "type": "array",
+              "items": { "type": "integer" },
+              "description": "All issue numbers in the release"
+            },
+            "completed": {
+              "type": "array",
+              "items": { "type": "integer" },
+              "description": "Completed issue numbers"
+            },
+            "current": {
+              "type": ["integer", "null"],
+              "description": "Currently processing issue number"
+            },
+            "pending": {
+              "type": "array",
+              "items": { "type": "integer" },
+              "description": "Pending issue numbers"
+            },
+            "failed": {
+              "type": "array",
+              "items": { "type": "integer" },
+              "description": "Failed issue numbers"
+            },
+            "skipped": {
+              "type": "array",
+              "items": { "type": "integer" },
+              "description": "Skipped issue numbers"
+            }
+          },
+          "required": ["total", "completed", "pending"]
+        },
+        "progress": {
+          "type": "object",
+          "description": "Progress metrics",
+          "properties": {
+            "completedCount": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Number of completed issues"
+            },
+            "totalCount": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Total number of issues"
+            },
+            "percentage": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100,
+              "description": "Completion percentage"
+            }
+          },
+          "required": ["completedCount", "totalCount", "percentage"]
+        }
+      },
+      "required": ["version", "status", "issues", "progress"]
+    }
+  },
+  "required": ["schemaVersion", "lastUpdated", "executions"]
+}

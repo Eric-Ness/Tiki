@@ -45,6 +45,7 @@ All state lives in `.tiki/`:
 ├── config.json         # Project settings (TDD mode, test framework)
 ├── plans/              # Phase plans (issue-N.json)
 ├── state/current.json  # Active execution state
+├── state/phases.json   # UI display state for Tiki Desktop
 ├── queue/pending.json  # Discovered items for review
 ├── context/            # Saved context for resume
 ├── debug/              # Debug session history + index
@@ -151,6 +152,7 @@ JSON Schema files in `.tiki/schemas/` document the expected structure of state f
 | `todos.schema.json` | `.tiki/todos.json` | Backlog items |
 | `knowledge.schema.json` | `.tiki/knowledge/entries/KNNN.json` | Knowledge entries |
 | `knowledge-index.schema.json` | `.tiki/knowledge/index.json` | Knowledge index |
+| `phases.schema.json` | `.tiki/state/phases.json` | UI display state |
 
 Schemas can be used for IDE autocomplete via JSON `$schema` references. Run schema validation tests: `node .tiki/test/commands/schema-validation.test.js`
 
@@ -188,6 +190,7 @@ Large commands use conditional prompt files to reduce context usage:
 | execute.md | KNOWLEDGE markers found | .tiki/prompts/execute/knowledge-capture.md |
 | execute.md | Hook exists | .tiki/prompts/hooks/execute-hook.md |
 | execute.md | Windows platform | .tiki/prompts/hooks/windows-support.md |
+| execute.md | phases.json update | .tiki/prompts/state/phases-update.md |
 | debug.md | Starting new session | .tiki/prompts/debug/start-session.md |
 | debug.md | Hypothesis workflow | .tiki/prompts/debug/hypothesis-tracking.md |
 | debug.md | Marking resolved/abandoned | .tiki/prompts/debug/resolution-recording.md |
@@ -207,6 +210,7 @@ Large commands use conditional prompt files to reduce context usage:
 | yolo.md | Ship enabled (no --no-ship) | .tiki/prompts/yolo/ship-stage.md |
 | yolo.md | TDD enabled (no --no-tdd) | .tiki/prompts/yolo/tdd-handling.md |
 | yolo.md | Stage failure | .tiki/prompts/yolo/error-recovery.md |
+| release-yolo.md | releaseContext init | .tiki/prompts/state/phases-update.md |
 | release-ship.md | Milestone exists on release | .tiki/prompts/release-ship/milestone-sync.md |
 | release-ship.md | --changelog flag | .tiki/prompts/release-ship/changelog-generation.md |
 | release-ship.md | Ship step fails | .tiki/prompts/release-ship/rollback-instructions.md |
@@ -241,6 +245,7 @@ Large commands use conditional prompt files to reduce context usage:
 | ship.md | Knowledge capture enabled | .tiki/prompts/ship/knowledge-synthesis.md |
 | ship.md | Hook exists | .tiki/prompts/hooks/execute-hook.md |
 | ship.md | Windows platform | .tiki/prompts/hooks/windows-support.md |
+| ship.md | phases.json exists | .tiki/prompts/state/phases-update.md |
 | new-project.md | Phase 2: Deep questioning | .tiki/prompts/new-project/deep-questioning.md |
 | new-project.md | Phase 3: Template generation | .tiki/prompts/new-project/project-templates.md |
 | new-project.md | Phase 4: Research selected | .tiki/prompts/new-project/research-agents.md |
@@ -271,6 +276,8 @@ Large commands use conditional prompt files to reduce context usage:
 | pick-issue.md | Scoring and dependency detection | .tiki/prompts/pick-issue/scoring-algorithm.md |
 | pick-issue.md | Output formatting | .tiki/prompts/pick-issue/output-formats.md |
 | plan-issue.md | Knowledge index exists | .tiki/prompts/plan-issue/knowledge-retrieval.md |
+| pause.md | phases.json exists | .tiki/prompts/state/phases-update.md |
+| resume.md | phases.json exists | .tiki/prompts/state/phases-update.md |
 | resume.md | Context verification | .tiki/prompts/resume/context-verification.md |
 | resume.md | Execution continuation | .tiki/prompts/resume/execution-options.md |
 | resume.md | Edge cases | .tiki/prompts/resume/edge-cases.md |

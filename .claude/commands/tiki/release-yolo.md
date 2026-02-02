@@ -116,6 +116,44 @@ const yoloState = {
 fs.writeFileSync(yoloPath, JSON.stringify(yoloState, null, 2));
 ```
 
+**Also initialize phases.json releaseContext for UI display:**
+
+```javascript
+// Read or initialize phases.json
+const phasesPath = '.tiki/state/phases.json';
+let phases = { schemaVersion: 1, lastUpdated: null, executions: [], releaseContext: null, lastCompleted: null };
+if (fileExists(phasesPath)) {
+  phases = JSON.parse(fs.readFileSync(phasesPath));
+}
+
+// Initialize releaseContext
+const now = new Date().toISOString();
+const issueOrder = [34, 36, 20]; // Same as yolo.json issueOrder
+
+phases.releaseContext = {
+  "version": VERSION,
+  "status": "in_progress",
+  "startedAt": now,
+  "issues": {
+    "total": [...issueOrder],
+    "completed": [],
+    "current": null,
+    "pending": [...issueOrder],
+    "failed": [],
+    "skipped": []
+  },
+  "progress": {
+    "completedCount": 0,
+    "totalCount": issueOrder.length,
+    "percentage": 0
+  }
+};
+phases.lastUpdated = now;
+
+// Write phases.json
+fs.writeFileSync(phasesPath, JSON.stringify(phases, null, 2));
+```
+
 ### Step 7: Issue Processing Loop
 
 For each issue in dependency order (starting from --from position if provided):
@@ -138,6 +176,23 @@ yoloState.currentIssue = issueNumber;
 yoloState.lastActivity = new Date().toISOString();
 // Write yolo.json
 fs.writeFileSync('.tiki/state/yolo.json', JSON.stringify(yoloState, null, 2));
+```
+
+**Also update phases.json releaseContext:**
+
+```javascript
+// Read phases.json
+const phasesPath = '.tiki/state/phases.json';
+const phases = JSON.parse(fs.readFileSync(phasesPath));
+const now = new Date().toISOString();
+
+// Move issue from pending to current
+if (phases.releaseContext) {
+  phases.releaseContext.issues.current = issueNumber;
+  phases.releaseContext.issues.pending = phases.releaseContext.issues.pending.filter(n => n !== issueNumber);
+  phases.lastUpdated = now;
+  fs.writeFileSync(phasesPath, JSON.stringify(phases, null, 2));
+}
 ```
 
 #### 7c: Plan Stage
@@ -169,6 +224,86 @@ If no plan exists:
    yoloState.lastActivity = new Date().toISOString();
    fs.writeFileSync('.tiki/state/yolo.json', JSON.stringify(yoloState, null, 2));
    ```
+4. Update phases.json releaseContext (ship.md handles execution cleanup, but update release progress):
+   ```javascript
+   // Read phases.json
+   const phasesPath = '.tiki/state/phases.json';
+   const phases = JSON.parse(fs.readFileSync(phasesPath));
+   const now = new Date().toISOString();
+
+   if (phases.releaseContext) {
+     // Move issue from current to completed
+     phases.releaseContext.issues.completed.push(issueNumber);
+     phases.releaseContext.issues.current = null;
+
+     // Update progress counters
+     const completedCount = phases.releaseContext.issues.completed.length;
+     const totalCount = phases.releaseContext.issues.total.length;
+     phases.releaseContext.progress = {
+       completedCount: completedCount,
+       totalCount: totalCount,
+       percentage: Math.round((completedCount / totalCount) * 100)
+     };
+
+     phases.lastUpdated = now;
+     fs.writeFileSync(phasesPath, JSON.stringify(phases, null, 2));
+   }
+   ```
+
+#### 7f: Handle Skipped/Failed Issues
+
+When an issue is skipped or fails during execution:
+
+**For skipped issues** (user chooses to skip):
+
+```javascript
+// Update yolo.json
+const yoloState = JSON.parse(fs.readFileSync('.tiki/state/yolo.json'));
+yoloState.skippedIssues.push(issueNumber);
+yoloState.currentIssue = null;
+yoloState.lastActivity = new Date().toISOString();
+fs.writeFileSync('.tiki/state/yolo.json', JSON.stringify(yoloState, null, 2));
+
+// Update phases.json releaseContext
+const phasesPath = '.tiki/state/phases.json';
+const phases = JSON.parse(fs.readFileSync(phasesPath));
+const now = new Date().toISOString();
+
+if (phases.releaseContext) {
+  phases.releaseContext.issues.skipped.push(issueNumber);
+  phases.releaseContext.issues.current = null;
+  phases.lastUpdated = now;
+  fs.writeFileSync(phasesPath, JSON.stringify(phases, null, 2));
+}
+```
+
+**For failed issues** (execution fails and user chooses not to retry):
+
+```javascript
+// Update yolo.json
+const yoloState = JSON.parse(fs.readFileSync('.tiki/state/yolo.json'));
+yoloState.failedIssues.push(issueNumber);
+yoloState.currentIssue = null;
+yoloState.lastActivity = new Date().toISOString();
+yoloState.errorHistory.push({
+  issue: issueNumber,
+  error: errorMessage,
+  timestamp: new Date().toISOString()
+});
+fs.writeFileSync('.tiki/state/yolo.json', JSON.stringify(yoloState, null, 2));
+
+// Update phases.json releaseContext
+const phasesPath = '.tiki/state/phases.json';
+const phases = JSON.parse(fs.readFileSync(phasesPath));
+const now = new Date().toISOString();
+
+if (phases.releaseContext) {
+  phases.releaseContext.issues.failed.push(issueNumber);
+  phases.releaseContext.issues.current = null;
+  phases.lastUpdated = now;
+  fs.writeFileSync(phasesPath, JSON.stringify(phases, null, 2));
+}
+```
 
 ### Step 8: Requirement Verification
 
@@ -200,6 +335,34 @@ yoloState.completedAt = new Date().toISOString();
 yoloState.lastActivity = new Date().toISOString();
 yoloState.currentIssue = null;
 fs.writeFileSync('.tiki/state/yolo.json', JSON.stringify(yoloState, null, 2));
+```
+
+**Also finalize phases.json releaseContext:**
+
+```javascript
+// Read phases.json
+const phasesPath = '.tiki/state/phases.json';
+const phases = JSON.parse(fs.readFileSync(phasesPath));
+const now = new Date().toISOString();
+
+if (phases.releaseContext) {
+  // Mark release as completed
+  phases.releaseContext.status = "completed";
+  phases.releaseContext.completedAt = now;
+  phases.releaseContext.issues.current = null;
+
+  // Ensure progress is at 100% (or reflects actual completed count)
+  const completedCount = phases.releaseContext.issues.completed.length;
+  const totalCount = phases.releaseContext.issues.total.length;
+  phases.releaseContext.progress = {
+    completedCount: completedCount,
+    totalCount: totalCount,
+    percentage: Math.round((completedCount / totalCount) * 100)
+  };
+
+  phases.lastUpdated = now;
+  fs.writeFileSync(phasesPath, JSON.stringify(phases, null, 2));
+}
 ```
 
 Update version.json with changelog entry for completed issues.

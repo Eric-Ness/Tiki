@@ -63,6 +63,34 @@ Unless `--no-push` flag: run `git push`. If push fails (e.g., non-fast-forward),
 
 Unless `--no-close` flag: run `gh issue close <N> --comment "Completed and shipped!"`. If gh fails, provide manual close URL.
 
+### Step 5.25: Update phases.json (UI State)
+
+**Condition:** Only if `.tiki/state/phases.json` exists.
+
+Reference `.tiki/prompts/state/phases-update.md` for update protocol.
+
+Update phases.json:
+
+1. **Remove execution entry:** Remove any execution where `issueNumber` matches the shipped issue from `executions` array (defensive cleanup - execute.md should already remove this at completion).
+
+2. **Update lastCompleted:**
+   ```json
+   "lastCompleted": {
+     "issueNumber": <shipped issue number>,
+     "issueTitle": "<issue title>",
+     "completedAt": "<current ISO timestamp>"
+   }
+   ```
+
+3. **Update releaseContext (if applicable):** If the issue is part of an active release (check `releaseContext.issues.current` or `releaseContext.issues.pending`):
+   - Move the issue number from `current` or `pending` to `completed`
+   - Update `progress.completedCount` and `progress.percentage`
+   - If this was `current`, set `current` to next item from `pending` (or null if none)
+
+4. **Update lastUpdated:** Set to current ISO timestamp.
+
+**Note:** This step should never cause ship to fail - log warnings only for any errors.
+
 ### Step 5.5: Post-Ship Hook (Conditional)
 
 **Only execute if:** `.tiki/hooks/post-ship` (or `.sh`/`.ps1` on Windows) exists.

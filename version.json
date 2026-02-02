@@ -1,7 +1,14 @@
 {
-  "version": "1.12.8",
-  "releaseDate": "2026-02-01",
+  "version": "1.12.9",
+  "releaseDate": "2026-02-02",
   "changelog": [
+    {
+      "version": "1.12.9",
+      "date": "2026-02-02",
+      "changes": [
+        "Issue #106: Add phases.json for Desktop UI state display"
+      ]
+    },
     {
       "version": "1.12.8",
       "date": "2026-02-01",

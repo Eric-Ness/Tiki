@@ -108,6 +108,15 @@ Update `.tiki/state/current.json`:
 Update plan file `.tiki/plans/issue-N.json`:
 - Set current phase's `status` to "paused"
 
+Update `.tiki/state/phases.json` (UI state):
+- Read existing file (or create if missing)
+- Find execution entry matching `activeIssue`
+- Set execution `status` to "paused"
+- If `releaseContext` exists and has `current` matching issue, set `releaseContext.status` to "paused"
+- Set `lastUpdated` to current ISO timestamp
+
+See `.tiki/prompts/state/phases-update.md` for the read-modify-write pattern and format details.
+
 ### Step 5: Confirm Pause
 
 Display confirmation:

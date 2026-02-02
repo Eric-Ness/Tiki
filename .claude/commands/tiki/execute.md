@@ -73,6 +73,36 @@ const totalPhases = plan.phases.length;
 
 If using `--from N`, set `currentPhase` to N instead of 1.
 
+**Write phases.json (for Desktop UI):**
+
+Read `.tiki/state/phases.json` if it exists (or initialize empty structure). Reference `.tiki/prompts/state/phases-update.md` for detailed format and update patterns.
+
+Create new execution entry:
+```json
+{
+  "id": "exec-<issueNumber>-<timestamp>",
+  "issueNumber": <issue number>,
+  "issueTitle": "<issue title>",
+  "status": "executing",
+  "currentPhase": 1,
+  "completedCount": 0,
+  "totalCount": <from plan>,
+  "startedAt": "<current ISO timestamp>",
+  "lastActivity": "<current ISO timestamp>",
+  "phases": [
+    {
+      "number": 1,
+      "title": "<from plan>",
+      "status": "pending",
+      "startedAt": null,
+      "completedAt": null
+    }
+  ]
+}
+```
+
+Add to `executions` array and update `lastUpdated`. If using `--from N`, set `currentPhase` to N and mark earlier phases as "skipped".
+
 ### Step 3.5: Pre-Execute Hook (Conditional)
 
 **Only execute if:** `.tiki/hooks/pre-execute` (or `.sh`/`.ps1` on Windows) exists.
@@ -132,6 +162,13 @@ Update state.json:
 - Set `currentPhase` to current phase number
 - Set `lastActivity` to current timestamp
 
+Update phases.json (for Desktop UI):
+- Set current phase's `status` to "in_progress"
+- Set current phase's `startedAt` to current timestamp
+- Update execution's `currentPhase` to current phase number
+- Update execution's `lastActivity` to current timestamp
+- Update file's `lastUpdated` to current timestamp
+
 #### 4d. TDD Workflow
 
 If `testing.createTests` is "before":
@@ -173,6 +210,12 @@ Update state.json:
 - Set `errorMessage` to error description
 - Set `lastActivity` to current timestamp
 
+Update phases.json (for Desktop UI):
+- Set execution's `status` to "failed"
+- Set execution's `errorMessage` to error description
+- Update execution's `lastActivity` to current timestamp
+- Update file's `lastUpdated` to current timestamp
+
 If `autoFix.enabled` and attempt < maxAttempts:
   - Read `.tiki/prompts/execute/autofix-strategies.md`
   - Execute 3-tier escalation: direct → contextual-analysis → approach-review
@@ -204,6 +247,14 @@ Update plan file:
 Update state.json:
 - Set `currentPhase` to next phase number (or null if last phase)
 - Set `lastActivity` to current timestamp
+
+Update phases.json (for Desktop UI):
+- Set current phase's `status` to "completed"
+- Set current phase's `completedAt` to current timestamp
+- Increment execution's `completedCount`
+- Set execution's `currentPhase` to next phase number (or null if last phase)
+- Update execution's `lastActivity` to current timestamp
+- Update file's `lastUpdated` to current timestamp
 
 #### 4j. Phase-Complete Hook (Conditional)
 
@@ -248,6 +299,14 @@ Update state.json:
 - Set `lastActivity` to current timestamp
 - Set `errorMessage` to null
 - Preserve `startedAt` (for reference until next execution)
+
+Update phases.json (for Desktop UI):
+- Remove execution entry from `executions` array
+- Update `lastCompleted` with:
+  - `issueNumber`: completed issue number
+  - `issueTitle`: completed issue title
+  - `completedAt`: current timestamp
+- Update file's `lastUpdated` to current timestamp
 
 ### Step 5.5: Post-Execute Hook (Conditional)
 
