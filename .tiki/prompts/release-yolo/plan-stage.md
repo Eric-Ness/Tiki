@@ -77,25 +77,23 @@ Handle based on user choice:
 - Continue to next issue
 
 **Pause**:
-Update the release execution in main state:
-```javascript
-const state = JSON.parse(fs.readFileSync('.tiki/state/current.json'));
-const releaseExec = state.activeExecutions.find(e => e.type === "release");
-releaseExec.status = "paused";
-releaseExec.pauseReason = "planning_failed";
-releaseExec.lastActivity = new Date().toISOString();
-fs.writeFileSync('.tiki/state/current.json', JSON.stringify(state, null, 2));
-```
+Update `.tiki/state/yolo.json`:
+
+1. Read current yolo.json
+2. Set `status` to `"paused"`
+3. Set `lastActivity` to current ISO timestamp
+4. Add entry to `errorHistory` array:
+   - `issue`: current issue number
+   - `error`: "planning_failed"
+   - `timestamp`: current ISO timestamp
+   - `resolved`: `false`
+
 Exit execution.
 
 ## State Updates
 
-After successful planning, update the release execution in main state:
+After successful planning, update `.tiki/state/yolo.json`:
 
-```javascript
-const state = JSON.parse(fs.readFileSync('.tiki/state/current.json'));
-const releaseExec = state.activeExecutions.find(e => e.type === "release");
-releaseExec.currentIssue = issue.number;
-releaseExec.lastActivity = new Date().toISOString();
-fs.writeFileSync('.tiki/state/current.json', JSON.stringify(state, null, 2));
-```
+1. Read current yolo.json
+2. Set `currentIssue` to the issue number
+3. Set `lastActivity` to current ISO timestamp

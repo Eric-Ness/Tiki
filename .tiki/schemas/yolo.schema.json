@@ -1,0 +1,99 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Tiki YOLO State",
+  "description": "Tracks release-yolo execution state. Separate from current.json for release-level operations.",
+  "type": "object",
+  "properties": {
+    "release": {
+      "type": "string",
+      "description": "Release version (e.g., v1.7)"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["idle", "in_progress", "paused", "completed", "failed"],
+      "description": "Current YOLO execution status"
+    },
+    "startedAt": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "When YOLO execution started"
+    },
+    "lastActivity": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Last state update timestamp"
+    },
+    "completedAt": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "When YOLO execution completed"
+    },
+    "currentIssue": {
+      "type": ["integer", "null"],
+      "description": "Currently processing issue number, or null if between issues"
+    },
+    "issueOrder": {
+      "type": "array",
+      "items": { "type": "integer" },
+      "description": "Ordered list of issue numbers to process"
+    },
+    "completedIssues": {
+      "type": "array",
+      "items": { "type": "integer" },
+      "description": "Issue numbers that have been completed"
+    },
+    "skippedIssues": {
+      "type": "array",
+      "items": { "type": "integer" },
+      "description": "Issue numbers that were skipped"
+    },
+    "failedIssues": {
+      "type": "array",
+      "items": { "type": "integer" },
+      "description": "Issue numbers that failed"
+    },
+    "flags": {
+      "type": "object",
+      "properties": {
+        "skipVerify": {
+          "type": "boolean",
+          "description": "Skip requirement verification"
+        },
+        "noTag": {
+          "type": "boolean",
+          "description": "Don't create git tag"
+        }
+      },
+      "additionalProperties": false,
+      "description": "Flags from original invocation"
+    },
+    "errorHistory": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "issue": {
+            "type": "integer",
+            "description": "Issue number where error occurred"
+          },
+          "error": {
+            "type": "string",
+            "description": "Error message"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When error occurred"
+          },
+          "resolved": {
+            "type": "boolean",
+            "description": "Whether error was resolved"
+          }
+        },
+        "required": ["issue", "error", "timestamp"]
+      },
+      "description": "History of errors encountered during execution"
+    }
+  },
+  "required": ["release", "status", "issueOrder", "completedIssues"]
+}

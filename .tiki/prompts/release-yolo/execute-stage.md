@@ -29,11 +29,10 @@ Do NOT:
 - Spawn a Task sub-agent to do the work directly
 - Skip the Skill tool invocation
 
-The /tiki:execute command contains essential state update logic that:
-- Creates execution objects in `activeExecutions`
-- Updates `currentPhase` as phases progress
-- Populates `completedPhases` array
-- Syncs deprecated v1 fields for Tiki.Desktop compatibility
+The /tiki:execute command handles:
+- Phase-by-phase execution via sub-agents
+- Updates `currentPhase` in `.tiki/state/current.json` as phases progress
+- Individual issue state tracking
 
 **If you skip the Skill tool invocation:**
 - The state file will remain empty
@@ -56,16 +55,13 @@ The execute command handles:
 3. Auto-fix attempts on failures
 4. State tracking in `.tiki/state/current.json`
 
-### Update Release Execution State During Execution
+### Update yolo.json Activity
 
-As phases complete, update the release execution in main state:
+After invoking execute, update the release YOLO state:
 
-```javascript
-const state = JSON.parse(fs.readFileSync('.tiki/state/current.json'));
-const releaseExec = state.activeExecutions.find(e => e.type === "release");
-releaseExec.lastActivity = new Date().toISOString();
-fs.writeFileSync('.tiki/state/current.json', JSON.stringify(state, null, 2));
-// Individual phase tracking is handled by execute.md in main state
+```bash
+# Update lastActivity timestamp in yolo.json
+cat .tiki/state/yolo.json | jq '.lastActivity = "'"$(date -u +%Y-%m-%dT%H:%M:%S.000Z)"'"' > .tiki/state/yolo.json.tmp && mv .tiki/state/yolo.json.tmp .tiki/state/yolo.json
 ```
 
 ### Phase Progress Display
@@ -104,62 +100,59 @@ Issue #{number} could not be automatically fixed after 4 attempts.
 Load .tiki/prompts/release-yolo/error-recovery.md for user recovery options.
 ```
 
-## State Updates
+## After Execution Completes
 
-After all phases complete successfully, update the release execution:
+After all phases complete successfully:
 
-```javascript
-const state = JSON.parse(fs.readFileSync('.tiki/state/current.json'));
-const releaseExec = state.activeExecutions.find(e => e.type === "release");
-releaseExec.lastActivity = new Date().toISOString();
-fs.writeFileSync('.tiki/state/current.json', JSON.stringify(state, null, 2));
-// Issue execution complete, ready for ship stage
-```
+- No state update needed here - execute.md handles its own state in `.tiki/state/current.json`
+- The issue is now ready for the ship stage
 
 ### State Validation (After Execute Returns)
 
-**CRITICAL**: After the Skill tool invocation of `/tiki:execute` returns, validate that state was actually updated.
+**CRITICAL**: After the Skill tool invocation of `/tiki:execute` returns, validate that execution completed successfully.
 
 #### Validation Steps
 
-1. **Read current state**:
+1. **Read the plan file**:
    ```bash
-   cat .tiki/state/current.json 2>/dev/null
+   cat .tiki/plans/issue-{number}.json 2>/dev/null | jq '.phases'
    ```
 
-2. **Check for execution evidence**:
-   - Look in `activeExecutions` for an execution with matching issue number
-   - OR look in `executionHistory` for a completed execution with matching issue number
-   - The execution should have `id` format like `exec-{issueNumber}-{uuid}`
+2. **Check for completion evidence**:
+   - All phases should have `status: "completed"`
+   - If any phase has `status: "failed"`, execution did not complete
 
-3. **Check for progress evidence**:
-   - `currentPhase` should be > 0, OR
-   - `completedPhases` array should be non-empty
+3. **Check current state**:
+   ```bash
+   cat .tiki/state/current.json 2>/dev/null | jq '.status, .activeIssue'
+   ```
+   - Status should NOT be "failed"
+   - If `activeIssue` still matches, check if all phases are done
 
 #### Validation Failure Handling
 
-If validation fails (no execution found or no progress recorded):
+If validation fails (phases not completed or execution failed):
 
 ```text
-### ⚠️ State Validation Warning
+### State Validation Warning
 
-Execute completed but state file was not updated for issue #{number}.
+Execute did not complete successfully for issue #{number}.
 
 This typically happens when:
 - The Skill tool invocation was skipped
 - A Task sub-agent executed directly instead of using /tiki:execute
-- The execute command encountered an early error
+- The execute command encountered an unrecoverable error
 
 **Recovery Options:**
 
 1. **Retry** - Invoke /tiki:execute again using Skill tool
-2. **Manual Update** - Create execution entry in state manually
-3. **Continue Anyway** - Proceed to ship (state will be inconsistent)
+2. **Skip Issue** - Mark issue as skipped and continue with next
+3. **Abort** - Stop YOLO execution for manual intervention
 
 Which option? [1/2/3]:
 ```
 
 If user selects:
 - **1 (Retry)**: Re-invoke `/tiki:execute {number}` using Skill tool, then re-validate
-- **2 (Manual Update)**: Create minimal execution entry in state with current timestamp
-- **3 (Continue)**: Log warning and proceed to ship stage
+- **2 (Skip)**: Add issue to `skippedIssues` in yolo.json, proceed to next issue
+- **3 (Abort)**: Update yolo.json status to "paused", stop execution

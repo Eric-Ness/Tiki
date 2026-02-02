@@ -33,10 +33,10 @@ If no version (and not --continue): show usage and exit.
 
 If `--continue` flag present:
 
-1. Read main state at `.tiki/state/current.json`
-2. Look for execution with `type: "release"` in `activeExecutions` array
+1. Read YOLO state at `.tiki/state/yolo.json`
+2. Check if status is `in_progress` or `paused`
 3. If found, read `.tiki/prompts/release-yolo/resume.md` and follow resume workflow
-4. Continue from saved position in the release execution object
+4. Continue from saved position in yolo.json
 
 ### Step 3: Load Release
 
@@ -78,32 +78,43 @@ Otherwise, confirm with user before proceeding.
 
 ### Step 6: Initialize State
 
-Add release execution to `.tiki/state/current.json` activeExecutions array:
+Check for existing yolo.json and initialize release state:
 
 ```javascript
-// Generate execution ID with release-specific format
-const executionId = `exec-release-${VERSION.replace(/\./g, '-')}-${uuid.substring(0, 8)}`;
+// Check if yolo.json exists
+const yoloPath = '.tiki/state/yolo.json';
+let existingYolo = null;
+try {
+  existingYolo = JSON.parse(fs.readFileSync(yoloPath));
+} catch (e) {
+  // No existing yolo.json
+}
 
-// Add to activeExecutions in main state
-const releaseExecution = {
-  "id": executionId,
-  "type": "release",
-  "status": "executing",
+// If yolo.json exists and is in_progress, prompt user
+if (existingYolo && existingYolo.status === 'in_progress') {
+  // Ask: continue existing or start fresh?
+  // If continue, switch to --continue flow
+  // If start fresh, overwrite
+}
+
+// Create yolo.json
+const yoloState = {
   "release": VERSION,
+  "status": "in_progress",
+  "startedAt": new Date().toISOString(),
+  "lastActivity": new Date().toISOString(),
   "currentIssue": null,
   "issueOrder": [34, 36, 20],  // From dependency order calculation
   "completedIssues": [],
+  "skippedIssues": [],
   "failedIssues": [],
   "flags": { "skipVerify": false, "noTag": false },
-  "startedAt": new Date().toISOString(),
-  "lastActivity": new Date().toISOString()
+  "errorHistory": []
 };
 
-// Read current state, add execution, write back
-state.activeExecutions.push(releaseExecution);
+// Write to .tiki/state/yolo.json
+fs.writeFileSync(yoloPath, JSON.stringify(yoloState, null, 2));
 ```
-
-If main state doesn't exist, create with schema v2 structure first.
 
 ### Step 7: Issue Processing Loop
 
@@ -116,16 +127,17 @@ For each issue in dependency order (starting from --from position if provided):
 ## Issue {index}/{total}: #{number} - {title}
 ```
 
-#### 7b: Update Release Execution State
+#### 7b: Update YOLO State
 
-Update the release execution in `activeExecutions`:
+Update yolo.json with current issue:
 
 ```javascript
-// Find and update release execution
-const releaseExec = state.activeExecutions.find(e => e.type === "release");
-releaseExec.currentIssue = issueNumber;
-releaseExec.lastActivity = new Date().toISOString();
-// Write state
+// Read yolo.json
+const yoloState = JSON.parse(fs.readFileSync('.tiki/state/yolo.json'));
+yoloState.currentIssue = issueNumber;
+yoloState.lastActivity = new Date().toISOString();
+// Write yolo.json
+fs.writeFileSync('.tiki/state/yolo.json', JSON.stringify(yoloState, null, 2));
 ```
 
 #### 7c: Plan Stage
@@ -140,23 +152,23 @@ If no plan exists:
 1. Read `.tiki/prompts/release-yolo/execute-stage.md`
 2. Invoke `/tiki:execute {number}` using the Skill tool
 3. **Validation Checkpoint**: After execute returns, verify state was updated:
-   - Read `.tiki/state/current.json`
-   - Check that `activeExecutions` contains an execution for this issue OR `executionHistory` contains a completed execution for this issue
-   - Check that the issue execution has `currentPhase > 0` OR `completedPhases` is non-empty
+   - Read `.tiki/plans/issue-{number}.json`
+   - Check that phases have status `completed` or plan has completedPhases
    - If validation fails: display warning and offer recovery options (Retry execute, Manual state update, Continue anyway)
-4. If failure, read `.tiki/prompts/release-yolo/error-recovery.md`
+4. If failure, read `.tiki/prompts/release-yolo/error-recovery.md` and update yolo.json errorHistory
 
 #### 7e: Ship Stage
 
 1. Read `.tiki/prompts/release-yolo/ship-stage.md`
-2. Invoke `/tiki:ship {number}`
-3. Update release execution state:
+2. Invoke `/tiki:ship {number}` using the Skill tool
+3. Update yolo.json:
    ```javascript
-   releaseExec.completedIssues.push(issueNumber);
-   releaseExec.currentIssue = null;
-   releaseExec.lastActivity = new Date().toISOString();
+   const yoloState = JSON.parse(fs.readFileSync('.tiki/state/yolo.json'));
+   yoloState.completedIssues.push(issueNumber);
+   yoloState.currentIssue = null;
+   yoloState.lastActivity = new Date().toISOString();
+   fs.writeFileSync('.tiki/state/yolo.json', JSON.stringify(yoloState, null, 2));
    ```
-4. The individual issue's execution (if any) moves to `executionHistory`
 
 ### Step 8: Requirement Verification
 
@@ -178,21 +190,16 @@ git push origin "${VERSION}"
 
 Close milestone if linked. Archive release file.
 
-Move release execution to history:
+Update yolo.json to completed:
 
 ```javascript
-// Find the release execution
-const releaseExec = state.activeExecutions.find(e => e.type === "release");
-
-// Update final status
-releaseExec.status = "completed";
-releaseExec.completedAt = new Date().toISOString();
-
-// Move from activeExecutions to executionHistory
-state.activeExecutions = state.activeExecutions.filter(e => e.type !== "release");
-state.executionHistory.push(releaseExec);
-
-// Write updated state
+// Read and update yolo.json
+const yoloState = JSON.parse(fs.readFileSync('.tiki/state/yolo.json'));
+yoloState.status = "completed";
+yoloState.completedAt = new Date().toISOString();
+yoloState.lastActivity = new Date().toISOString();
+yoloState.currentIssue = null;
+fs.writeFileSync('.tiki/state/yolo.json', JSON.stringify(yoloState, null, 2));
 ```
 
 Update version.json with changelog entry for completed issues.

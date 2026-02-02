@@ -1,7 +1,14 @@
 {
-  "version": "1.12.7",
+  "version": "1.12.8",
   "releaseDate": "2026-02-01",
   "changelog": [
+    {
+      "version": "1.12.8",
+      "date": "2026-02-01",
+      "changes": [
+        "Issue #104: Fix release-yolo: Use Skill Tool and yolo.json"
+      ]
+    },
     {
       "version": "1.12.7",
       "date": "2026-02-01",

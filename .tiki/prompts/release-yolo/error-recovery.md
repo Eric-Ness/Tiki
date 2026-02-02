@@ -20,21 +20,16 @@ Use AskUserQuestion for recovery choice.
 
 ## Option 1: Manual Fix
 
-Update the release execution in main state:
+Update `.tiki/state/yolo.json`:
 
-```javascript
-// Read main state
-const state = JSON.parse(fs.readFileSync('.tiki/state/current.json'));
-
-// Find and update release execution
-const releaseExec = state.activeExecutions.find(e => e.type === "release");
-releaseExec.status = "paused";
-releaseExec.pauseReason = "manual_intervention";
-releaseExec.lastActivity = new Date().toISOString();
-
-// Write updated state
-fs.writeFileSync('.tiki/state/current.json', JSON.stringify(state, null, 2));
-```
+1. Read current yolo.json
+2. Set `status` to `"paused"`
+3. Set `lastActivity` to current ISO timestamp
+4. Add entry to `errorHistory` array:
+   - `issue`: current issue number
+   - `error`: the error message
+   - `timestamp`: current ISO timestamp
+   - `resolved`: `false` (will be updated when resumed)
 
 Display resume instructions:
 
@@ -46,32 +41,24 @@ State saved. After fixing the issue manually:
 
 Current position:
 - Issue: #{number} - {title}
-- Execution ID: {releaseExec.id}
+- Release: {version}
 ```
 
 Exit execution.
 
 ## Option 2: Skip Issue
 
-Update the release execution in main state:
+Update `.tiki/state/yolo.json`:
 
-```javascript
-// Read main state
-const state = JSON.parse(fs.readFileSync('.tiki/state/current.json'));
-
-// Find and update release execution
-const releaseExec = state.activeExecutions.find(e => e.type === "release");
-releaseExec.failedIssues.push({
-  number: issue.number,
-  error: errorMessage,
-  skippedAt: new Date().toISOString()
-});
-releaseExec.currentIssue = null;
-releaseExec.lastActivity = new Date().toISOString();
-
-// Write updated state
-fs.writeFileSync('.tiki/state/current.json', JSON.stringify(state, null, 2));
-```
+1. Read current yolo.json
+2. Add entry to `errorHistory` array:
+   - `issue`: current issue number
+   - `error`: the error message
+   - `timestamp`: current ISO timestamp
+   - `resolved`: `false`
+3. Add issue number to `failedIssues` array
+4. Set `currentIssue` to `null`
+5. Set `lastActivity` to current ISO timestamp
 
 Display:
 
@@ -81,34 +68,26 @@ Issue #{number} marked as failed. Continuing with remaining issues...
 
 ## Option 3: Abort
 
-Update and move release execution to history:
+Update `.tiki/state/yolo.json`:
 
-```javascript
-// Read main state
-const state = JSON.parse(fs.readFileSync('.tiki/state/current.json'));
-
-// Find and update release execution
-const releaseExec = state.activeExecutions.find(e => e.type === "release");
-releaseExec.status = "failed";
-releaseExec.failedAt = new Date().toISOString();
-
-// Move from activeExecutions to executionHistory
-state.activeExecutions = state.activeExecutions.filter(e => e.type !== "release");
-state.executionHistory.push(releaseExec);
-
-// Write updated state
-fs.writeFileSync('.tiki/state/current.json', JSON.stringify(state, null, 2));
-```
+1. Read current yolo.json
+2. Set `status` to `"failed"`
+3. Set `lastActivity` to current ISO timestamp
+4. Add entry to `errorHistory` array:
+   - `issue`: current issue number
+   - `error`: "Aborted by user"
+   - `timestamp`: current ISO timestamp
+   - `resolved`: `false`
 
 Display summary and exit:
 
 ```text
 ## YOLO Aborted
 
-Execution aborted. {releaseExec.completedIssues.length}/{releaseExec.issueOrder.length} issues completed.
+Execution aborted. {completedIssues.length}/{issueOrder.length} issues completed.
 
 Completed issues:
-{List releaseExec.completedIssues}
+{List completedIssues from yolo.json}
 
 To retry:
   /tiki:release-yolo {version} --from {failedIssueNumber}
@@ -119,7 +98,9 @@ To retry:
 ### State File Corrupted
 
 ```text
-## Main State Corrupted
+## YOLO State Corrupted
+
+The yolo.json file is missing or corrupted.
 
 Options:
 1. **Start fresh** - Reset state and start new YOLO
@@ -133,10 +114,11 @@ Options:
 ## Release Execution Already Running
 
 A release execution is already in progress for release {version}.
-Execution ID: {releaseExec.id}
+Status: {status from yolo.json}
+Current issue: #{currentIssue}
 
 Options:
 1. **Continue existing** - Resume the in-progress execution
-2. **Restart** - Move current to history and start fresh
+2. **Restart** - Reset yolo.json and start fresh
 3. **Cancel** - Exit without changes
 ```

@@ -55,28 +55,18 @@ Enter choice:
 
 ## State Updates
 
-After successful ship, update the release execution in main state:
+After successful ship, update `.tiki/state/yolo.json`:
 
-```javascript
-// Read main state
-const state = JSON.parse(fs.readFileSync('.tiki/state/current.json'));
+1. Read current yolo.json
+2. Add issue number to `completedIssues` array
+3. Set `currentIssue` to `null`
+4. Set `lastActivity` to current ISO timestamp
 
-// Find and update release execution
-const releaseExec = state.activeExecutions.find(e => e.type === "release");
-releaseExec.completedIssues.push(issue.number);
-releaseExec.currentIssue = null;
-releaseExec.lastActivity = new Date().toISOString();
+Update release file `.tiki/releases/{version}.json`:
 
-// Write updated state
-fs.writeFileSync('.tiki/state/current.json', JSON.stringify(state, null, 2));
-```
-
-Update release file:
-
-```javascript
-release.issues.find(i => i.number === issue.number).status = 'completed';
-release.issues.find(i => i.number === issue.number).completedAt = new Date().toISOString();
-```
+1. Find the issue in `issues` array by number
+2. Set its `status` to `"completed"`
+3. Set its `completedAt` to current ISO timestamp
 
 ## Requirements Integration
 
