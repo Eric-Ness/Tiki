@@ -28,18 +28,18 @@ Look for Tiki state files:
 
 ### Step 2: Read Current State
 
-If `.tiki/state/current.json` exists, determine the state format version:
+If `.tiki/state/current.json` exists, read:
+- activeIssue, activeIssueTitle
+- status (idle, executing, paused, failed)
+- startedAt, lastActivity
+- currentPhase, totalPhases
+- errorMessage (if failed)
+- lastCompletedIssue, lastCompletedAt
 
-**Detecting v2 format:** Check if `version` field equals 2 OR if `activeExecutions` array exists.
-
-**For v2 format:**
-- Extract `activeExecutions` array - each entry contains: id, issue, issueTitle, currentPhase, totalPhases, status, startedAt, pausedAt, completedPhases, failedPhase, errorMessage
-- Extract `executionHistory` array for archived executions count
-- Note: v1 fields (activeIssue, currentPhase, status at root level) may still exist for backward compatibility but activeExecutions is the source of truth
-
-**For v1 format (no version field or version=1):**
-- Extract: activeIssue, currentPhase, status, startedAt, lastActivity, pausedAt, completedPhases
-- This is the legacy single-execution format
+**Derive phase progress:** If activeIssue is set, read `.tiki/plans/issue-N.json`:
+- Count phases with status "completed"
+- Get current phase title from currentPhase number
+- Calculate progress: "X of Y phases complete"
 
 ### Step 3: Read All Plans
 
@@ -65,18 +65,33 @@ Read `.tiki/prompts/state/context-budget.md` for estimation formula and threshol
 
 ### Step 7: Display State
 
-Format output based on current state and version.
+Format output based on current state.
 Read `.tiki/prompts/state/output-formats.md` for display templates.
 
-**For v2 multi-execution format:**
-- Display all active executions with format: "Execution #N: Issue #X - Phase Y/Z (status)"
-- Show each execution's status: executing, paused, failed
-- If executionHistory has entries, show: "History: N archived executions"
-- Failed executions should show error message
-- Paused executions should show pause reason if available
+**Display format:**
 
-**For v1 single-execution format:**
-- Continue using the existing display format from output-formats.md
+```text
+## Tiki State
+
+**Status:** {status}
+
+### Active Issue
+**Issue #{activeIssue}:** {activeIssueTitle}
+**Phase:** {currentPhase}/{totalPhases} - {phase title from plan}
+**Progress:** {completed} of {total} phases complete
+**Started:** {startedAt}
+**Last Activity:** {lastActivity}
+
+### Phase Details (from plan file)
+- Phase 1: {title} - {status}
+- Phase 2: {title} - {status}
+- ...
+
+### Recent
+**Last Completed:** Issue #{lastCompletedIssue} at {lastCompletedAt}
+```
+
+If no active issue, show idle state with planned issues list.
 
 ## Notes
 

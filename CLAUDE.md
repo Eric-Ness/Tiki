@@ -53,56 +53,31 @@ All state lives in `.tiki/`:
 └── knowledge/          # Institutional knowledge entries
 ```
 
-#### Multi-Execution Model (Schema v2)
+#### Simplified State Model
 
-The state schema v2 supports multiple concurrent executions. Files without a `version` field are treated as v1 (legacy single-execution format).
+State files use a simplified format where `state.json` tracks which issue is active, and plan files track phase progress.
 
-**v2 State Structure:**
+**state.json structure:**
 ```json
 {
-  "version": 2,
   "status": "executing",
-  "activeExecutions": [
-    {
-      "id": "exec-42-a1b2c3d4",
-      "issue": 42,
-      "issueTitle": "Feature implementation",
-      "status": "executing",
-      "currentPhase": 3,
-      "totalPhases": 5,
-      "startedAt": "2026-01-30T10:00:00.000Z",
-      "completedPhases": [
-        { "number": 1, "title": "Setup", "completedAt": "...", "summary": "..." },
-        { "number": 2, "title": "Core", "completedAt": "...", "summary": "..." }
-      ],
-      "planFile": ".tiki/plans/issue-42.json"
-    }
-  ],
-  "executionHistory": [],
-  "lastActivity": "2026-01-30T12:00:00.000Z",
   "activeIssue": 42,
-  "currentPhase": 3
+  "activeIssueTitle": "Feature implementation",
+  "startedAt": "2026-01-30T10:00:00.000Z",
+  "lastActivity": "2026-01-30T12:00:00.000Z",
+  "lastCompletedIssue": 41,
+  "lastCompletedAt": "2026-01-29T15:00:00.000Z",
+  "errorMessage": null,
+  "currentPhase": 3,
+  "totalPhases": 5
 }
 ```
 
-**Execution ID Format:**
-- Standard issues: `exec-{issue}-{8-char-uuid}` (e.g., `exec-42-a1b2c3d4`)
-- Release workflows: `exec-release-{version}-{uuid}` (e.g., `exec-release-1.2.0-abcd1234`)
-- Migrated from v1: `exec-{issue}-migrated` (e.g., `exec-42-migrated`)
+**Status values:** `idle`, `executing`, `paused`, `failed`
 
-**Execution Status Values:**
-- `executing` - Phase work in progress
-- `paused` - User paused execution
-- `failed` - Phase verification failed
-- `completed` - All phases finished (moved to history)
+**Phase progress** is stored in plan files (`.tiki/plans/issue-N.json`), not duplicated in state.json.
 
-**Archived Executions:** Completed/failed executions move to `executionHistory` with `endedAt` timestamp and summary.
-
-**Deprecated v1 Fields:** For Tiki.Desktop compatibility, v2 state maintains deprecated top-level fields (`activeIssue`, `currentPhase`, `status`, `startedAt`, `completedPhases`, etc.) synced from the first active execution. When `activeExecutions` is empty, deprecated fields are set to `null`.
-
-**Migration:** V1 state (no `version` field) is auto-detected and migrated on first write. The migration creates an execution object from v1 fields using `exec-{issue}-migrated` ID format. See `.tiki/prompts/state/migration.md` for implementation details.
-
-**Stale Execution Detection:** Executions inactive for extended periods are flagged with `isStale: true` and `staledAt` timestamp for cleanup.
+**Migration:** V2 state (with `version: 2` or `activeExecutions` array) is auto-detected and migrated to simplified format on first use. See `.tiki/prompts/state/migration.md` for details.
 
 ### Knowledge System
 

@@ -1,7 +1,14 @@
 {
-  "version": "1.12.5",
+  "version": "1.12.6",
   "releaseDate": "2026-02-01",
   "changelog": [
+    {
+      "version": "1.12.6",
+      "date": "2026-02-01",
+      "changes": [
+        "Issue #102: Simplify execute.md State Management"
+      ]
+    },
     {
       "version": "1.12.5",
       "date": "2026-02-01",

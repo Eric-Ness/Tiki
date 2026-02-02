@@ -2,23 +2,6 @@
 
 Reference this document when handling edge cases during resume operations.
 
-## Multiple Paused Issues
-
-If multiple issues are paused, show options:
-
-```
-Multiple paused issues found:
-
-| Issue | Phase | Paused |
-|-------|-------|--------|
-| #34 | 2/3 | 2 hours ago |
-| #35 | 1/2 | 1 day ago |
-
-Which would you like to resume?
-- `/tiki:resume 34`
-- `/tiki:resume 35`
-```
-
 ## Stale Context Warning
 
 If context is very old (> 7 days):

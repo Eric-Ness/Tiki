@@ -1,241 +1,221 @@
-# State Migration: v1 to v2
+# State Migration: v2 to Simplified
 
-This prompt provides guidance for migrating state files from v1 (legacy single-execution) to v2 (multi-execution support).
+This prompt provides guidance for migrating state files from v2 (multi-execution) to the simplified format (single-issue tracking).
 
 ## Version Detection
 
-Check the state file to determine its version:
+Check the state file to determine if migration is needed:
 
 ```javascript
-function detectStateVersion(state) {
-  // No version field or version: 1 = v1 state
-  if (!state.version || state.version === 1) {
-    return 1;
+function needsMigration(state) {
+  // v2 state: has version field or activeExecutions array
+  if (state.version === 2 || Array.isArray(state.activeExecutions)) {
+    return true;
   }
-  // Explicit version: 2 = v2 state
-  if (state.version === 2) {
-    return 2;
-  }
-  // Unknown version - treat as v1 for safety
-  return 1;
+
+  // Already simplified or empty: no migration needed
+  return false;
 }
 ```
 
-**v1 Indicators:**
-- No `version` field present
-- `version: 1` explicitly set
-- Has `activeIssue` but no `activeExecutions` array
-- Root-level execution fields without nesting
-
-**v2 Indicators:**
+**v2 Indicators (needs migration):**
 - `version: 2` present
 - Has `activeExecutions` array
-- Has `executionHistory` array (even if empty)
+- Has `executionHistory` array
+
+**Simplified/Empty Indicators (no migration needed):**
+- No `version` field present
+- No `activeExecutions` array
+- Has only the 10 simplified fields
+
+## Fresh State
+
+For empty or missing state files, create this fresh state:
+
+```json
+{
+  "status": "idle",
+  "activeIssue": null,
+  "activeIssueTitle": null,
+  "startedAt": null,
+  "lastActivity": null,
+  "lastCompletedIssue": null,
+  "lastCompletedAt": null,
+  "errorMessage": null,
+  "currentPhase": null,
+  "totalPhases": null
+}
+```
 
 ## Migration Steps
 
-When a v1 state is detected, perform these migration steps:
+When a v2 state is detected, perform these migration steps:
 
-### Step 1: Extract Existing Execution Data
+### Step 1: Extract Active Issue
 
-Collect all execution-related fields from the v1 state:
-
-```javascript
-const v1Fields = {
-  issue: state.activeIssue,
-  currentPhase: state.currentPhase,
-  status: state.status,
-  startedAt: state.startedAt,
-  pausedAt: state.pausedAt,
-  pauseReason: state.pauseReason,
-  completedPhases: state.completedPhases || [],
-  failedPhase: state.failedPhase,
-  errorMessage: state.errorMessage,
-  autoFixAttempt: state.autoFixAttempt,
-  autoFixMaxAttempts: state.autoFixMaxAttempts,
-  activeHook: state.activeHook,
-  activeSubtasks: state.activeSubtasks || [],
-  planFile: state.planFile,
-  totalPhases: state.totalPhases,
-  issueTitle: state.issue?.title
-};
-```
-
-### Step 2: Generate Execution ID
-
-Create a unique execution ID from the issue number:
+Get the active issue from either the top-level field or the first active execution:
 
 ```javascript
-function generateMigrationId(issueNumber) {
-  // Format: exec-{issue}-migrated
-  return `exec-${issueNumber}-migrated`;
-}
-```
-
-### Step 3: Create Execution Object
-
-Wrap the v1 fields into a proper execution object:
-
-```javascript
-function createExecutionFromV1(v1Fields) {
-  const now = new Date().toISOString();
-
-  // Map v1 status to v2 execution status
-  // v1 "idle" means no active execution, so we won't create one
-  // v1 "executing"/"paused"/"failed" maps directly
-  const executionStatus = v1Fields.status === 'idle' ? null : v1Fields.status;
-
-  if (!executionStatus || !v1Fields.issue) {
-    return null; // No active execution to migrate
+function extractActiveIssue(v2State) {
+  // Try top-level field first (for backward compatibility)
+  if (v2State.activeIssue) {
+    return {
+      issue: v2State.activeIssue,
+      title: v2State.issue?.title || null
+    };
   }
 
-  // Normalize completedPhases to v2 object format
-  const normalizedPhases = v1Fields.completedPhases.map(phase => {
-    if (typeof phase === 'number') {
-      return { number: phase };
-    }
-    return phase; // Already an object
-  });
+  // Fall back to first active execution
+  const firstExec = v2State.activeExecutions?.[0];
+  if (firstExec) {
+    return {
+      issue: firstExec.issue,
+      title: firstExec.issueTitle || null
+    };
+  }
 
-  return {
-    id: generateMigrationId(v1Fields.issue),
-    issue: v1Fields.issue,
-    issueTitle: v1Fields.issueTitle || null,
-    currentPhase: v1Fields.currentPhase,
-    totalPhases: v1Fields.totalPhases,
-    status: executionStatus,
-    startedAt: v1Fields.startedAt || now,
-    pausedAt: v1Fields.pausedAt || null,
-    pauseReason: v1Fields.pauseReason || null,
-    completedPhases: normalizedPhases,
-    failedPhase: v1Fields.failedPhase || null,
-    errorMessage: v1Fields.errorMessage || null,
-    autoFixAttempt: v1Fields.autoFixAttempt || null,
-    autoFixMaxAttempts: v1Fields.autoFixMaxAttempts || null,
-    activeHook: v1Fields.activeHook || null,
-    activeSubtasks: v1Fields.activeSubtasks || [],
-    lastActivity: now,
-    isStale: false,
-    staledAt: null,
-    planFile: v1Fields.planFile || null,
-    migratedAt: now  // Track when migration occurred
-  };
+  return { issue: null, title: null };
 }
 ```
 
-### Step 4: Build v2 State
+### Step 2: Extract Status
 
-Construct the complete v2 state object:
+Get the execution status from the top-level field:
 
 ```javascript
-function migrateToV2(v1State) {
+function extractStatus(v2State) {
+  // Top-level status was always the aggregate status
+  return v2State.status || 'idle';
+}
+```
+
+### Step 3: Derive Phase Information from Plan
+
+Get `currentPhase` and `totalPhases` from the plan file:
+
+```javascript
+async function derivePhaseInfo(activeIssue) {
+  if (!activeIssue) {
+    return { currentPhase: null, totalPhases: null };
+  }
+
+  const planPath = `.tiki/plans/issue-${activeIssue}.json`;
+  const plan = await readJSON(planPath);
+
+  if (!plan) {
+    return { currentPhase: null, totalPhases: null };
+  }
+
+  const totalPhases = plan.phases?.length || null;
+
+  // Find current phase: first incomplete phase or last phase
+  const completedPhases = plan.phases?.filter(p => p.status === 'completed') || [];
+  const currentPhase = completedPhases.length < totalPhases
+    ? completedPhases.length + 1
+    : totalPhases;
+
+  return { currentPhase, totalPhases };
+}
+```
+
+### Step 4: Build Simplified State
+
+Construct the simplified state object:
+
+```javascript
+async function migrateToSimplified(v2State) {
   const now = new Date().toISOString();
-  const execution = createExecutionFromV1(extractV1Fields(v1State));
+  const { issue, title } = extractActiveIssue(v2State);
+  const status = extractStatus(v2State);
+  const { currentPhase, totalPhases } = await derivePhaseInfo(issue);
 
-  const v2State = {
-    // Version marker
-    version: 2,
-
-    // New v2 structures
-    activeExecutions: execution ? [execution] : [],
-    executionHistory: [],
+  return {
+    status: status,
+    activeIssue: issue,
+    activeIssueTitle: title,
+    startedAt: v2State.startedAt || null,
     lastActivity: now,
-
-    // Preserved v1 fields for backward compatibility
-    activeIssue: v1State.activeIssue || null,
-    currentPhase: v1State.currentPhase || null,
-    status: v1State.status || 'idle',
-    startedAt: v1State.startedAt || null,
-    pausedAt: v1State.pausedAt || null,
-    pauseReason: v1State.pauseReason || null,
-    completedPhases: v1State.completedPhases || [],
-    failedPhase: v1State.failedPhase || null,
-    errorMessage: v1State.errorMessage || null,
-    autoFixAttempt: v1State.autoFixAttempt || null,
-    autoFixMaxAttempts: v1State.autoFixMaxAttempts || null,
-    activeHook: v1State.activeHook || null,
-    activeSubtasks: v1State.activeSubtasks || [],
-    issue: v1State.issue || null,
-    planFile: v1State.planFile || null,
-    totalPhases: v1State.totalPhases || null,
-
-    // Preserved non-execution fields
-    lastCompletedIssue: v1State.lastCompletedIssue || null,
-    lastCompletedAt: v1State.lastCompletedAt || null
+    lastCompletedIssue: v2State.lastCompletedIssue || null,
+    lastCompletedAt: v2State.lastCompletedAt || null,
+    errorMessage: v2State.errorMessage || null,
+    currentPhase: currentPhase,
+    totalPhases: totalPhases
   };
-
-  return v2State;
 }
 ```
 
 ## Complete Migration Example
 
-**Before (v1 state):**
-```json
-{
-  "activeIssue": 45,
-  "currentPhase": 2,
-  "status": "executing",
-  "startedAt": "2026-01-30T10:00:00.000Z",
-  "completedPhases": [1],
-  "totalPhases": 5,
-  "issue": {
-    "number": 45,
-    "title": "Add user authentication"
-  },
-  "planFile": ".tiki/plans/issue-45.json"
-}
-```
-
-**After (v2 state):**
+**Before (v2 state):**
 ```json
 {
   "version": 2,
   "activeExecutions": [
     {
-      "id": "exec-45-migrated",
+      "id": "exec-45-a1b2c3d4",
       "issue": 45,
       "issueTitle": "Add user authentication",
       "currentPhase": 2,
       "totalPhases": 5,
       "status": "executing",
       "startedAt": "2026-01-30T10:00:00.000Z",
-      "pausedAt": null,
-      "pauseReason": null,
       "completedPhases": [
-        { "number": 1 }
+        { "number": 1, "title": "Setup", "completedAt": "..." }
       ],
-      "failedPhase": null,
-      "errorMessage": null,
-      "autoFixAttempt": null,
-      "autoFixMaxAttempts": null,
-      "activeHook": null,
-      "activeSubtasks": [],
-      "lastActivity": "2026-01-30T12:00:00.000Z",
-      "isStale": false,
-      "staledAt": null,
-      "planFile": ".tiki/plans/issue-45.json",
-      "migratedAt": "2026-01-30T12:00:00.000Z"
+      "planFile": ".tiki/plans/issue-45.json"
     }
   ],
-  "executionHistory": [],
+  "executionHistory": [
+    {
+      "id": "exec-44-b2c3d4e5",
+      "issue": 44,
+      "status": "completed",
+      "endedAt": "2026-01-29T15:00:00.000Z"
+    }
+  ],
   "lastActivity": "2026-01-30T12:00:00.000Z",
-
   "activeIssue": 45,
   "currentPhase": 2,
   "status": "executing",
-  "startedAt": "2026-01-30T10:00:00.000Z",
-  "completedPhases": [1],
-  "totalPhases": 5,
-  "issue": {
-    "number": 45,
-    "title": "Add user authentication"
-  },
-  "planFile": ".tiki/plans/issue-45.json",
-  "lastCompletedIssue": null,
-  "lastCompletedAt": null
+  "lastCompletedIssue": 44,
+  "lastCompletedAt": "2026-01-29T15:00:00.000Z"
 }
 ```
+
+**After (simplified state):**
+```json
+{
+  "status": "executing",
+  "activeIssue": 45,
+  "activeIssueTitle": "Add user authentication",
+  "startedAt": "2026-01-30T10:00:00.000Z",
+  "lastActivity": "2026-01-30T12:00:00.000Z",
+  "lastCompletedIssue": 44,
+  "lastCompletedAt": "2026-01-29T15:00:00.000Z",
+  "errorMessage": null,
+  "currentPhase": 2,
+  "totalPhases": 5
+}
+```
+
+## Fields Discarded During Migration
+
+The following v2 fields are intentionally discarded:
+
+| Field | Reason |
+|-------|--------|
+| `version` | Simplified format has no version field |
+| `activeExecutions` | Single-issue model; phase progress in plan files |
+| `executionHistory` | Git commit history provides sufficient history |
+| `completedPhases` | Phase status tracked in plan files |
+| `execution.id` | Execution IDs no longer needed |
+| `pausedAt`, `pauseReason` | Status field is sufficient |
+| `failedPhase` | Covered by currentPhase + status |
+| `autoFixAttempt`, `autoFixMaxAttempts` | Transient execution state |
+| `activeHook`, `activeSubtasks` | Transient execution state |
+| `isStale`, `staledAt` | Simplified model has no stale detection |
+| `planFile` | Derived from activeIssue |
+| `issue` object | Replaced by activeIssue + activeIssueTitle |
 
 ## Auto-Migration Trigger Points
 
@@ -243,21 +223,47 @@ Migration should be triggered automatically at these points:
 
 ### 1. State Read Operations
 
-Any command that reads state should check version:
+Any command that reads state should check for v2 format:
 
 ```javascript
 async function readState() {
   const stateFile = '.tiki/state/current.json';
+
+  // Handle missing file
+  if (!fileExists(stateFile)) {
+    return createFreshState();
+  }
+
   let state = await readJSON(stateFile);
 
+  // Handle empty file
+  if (!state || Object.keys(state).length === 0) {
+    return createFreshState();
+  }
+
   // Check if migration needed
-  if (detectStateVersion(state) === 1) {
-    state = migrateToV2(state);
+  if (needsMigration(state)) {
+    state = await migrateToSimplified(state);
     await writeJSON(stateFile, state);
-    console.log('Migrated state from v1 to v2');
+    console.log('Migrated state from v2 to simplified format');
   }
 
   return state;
+}
+
+function createFreshState() {
+  return {
+    status: 'idle',
+    activeIssue: null,
+    activeIssueTitle: null,
+    startedAt: null,
+    lastActivity: null,
+    lastCompletedIssue: null,
+    lastCompletedAt: null,
+    errorMessage: null,
+    currentPhase: null,
+    totalPhases: null
+  };
 }
 ```
 
@@ -265,189 +271,70 @@ async function readState() {
 
 Commands that trigger auto-migration:
 - `execute.md` - Before starting or resuming execution
-- `pause.md` - Before pausing (ensures v2 structure for context save)
+- `pause.md` - Before pausing
 - `resume.md` - Before resuming execution
 - `state.md` - When displaying state
-- `ship.md` - Before archiving execution to history
+- `ship.md` - Before completing issue
 - `heal.md` - Before attempting auto-fix
-
-### 3. Idle State Migration
-
-For idle v1 states (no active execution):
-
-```json
-// v1 idle state
-{
-  "status": "idle",
-  "lastCompletedIssue": 44,
-  "lastCompletedAt": "2026-01-29T15:00:00.000Z"
-}
-
-// Migrates to v2
-{
-  "version": 2,
-  "activeExecutions": [],
-  "executionHistory": [],
-  "lastActivity": "2026-01-30T12:00:00.000Z",
-  "status": "idle",
-  "activeIssue": null,
-  "currentPhase": null,
-  "lastCompletedIssue": 44,
-  "lastCompletedAt": "2026-01-29T15:00:00.000Z"
-}
-```
-
-## V1 Compatibility Layer
-
-After any change to `activeExecutions`, deprecated v1 fields must be updated for Tiki.Desktop and other consumers:
-
-### Update Deprecated Fields
-
-```javascript
-function syncDeprecatedFields(v2State) {
-  // Find the first executing execution (if any)
-  const firstExecuting = v2State.activeExecutions.find(
-    e => e.status === 'executing'
-  );
-
-  // Find any active execution (executing or paused)
-  const firstActive = v2State.activeExecutions.find(
-    e => e.status === 'executing' || e.status === 'paused'
-  ) || v2State.activeExecutions[0];
-
-  // Calculate aggregate status
-  const aggregateStatus = calculateAggregateStatus(v2State.activeExecutions);
-
-  // Update deprecated fields
-  v2State.activeIssue = firstActive?.issue || null;
-  v2State.currentPhase = firstActive?.currentPhase || null;
-  v2State.status = aggregateStatus;
-  v2State.startedAt = firstActive?.startedAt || null;
-  v2State.pausedAt = firstActive?.pausedAt || null;
-  v2State.pauseReason = firstActive?.pauseReason || null;
-  v2State.completedPhases = firstActive?.completedPhases?.map(p =>
-    typeof p === 'object' ? p.number : p
-  ) || [];
-  v2State.failedPhase = firstActive?.failedPhase || null;
-  v2State.errorMessage = firstActive?.errorMessage || null;
-  v2State.autoFixAttempt = firstActive?.autoFixAttempt || null;
-  v2State.autoFixMaxAttempts = firstActive?.autoFixMaxAttempts || null;
-  v2State.activeHook = firstActive?.activeHook || null;
-  v2State.activeSubtasks = firstActive?.activeSubtasks || [];
-  v2State.planFile = firstActive?.planFile || null;
-  v2State.totalPhases = firstActive?.totalPhases || null;
-  v2State.issue = firstActive ? {
-    number: firstActive.issue,
-    title: firstActive.issueTitle
-  } : null;
-
-  return v2State;
-}
-
-function calculateAggregateStatus(executions) {
-  if (executions.length === 0) return 'idle';
-
-  // Priority: failed > paused > executing
-  if (executions.some(e => e.status === 'failed')) return 'failed';
-  if (executions.some(e => e.status === 'paused')) return 'paused';
-  if (executions.some(e => e.status === 'executing')) return 'executing';
-
-  // All completed means we're idle
-  return 'idle';
-}
-```
-
-### When to Sync
-
-Call `syncDeprecatedFields()` after:
-- Adding a new execution to `activeExecutions`
-- Updating execution status (executing, paused, failed, completed)
-- Removing an execution from `activeExecutions`
-- Moving an execution to `executionHistory`
-
-## Rollback Instructions
-
-If v2 migration causes issues, you can rollback to v1:
-
-### Manual Rollback
-
-1. Read the v2 state file
-2. Extract the first active execution
-3. Flatten to v1 format
-
-```javascript
-function rollbackToV1(v2State) {
-  const execution = v2State.activeExecutions[0];
-
-  return {
-    activeIssue: execution?.issue || null,
-    currentPhase: execution?.currentPhase || null,
-    status: v2State.status || 'idle',
-    startedAt: execution?.startedAt || null,
-    pausedAt: execution?.pausedAt || null,
-    pauseReason: execution?.pauseReason || null,
-    completedPhases: execution?.completedPhases?.map(p =>
-      typeof p === 'object' ? p.number : p
-    ) || [],
-    failedPhase: execution?.failedPhase || null,
-    errorMessage: execution?.errorMessage || null,
-    autoFixAttempt: execution?.autoFixAttempt || null,
-    autoFixMaxAttempts: execution?.autoFixMaxAttempts || null,
-    activeHook: execution?.activeHook || null,
-    activeSubtasks: execution?.activeSubtasks || [],
-    planFile: execution?.planFile || null,
-    totalPhases: execution?.totalPhases || null,
-    issue: execution ? {
-      number: execution.issue,
-      title: execution.issueTitle
-    } : null,
-    lastCompletedIssue: v2State.lastCompletedIssue || null,
-    lastCompletedAt: v2State.lastCompletedAt || null
-  };
-}
-```
-
-### Rollback Considerations
-
-- Rollback loses multi-execution data (only first execution is preserved)
-- Execution history is lost
-- Any migrated execution IDs (`exec-N-migrated`) indicate previously migrated data
 
 ## Edge Cases
 
-### 1. Corrupted v1 State
+### 1. Multiple Active Executions in v2
 
-If v1 state is partially corrupted:
-- Preserve any valid fields
-- Set missing required fields to defaults
-- Log warning about corrupted state
+If v2 state has multiple active executions:
+- Migrate the first active execution only
+- Log warning about discarded executions
+- User should complete or cancel other executions before migration
 
-### 2. Already v2 State
+### 2. Corrupted v2 State
 
-If state is already v2:
-- Skip migration
-- Optionally validate against schema
-- Proceed with normal operations
+If v2 state is partially corrupted:
+- Extract what fields are valid
+- Fall back to fresh state for missing required fields
+- Log warning about corruption
 
-### 3. Empty State File
+### 3. Idle v2 State
 
-If state file is empty or doesn't exist:
-- Create fresh v2 state with defaults
-- No migration needed
+For idle v2 states (no active execution):
 
 ```json
+// v2 idle state
 {
   "version": 2,
   "activeExecutions": [],
-  "executionHistory": [],
-  "lastActivity": null,
-  "status": "idle"
+  "executionHistory": [...],
+  "status": "idle",
+  "lastCompletedIssue": 44,
+  "lastCompletedAt": "2026-01-29T15:00:00.000Z"
+}
+
+// Migrates to simplified
+{
+  "status": "idle",
+  "activeIssue": null,
+  "activeIssueTitle": null,
+  "startedAt": null,
+  "lastActivity": "2026-01-30T12:00:00.000Z",
+  "lastCompletedIssue": 44,
+  "lastCompletedAt": "2026-01-29T15:00:00.000Z",
+  "errorMessage": null,
+  "currentPhase": null,
+  "totalPhases": null
 }
 ```
 
-### 4. Multiple Migrated Executions
+### 4. Plan File Missing
 
-If user had paused execution and manually edited state:
-- Migrate all recognizable executions
-- Generate unique IDs for each (`exec-{issue}-migrated-1`, `exec-{issue}-migrated-2`)
-- Preserve order
+If the plan file for the active issue is missing:
+- Set `currentPhase` and `totalPhases` to null
+- Log warning about missing plan
+- State is still valid; plan should be created via `/tiki:plan-issue`
+
+## Tiki.Desktop Compatibility
+
+The simplified format maintains `currentPhase` and `totalPhases` fields specifically for Tiki.Desktop compatibility. These are derived from the plan file during:
+- State read operations
+- Phase completion
+- Status display
+
+Desktop clients can read these fields to display progress without parsing plan files.

@@ -1,347 +1,53 @@
 {
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://tiki.dev/schemas/state.schema.json",
-  "title": "Tiki Execution State",
-  "description": "Schema for .tiki/state/current.json active execution state. Version 2 supports multiple concurrent executions; version 1 fields are preserved for backward compatibility.",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Tiki State",
+  "description": "Tracks which issue is active. Phase progress is in plan files.",
   "type": "object",
-  "required": ["status"],
   "properties": {
-    "version": {
-      "type": "integer",
-      "enum": [1, 2],
-      "default": 2,
-      "description": "Schema version. v1 = legacy single-execution, v2 = multi-execution support. Files without version field are treated as v1."
-    },
-    "activeExecutions": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/execution" },
-      "description": "Array of currently active executions (v2 only)"
-    },
-    "executionHistory": {
-      "type": "array",
-      "items": { "$ref": "#/$defs/archivedExecution" },
-      "description": "Array of completed/failed executions for history tracking (v2 only)"
-    },
-
     "activeIssue": {
-      "oneOf": [
-        { "type": "integer", "minimum": 1 },
-        { "type": "null" }
-      ],
-      "description": "[DEPRECATED: Use activeExecutions in v2] Currently active GitHub issue number. Preserved for Tiki.Desktop compatibility."
+      "type": ["integer", "null"],
+      "description": "Currently active issue number, or null if idle"
     },
-    "currentPhase": {
-      "oneOf": [
-        { "type": "integer", "minimum": 1 },
-        { "type": "null" }
-      ],
-      "description": "[DEPRECATED: Use activeExecutions in v2] Currently executing phase number. Preserved for Tiki.Desktop compatibility."
+    "activeIssueTitle": {
+      "type": ["string", "null"],
+      "description": "Title of active issue for display"
     },
     "status": {
       "type": "string",
       "enum": ["idle", "executing", "paused", "failed"],
-      "description": "[DEPRECATED in v2 for multi-execution: Use activeExecutions[].status] Global execution status. In v2, reflects aggregate state."
+      "description": "Current execution status"
     },
     "startedAt": {
-      "oneOf": [
-        { "type": "string", "format": "date-time" },
-        { "type": "null" }
-      ],
-      "description": "[DEPRECATED: Use activeExecutions in v2] When execution started"
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "When current execution started"
     },
     "lastActivity": {
-      "oneOf": [
-        { "type": "string", "format": "date-time" },
-        { "type": "null" }
-      ],
-      "description": "Timestamp of last activity across all executions"
-    },
-    "pausedAt": {
-      "oneOf": [
-        { "type": "string", "format": "date-time" },
-        { "type": "null" }
-      ],
-      "description": "[DEPRECATED: Use activeExecutions in v2] When execution was paused"
-    },
-    "completedPhases": {
-      "type": "array",
-      "items": {
-        "oneOf": [
-          { "type": "integer", "minimum": 1 },
-          {
-            "type": "object",
-            "properties": {
-              "number": { "type": "integer", "minimum": 1 },
-              "title": { "type": "string" },
-              "completedAt": { "type": "string", "format": "date-time" }
-            },
-            "required": ["number"]
-          }
-        ]
-      },
-      "description": "[DEPRECATED: Use activeExecutions in v2] List of completed phase numbers or phase objects"
-    },
-    "failedPhase": {
-      "oneOf": [
-        { "type": "integer", "minimum": 1 },
-        { "type": "null" }
-      ],
-      "description": "[DEPRECATED: Use activeExecutions in v2] Phase number that failed (if status is 'failed')"
-    },
-    "errorMessage": {
-      "type": "string",
-      "description": "[DEPRECATED: Use activeExecutions in v2] Error message if execution failed"
-    },
-    "pauseReason": {
-      "type": "string",
-      "description": "[DEPRECATED: Use activeExecutions in v2] Reason for pausing execution"
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "Last state update timestamp"
     },
     "lastCompletedIssue": {
-      "oneOf": [
-        { "type": "integer", "minimum": 1 },
-        { "type": "null" }
-      ],
-      "description": "Last successfully shipped issue number"
+      "type": ["integer", "null"],
+      "description": "Most recently completed issue number"
     },
     "lastCompletedAt": {
-      "oneOf": [
-        { "type": "string", "format": "date-time" },
-        { "type": "null" }
-      ],
+      "type": ["string", "null"],
+      "format": "date-time",
       "description": "When last issue was completed"
     },
-    "autoFixAttempt": {
-      "oneOf": [
-        { "type": "integer", "minimum": 0 },
-        { "type": "null" }
-      ],
-      "description": "[DEPRECATED: Use activeExecutions in v2] Current auto-fix attempt number (0 = not in auto-fix)"
+    "errorMessage": {
+      "type": ["string", "null"],
+      "description": "Error message if status is failed"
     },
-    "autoFixMaxAttempts": {
-      "oneOf": [
-        { "type": "integer", "minimum": 1 },
-        { "type": "null" }
-      ],
-      "description": "[DEPRECATED: Use activeExecutions in v2] Maximum auto-fix attempts allowed"
-    },
-    "activeHook": {
-      "oneOf": [
-        { "type": "string" },
-        { "type": "null" }
-      ],
-      "description": "[DEPRECATED: Use activeExecutions in v2] Currently executing hook name (e.g., 'pre-execute', 'phase-complete')"
-    },
-    "activeSubtasks": {
-      "type": "array",
-      "items": { "type": "string" },
-      "description": "[DEPRECATED: Use activeExecutions in v2] IDs of currently executing subtasks"
-    },
-    "issue": {
-      "type": "object",
-      "properties": {
-        "number": { "type": "integer", "minimum": 1 },
-        "title": { "type": "string" }
-      },
-      "description": "[DEPRECATED: Use activeExecutions in v2] Current issue metadata"
-    },
-    "planFile": {
-      "type": "string",
-      "description": "[DEPRECATED: Use activeExecutions in v2] Path to the plan file"
+    "currentPhase": {
+      "type": ["integer", "null"],
+      "description": "Current phase number (for Tiki.Desktop compatibility)"
     },
     "totalPhases": {
-      "type": "integer",
-      "minimum": 1,
-      "description": "[DEPRECATED: Use activeExecutions in v2] Total number of phases in the plan"
+      "type": ["integer", "null"],
+      "description": "Total phases (for Tiki.Desktop compatibility)"
     }
   },
-  "additionalProperties": true,
-
-  "$defs": {
-    "execution": {
-      "type": "object",
-      "required": ["id", "issue", "status"],
-      "properties": {
-        "id": {
-          "type": "string",
-          "pattern": "^exec-(([0-9]+|release-[a-zA-Z0-9._-]+)-([a-f0-9]{8}|migrated))$",
-          "description": "Unique execution identifier. Format: exec-{issue}-{8-char-uuid}, exec-release-{version}-{uuid}, or exec-{issue}-migrated"
-        },
-        "issue": {
-          "type": "integer",
-          "minimum": 1,
-          "description": "GitHub issue number being executed"
-        },
-        "issueTitle": {
-          "type": "string",
-          "description": "Title of the GitHub issue"
-        },
-        "currentPhase": {
-          "oneOf": [
-            { "type": "integer", "minimum": 1 },
-            { "type": "null" }
-          ],
-          "description": "Currently executing phase number"
-        },
-        "totalPhases": {
-          "type": "integer",
-          "minimum": 1,
-          "description": "Total number of phases in the plan"
-        },
-        "status": {
-          "type": "string",
-          "enum": ["executing", "paused", "failed", "completed"],
-          "description": "Current execution status"
-        },
-        "startedAt": {
-          "type": "string",
-          "format": "date-time",
-          "description": "When execution started"
-        },
-        "pausedAt": {
-          "oneOf": [
-            { "type": "string", "format": "date-time" },
-            { "type": "null" }
-          ],
-          "description": "When execution was paused"
-        },
-        "pauseReason": {
-          "oneOf": [
-            { "type": "string" },
-            { "type": "null" }
-          ],
-          "description": "Reason for pausing execution"
-        },
-        "completedPhases": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "number": { "type": "integer", "minimum": 1 },
-              "title": { "type": "string" },
-              "completedAt": { "type": "string", "format": "date-time" },
-              "summary": { "type": "string" }
-            },
-            "required": ["number"]
-          },
-          "description": "List of completed phase objects with metadata"
-        },
-        "failedPhase": {
-          "oneOf": [
-            { "type": "integer", "minimum": 1 },
-            { "type": "null" }
-          ],
-          "description": "Phase number that failed"
-        },
-        "errorMessage": {
-          "oneOf": [
-            { "type": "string" },
-            { "type": "null" }
-          ],
-          "description": "Error message if execution failed"
-        },
-        "autoFixAttempt": {
-          "oneOf": [
-            { "type": "integer", "minimum": 0 },
-            { "type": "null" }
-          ],
-          "description": "Current auto-fix attempt number (0 = not in auto-fix)"
-        },
-        "autoFixMaxAttempts": {
-          "oneOf": [
-            { "type": "integer", "minimum": 1 },
-            { "type": "null" }
-          ],
-          "description": "Maximum auto-fix attempts allowed"
-        },
-        "activeHook": {
-          "oneOf": [
-            { "type": "string" },
-            { "type": "null" }
-          ],
-          "description": "Currently executing hook name"
-        },
-        "activeSubtasks": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "IDs of currently executing subtasks"
-        },
-        "lastActivity": {
-          "type": "string",
-          "format": "date-time",
-          "description": "Timestamp of last activity for this execution"
-        },
-        "isStale": {
-          "type": "boolean",
-          "default": false,
-          "description": "Whether this execution is considered stale (no activity for extended period)"
-        },
-        "staledAt": {
-          "oneOf": [
-            { "type": "string", "format": "date-time" },
-            { "type": "null" }
-          ],
-          "description": "When execution was marked as stale"
-        },
-        "planFile": {
-          "type": "string",
-          "description": "Path to the plan file for this execution"
-        }
-      },
-      "additionalProperties": true
-    },
-    "archivedExecution": {
-      "type": "object",
-      "required": ["id", "issue", "status", "startedAt", "endedAt"],
-      "properties": {
-        "id": {
-          "type": "string",
-          "pattern": "^exec-(([0-9]+|release-[a-zA-Z0-9._-]+)-([a-f0-9]{8}|migrated))$",
-          "description": "Unique execution identifier"
-        },
-        "issue": {
-          "type": "integer",
-          "minimum": 1,
-          "description": "GitHub issue number that was executed"
-        },
-        "issueTitle": {
-          "type": "string",
-          "description": "Title of the GitHub issue"
-        },
-        "status": {
-          "type": "string",
-          "enum": ["completed", "failed", "abandoned"],
-          "description": "Final execution status"
-        },
-        "startedAt": {
-          "type": "string",
-          "format": "date-time",
-          "description": "When execution started"
-        },
-        "endedAt": {
-          "type": "string",
-          "format": "date-time",
-          "description": "When execution ended (completed, failed, or abandoned)"
-        },
-        "completedPhases": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "Number of phases that were completed"
-        },
-        "totalPhases": {
-          "type": "integer",
-          "minimum": 1,
-          "description": "Total number of phases in the plan"
-        },
-        "errorMessage": {
-          "type": "string",
-          "description": "Error message if execution failed"
-        },
-        "summary": {
-          "type": "string",
-          "description": "Brief summary of what was accomplished"
-        }
-      },
-      "additionalProperties": true
-    }
-  }
+  "required": ["status"]
 }
